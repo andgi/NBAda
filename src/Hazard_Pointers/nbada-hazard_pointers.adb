@@ -1,10 +1,10 @@
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
--- Filename        : hazard_pointers.adb
--- Description     : Ada implementation of Maged Michael's Hazard Pointers.
--- Author          : Anders Gidenstam
--- Created On      : Thu Nov 25 18:35:09 2004
--- $Id: nbada-hazard_pointers.adb,v 1.1 2004/11/25 22:56:53 anders Exp $
+--  Filename        : hazard_pointers.adb
+--  Description     : Ada implementation of Maged Michael's Hazard Pointers.
+--  Author          : Anders Gidenstam
+--  Created On      : Thu Nov 25 18:35:09 2004
+--  $Id: nbada-hazard_pointers.adb,v 1.2 2005/02/24 16:04:51 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -12,6 +12,8 @@ with Hash_Tables;
 
 with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
+
+with Ada.Text_IO;
 
 package body Hazard_Pointers is
 
@@ -38,13 +40,18 @@ package body Hazard_Pointers is
    --  Internal data structures.
    ----------------------------------------------------------------------------
 
+   --  Shared static data.
    Hazard_Pointer : array (Processes, HP_Index) of aliased Shared_Reference;
    pragma Volatile (Hazard_Pointer);
    pragma Atomic_Components (Hazard_Pointer);
 
-   --  Static process local storage.
+   --  Process local static data.
    D_List  : array (Processes) of Node_Access;
    D_Count : array (Processes) of Node_Count := (others => 0);
+
+   --  Shared statistics.
+   Reclaimed : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Reclaimed);
 
    ----------------------------------------------------------------------------
    --  Operations.
@@ -61,6 +68,7 @@ package body Hazard_Pointers is
       --  Find a free hazard pointer.
       for I in Hazard_Pointer'Range (2) loop
          if Hazard_Pointer (ID, I) = null then
+            --  Found a free hazard pointer.
             Index := I;
             Found := True;
             exit;
@@ -96,6 +104,7 @@ package body Hazard_Pointers is
    procedure Delete      (Local  : in Node_Access) is
       ID : constant Processes := Process_Ids.Process_ID;
    begin
+      Release (Local);
       Local.MM_Next := Shared_Reference (D_List (ID));
       D_List  (ID)  := Local;
       D_Count (ID)  := D_Count (ID) + 1;
@@ -116,6 +125,26 @@ package body Hazard_Pointers is
                                Shared_Reference (Old_Value),
                                Shared_Reference (New_Value));
    end Compare_And_Swap;
+
+   ----------------------------------------------------------------------------
+   procedure Initialize (Shared    : access Shared_Reference;
+                         New_Value : in     Node_Access) is
+      Tmp : constant Node_Access := Node_Access (Shared.all);
+   begin
+      Shared.all := Shared_Reference (New_Value);
+
+      if Tmp /= null then
+         Delete (Tmp);
+      end if;
+   end Initialize;
+
+   ----------------------------------------------------------------------------
+   procedure Print_Statistics is
+   begin
+      Ada.Text_IO.Put_Line ("Hazard_Pointers.Print_Statistics:");
+      Ada.Text_IO.Put_Line ("  #Reclaimed = " &
+                            Primitives.Unsigned_32'Image (Reclaimed));
+   end Print_Statistics;
 
    ----------------------------------------------------------------------------
    --  Private operations.
@@ -152,6 +181,8 @@ package body Hazard_Pointers is
          else
             --  Reclaim node storage.
             Free (Node);
+
+            Primitives.Fetch_And_Add (Reclaimed'Access, 1);
          end if;
       end loop;
       D_List  (ID) := New_D_List;

@@ -1,11 +1,11 @@
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
--- Filename        : hazard_pointers.ads
--- Description     : Lock-Free Ada implementation of Maged Michael's
---                   Hazard Pointers.
--- Author          : Anders Gidenstam
--- Created On      : Thu Nov 25 18:10:15 2004
--- $Id: nbada-hazard_pointers.ads,v 1.1 2004/11/25 22:56:53 anders Exp $
+--  Filename        : hazard_pointers.ads
+--  Description     : Lock-Free Ada implementation of Maged Michael's
+--                    Hazard Pointers.
+--  Author          : Anders Gidenstam
+--  Created On      : Thu Nov 25 18:10:15 2004
+--  $Id: nbada-hazard_pointers.ads,v 1.2 2005/02/24 16:04:51 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
@@ -23,9 +23,9 @@ package Hazard_Pointers is
 
    type Shared_Reference is limited private;
 
-   type Node_Access is access Managed_Node'Class;
+   type Node_Access is access all Managed_Node'Class;
    --  Select an appropriate (preferably non-blocking) storage pool
-   --  by the "for  Node_Access'Storage_Pool use ..." construct.
+   --  by the "for My_Node_Access'Storage_Pool use ..." construct.
    --  Note: There should not be any shared variables of type Node_Access.
 
    ----------------------------------------------------------------------------
@@ -36,7 +36,7 @@ package Hazard_Pointers is
                          return Node_Access;
    --  Note:
    procedure Release     (Local  : in Node_Access);
-   --  Note: Each dereferenced shared pointer MUST be Released eventually.
+   --  Note: Each dereferenced shared pointer MUST be released eventually.
 
    procedure Delete      (Local  : in Node_Access);
    --  Note: Delete may only be called when the caller can guarantee
@@ -49,6 +49,14 @@ package Hazard_Pointers is
                                New_Value : in Node_Access)
                               return Boolean;
 
+   procedure Initialize (Shared    : access Shared_Reference;
+                         New_Value : in     Node_Access);
+   --  Note: Initialize is only safe to use when there are no
+   --        concurrent updates.
+
+
+   procedure Print_Statistics;
+
 private
 
    type Managed_Node is abstract tagged limited
@@ -58,6 +66,7 @@ private
       end record;
 
    type Shared_Reference is new Node_Access;
-   pragma Atomic (Shared_Reference);
+   --pragma Atomic (Shared_Reference);
+   --pragma Volatile (Shared_Reference);
 
 end Hazard_Pointers;
