@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 12:15:16 2002
--- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.12 2003/02/28 11:06:55 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.13 2003/02/28 13:47:38 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
@@ -355,9 +355,9 @@ package body Non_Blocking_Priority_Queue is
          if not CAS (Target    => Queue.Heap (Status.Size)'Access,
                      Old_Value => null,
                      New_Value => New_Leaf) then
-            Ada.Text_IO.Put_Line ("Insert_PP: Heap.Size erroneous!");
-            Ada.Text_IO.Put_Line (Image (Queue));
-            raise Constraint_Error;
+            -- We must have been helped.
+            -- Continue.
+            null;
          end if;
       end;
 
@@ -369,7 +369,7 @@ package body Non_Blocking_Priority_Queue is
       begin
          New_Root := new Heap_Entry;
 
-         loop
+         Phase_2 : loop
             -- Read root.
             -- This should probably be done through the helping Fix function.
             Read_And_Fix (Queue,
@@ -380,7 +380,11 @@ package body Non_Blocking_Priority_Queue is
                           Helped     => Helped);
 
             -- Skip if helped.
-            exit when Helped;
+            if Helped or
+              (Root.Op_Id = Status.Op_Id and Root.Status = SIFTING_2) then
+               Free (New_Root);
+               exit Phase_2;
+            end if;
 
             -- Update root.
             New_Root.Status   := SIFTING_2;
@@ -392,7 +396,7 @@ package body Non_Blocking_Priority_Queue is
             exit when CAS (Target    => Queue.Heap (Heap_Index'First)'Access,
                            Old_Value => Root,
                            New_Value => New_Root);
-         end loop;
+         end loop Phase_2;
       end;
 
    end Insert_PP;
@@ -727,19 +731,29 @@ package body Non_Blocking_Priority_Queue is
                   raise Constraint_Error;
             end case;
          else
+            -- Old_Entry.Op_ID = Op_ID:
             -- This operation has either been helped or is already
             -- fiddeling with this node.
             -- DOUBLE CHECK THIS DETECTION!!
 
-            if Old_Entry.Status /= DELETED then
-               -- Copy.
-               Clean_Copy := Old_Entry.all;
-               Helped := Clean_Copy.Op_ID > Op_ID;
-               return;
-            else
-               Old_Entry := null;
-               return;
-            end if;
+            case Old_Entry.Status is
+               when DELETED =>
+                  -- Ignore this entry.
+                  Old_Entry := null;
+
+               when STABLE =>
+                  -- We must have been helped since the entry is STABLE and
+                  -- Old_Entry.Op_ID = Op_ID, i.e. our op is finished with it.
+                  Clean_Copy := Old_Entry.all;
+                  Helped := True;
+
+               when others =>
+                  -- We need to finish with this entry.
+                  -- Copy.
+                  Clean_Copy := Old_Entry.all;
+                  --Helped := Clean_Copy.Op_ID > Op_ID;
+            end case;
+            exit Help;
          end if;
       end loop Help;
    end Read_And_Fix;
