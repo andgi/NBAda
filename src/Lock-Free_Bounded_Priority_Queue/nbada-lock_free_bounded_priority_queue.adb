@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 12:15:16 2002
--- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.14 2003/03/11 10:48:57 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.15 2003/03/12 15:22:27 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
@@ -372,7 +372,6 @@ package body Non_Blocking_Priority_Queue is
 
          Phase_2 : loop
             -- Read root.
-            -- This should probably be done through the helping Fix function.
             Read_And_Fix (Queue,
                           Index      => Heap_Index'First,
                           Op_ID      => Status.Op_ID,
@@ -381,7 +380,7 @@ package body Non_Blocking_Priority_Queue is
                           Helped     => Helped);
 
             -- Skip if helped.
-            if Helped or
+            if Helped or else
               (Root.Op_Id = Status.Op_Id and Root.Status = SIFTING_2) then
                Free (New_Root);
                exit Phase_2;
@@ -421,22 +420,23 @@ package body Non_Blocking_Priority_Queue is
       begin
          New_Leaf := new Heap_Entry;
 
-         -- Fix the root to avoid problems if the leaf is directly below
-         -- root. This only needs to be done once since no other
+         -- Fix the root to avoid problems if the leaf is directly
+         -- below root. This only needs to be done once since no other
          -- preliminary phase may interfere with us.
-         if Status.Size <= 3 then
-            declare
-               New_Root : Heap_Entry;
-               Old_Root : Heap_Entry_Access;
-            begin
-               Read_And_Fix (Queue,
-                             Index      => Queue.Heap'First,
-                             Op_ID      => Status.Op_ID,
-                             Old_Entry  => Old_Root,
-                             Clean_Copy => New_Root,
-                             Helped     => Helped);
-            end;
-         end if;
+         -- In fact this must always be done, since otherwise we might
+         -- accidentaly exclude the smallest element in the heap from
+         -- the helping by marking it as deleted.
+         declare
+            New_Root : Heap_Entry;
+            Old_Root : Heap_Entry_Access;
+         begin
+            Read_And_Fix (Queue,
+                          Index      => Queue.Heap'First,
+                          Op_ID      => Status.Op_ID,
+                          Old_Entry  => Old_Root,
+                          Clean_Copy => New_Root,
+                          Helped     => Helped);
+         end;
 
          Phase_1 : loop
             -- Read leaf.
@@ -494,6 +494,16 @@ package body Non_Blocking_Priority_Queue is
                Primitives.Membar;
                Leaf := Queue.Heap (Status.Size + 1);
 
+               -- Exit if helped.
+               if (Helped or
+                   Leaf = null)
+                 or else
+                  (Leaf.Status /= DELETED or
+                   Leaf.Op_ID /= Status.Op_ID) then
+                  Free (New_Root);
+                  exit Phase_2;
+               end if;
+
                -- Safety checks!
                if Root = null then
                   Ada.Text_IO.Put_Line ("Delete_Min_PP: Null root.");
@@ -504,16 +514,6 @@ package body Non_Blocking_Priority_Queue is
                   Ada.Text_IO.Put_Line ("Delete_Min_PP: Unstable root.");
                   Ada.Text_IO.Put_Line (Image (Queue));
                   raise Constraint_Error;
-               end if;
-
-               -- Exit if helped.
-               if (Helped or
-                   Leaf = null)
-                 or else
-                  (Leaf.Status /= DELETED or
-                   Leaf.Op_ID /= Status.Op_ID) then
-                  Free (New_Root);
-                  exit Phase_2;
                end if;
 
                -- Store root key.
@@ -736,6 +736,8 @@ package body Non_Blocking_Priority_Queue is
                      " from " &
                      Operation_ID'Image (Old_Entry.Op_ID) &
                      " at" & Heap_Index'Image(Index) & ".");
+                  Ada.Text_IO.Put_Line (Image (Queue));
+
                   raise Constraint_Error;
             end case;
          elsif Old_Entry.Op_ID = Op_ID then
@@ -1075,7 +1077,7 @@ package body Non_Blocking_Priority_Queue is
                              return Heap_Index is
          Next : Heap_Index := Child;
       begin
-         while Next /= Ancestor loop
+         while Next > Ancestor loop
             if Next/2 = Ancestor then
                return Next;
             end if;
@@ -1104,7 +1106,19 @@ package body Non_Blocking_Priority_Queue is
 
             -- Security check.
             if Anc_Entry = null or Leaf_Entry = null then
-               Ada.Text_IO.Put_Line ("Implicit_Sift_Down: Null pointer!");
+               if Anc_Entry = null then
+                  Ada.Text_IO.Put_Line
+                    ("Implicit_Sift_Down.Phase 1: Anc_Entry null!");
+               end if;
+               if Leaf_Entry = null then
+                  Ada.Text_IO.Put_Line
+                    ("Implicit_Sift_Down.Phase 1: Leaf_Entry null!");
+               end if;
+               Ada.Text_IO.Put_Line
+                 ("Implicit_Sift_Down.Phase 2: " &
+                  "Op_ID =" & Operation_ID'Image (Op_ID) &
+                  ", Ancestor =" & Heap_Index'Image (Ancestor) &
+                  ", Leaf =" & Heap_Index'Image (Leaf) & ".");
                raise Constraint_Error;
             end if;
 
@@ -1113,7 +1127,7 @@ package body Non_Blocking_Priority_Queue is
               Leaf_Entry.Status /= SIFTING_2 or
               Anc_Entry.Op_ID /= Leaf_Entry.Op_ID or
               Anc_Entry.Op_ID /= Op_ID then
-               -- We have been helped. Increase sift_pos (but not yet).
+               -- We have been helped. Try to increase sift_pos (but not yet).
 
                Free (New_Entry);
                -- Check if we have been helped all the way.
@@ -1146,7 +1160,6 @@ package body Non_Blocking_Priority_Queue is
                exit Phase_1;
             end if;
 
-            Primitives.Membar;
             exit when CAS (Target    => Queue.Heap (Leaf)'Access,
                            Old_Value => Leaf_Entry,
                            New_Value => New_Entry);
@@ -1176,7 +1189,6 @@ package body Non_Blocking_Priority_Queue is
                exit Phase_2;
             end if;
 
-            --         New_Anc_Entry := Queue.Heap (New_Ancestor);
             Read_And_Fix (Queue,
                           Index      => New_Ancestor,
                           Op_ID      => Op_ID,
@@ -1184,18 +1196,31 @@ package body Non_Blocking_Priority_Queue is
                           Clean_Copy => New_Entry.all,
                           Helped     => Helped);
 
-            -- Security check.
-            if Leaf_Entry = null or New_Anc_Entry = null then
-               Ada.Text_IO.Put_Line ("Implicit_Sift_Down: Null pointer!");
+            -- Security check. Only applies if we have not been helped.
+            if not Helped and (Leaf_Entry = null or New_Anc_Entry = null) then
+               if New_Anc_Entry = null then
+                  Ada.Text_IO.Put_Line
+                    ("Implicit_Sift_Down.Phase 2: New_Anc_Entry null!");
+               end if;
+               if Leaf_Entry = null then
+                  Ada.Text_IO.Put_Line
+                    ("Implicit_Sift_Down.Phase 2: Leaf_Entry null!");
+               end if;
+               Ada.Text_IO.Put_Line
+                 ("Implicit_Sift_Down.Phase 2: " &
+                  "Op_ID =" & Operation_ID'Image (Op_ID) &
+                  ", Ancestor =" & Heap_Index'Image (Leaf_Entry.Sift_Pos) &
+                  ", Leaf =" & Heap_Index'Image (Leaf) &
+                  ", New ancestor =" & Heap_Index'Image (New_Ancestor) & ".");
                raise Constraint_Error;
             end if;
 
             -- Exit if helped.
-            if Helped or
-              (Leaf_Entry.Status /= SWAP_WITH_ANC and
-               Leaf_Entry.Status /= SIFTING_2) or
-              New_Anc_Entry.Status /= STABLE or
-              Leaf_Entry.Op_ID /= Op_ID then
+            if Helped or else
+              ((Leaf_Entry.Status /= SWAP_WITH_ANC and
+                Leaf_Entry.Status /= SIFTING_2) or
+               New_Anc_Entry.Status /= STABLE or
+               Leaf_Entry.Op_ID /= Op_ID) then
 
                -- We have been helped.
                Free (New_Entry);
@@ -1241,6 +1266,20 @@ package body Non_Blocking_Priority_Queue is
             if Leaf_Entry = null or Anc_Entry = null or
               New_Anc_Entry = null then
                Ada.Text_IO.Put_Line ("Implicit_Sift_Down: Null pointer!");
+               if Anc_Entry = null then
+                  Ada.Text_IO.Put_Line
+                    ("Implicit_Sift_Down.Phase 3: Anc_Entry null!");
+               end if;
+               if Leaf_Entry = null then
+                  Ada.Text_IO.Put_Line
+                    ("Implicit_Sift_Down.Phase 3: Leaf_Entry null!");
+               end if;
+               Ada.Text_IO.Put_Line
+                 ("Implicit_Sift_Down.Phase 3: " &
+                  "Op_ID =" & Operation_ID'Image (Op_ID) &
+                  ", Ancestor =" & Heap_Index'Image (Ancestor) &
+                  ", Leaf =" & Heap_Index'Image (Leaf) &
+                  ", New ancestor =" & Heap_Index'Image (New_Ancestor) & ".");
                raise Constraint_Error;
             end if;
 
