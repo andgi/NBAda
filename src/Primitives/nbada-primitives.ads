@@ -28,7 +28,7 @@
 -- Description     : Synchronization primitives.
 -- Author          : Anders Gidenstam
 -- Created On      : Fri Jul  5 12:27:13 2002
--- $Id: nbada-primitives.ads,v 1.8 2004/09/21 20:01:56 anders Exp $
+-- $Id: nbada-primitives.ads,v 1.9 2004/10/25 17:50:11 anders Exp $
 -------------------------------------------------------------------------------
 
 with Interfaces;
@@ -96,6 +96,25 @@ package Primitives is
    pragma Inline_Always (Boolean_Compare_And_Swap_32);
 
    ----------------------------------------------------------------------------
+   --  Void Compare and Swap 32.
+   generic
+      --  Use pragma Atomic and pragma Volatile for Target.
+      --  Element'Object_Size MUST be 32.
+      type Element is private;
+   procedure Void_Compare_And_Swap_32 (Target    : access Element;
+                                       Old_Value : in     Element;
+                                       New_Value : in     Element);
+   --  Specification:
+   --    begin atomic
+   --      Tmp := Target.all;
+   --      if Tmp = Old_Value then
+   --        Target.all := New_Value;
+   --      end if;
+   --    end atomic;
+   pragma Inline (Void_Compare_And_Swap_32);
+   pragma Inline_Always (Void_Compare_And_Swap_32);
+
+   ----------------------------------------------------------------------------
    --  Compare and Swap 64
    generic
       --  Use pragma Atomic and pragma Volatile for Target.
@@ -137,6 +156,25 @@ package Primitives is
    --    end atomic;
    pragma Inline (Boolean_Compare_And_Swap_64);
    pragma Inline_Always (Boolean_Compare_And_Swap_64);
+
+   ----------------------------------------------------------------------------
+   --  Void Compare and Swap 64
+   generic
+      --  Use pragma Atomic and pragma Volatile for Target.
+      --  Element'Object_Size MUST be 64.
+      type Element is private;
+   procedure Void_Compare_And_Swap_64 (Target    : access Element;
+                                       Old_Value : in     Element;
+                                       New_Value : in     Element);
+   --  Specification:
+   --    begin atomic
+   --      Tmp := Target.all;
+   --      if Tmp = Old_Value then
+   --        Target.all := New_Value;
+   --      end if;
+   --    end atomic;
+   pragma Inline (Void_Compare_And_Swap_64);
+   pragma Inline_Always (Void_Compare_And_Swap_64);
 
    ----------------------------------------------------------------------------
    --  Fetch and Add.

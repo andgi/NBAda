@@ -28,7 +28,7 @@
 -- Description     : Synchronization primitives.
 -- Author          : Anders Gidenstam
 -- Created On      : Fri Jul  5 14:53:50 2002
--- $Id: nbada-primitives.adb,v 1.6 2004/09/21 20:05:23 anders Exp $
+-- $Id: nbada-primitives.adb,v 1.7 2004/10/25 17:50:11 anders Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
@@ -107,6 +107,31 @@ package body Primitives is
    end Boolean_Compare_And_Swap_32;
 
    ----------------------------------------------------------------------------
+   procedure Void_Compare_And_Swap_32 (Target    : access Element;
+                                       Old_Value : in     Element;
+                                       New_Value : in     Element) is
+      use Ada.Characters.Latin_1;
+      type Element_Access is access all Element;
+
+      A1 : Assertion (Assert => Element'Object_Size = 32);
+   begin
+      System.Machine_Code.Asm
+        (Template =>
+           "!#BEGIN Compare_And_Swap_32" & LF & HT &
+           "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
+           "mov %2, %%l0"                & LF & HT &   -- l0 <- %3
+           "cas [%0], %1, %%l0"          & LF & HT &   -- Compare & swap
+           "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
+           "!#END Compare_And_Swap_32",
+         Inputs   => (Element_Access'Asm_Input ("r",       -- %0 = Target
+                                                Element_Access (Target)),
+                      Element'Asm_Input ("r", Old_Value),  -- %1 = Old_Value
+                      Element'Asm_Input ("r", New_Value)), -- %2 = New_Value
+         Clobber  => "l0",
+         Volatile => True);
+   end Void_Compare_And_Swap_32;
+
+   ----------------------------------------------------------------------------
    --  My GCC does not generate 64-bit aware code, so 64-bit objects cannot be
    --  handled atomically.
    ----------------------------------------------------------------------------
@@ -169,6 +194,18 @@ package body Primitives is
          Volatile => True);
       return Tmp = Old_Value;
    end Boolean_Compare_And_Swap_64;
+
+   ----------------------------------------------------------------------------
+   procedure Void_Compare_And_Swap_64 (Target    : access Element;
+                                       Old_Value : in     Element;
+                                       New_Value : in     Element) is
+      use Ada.Characters.Latin_1;
+      type Element_Access is access all Element;
+
+      A1 : Assertion (Assert => Element'Object_Size = 64);
+   begin
+      raise Not_Implemented;
+   end Void_Compare_And_Swap_64;
 
    ----------------------------------------------------------------------------
    procedure Fetch_And_Add (Target    : access Unsigned_32;
