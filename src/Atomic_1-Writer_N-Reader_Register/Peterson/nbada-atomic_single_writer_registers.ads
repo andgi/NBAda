@@ -3,7 +3,7 @@
 -- Description     :
 -- Author          : Anders Gidenstam
 -- Created On      : Fri Oct 19 23:57:47 2001
--- $Id: nbada-atomic_single_writer_registers.ads,v 1.1 2001/10/20 17:45:55 d96andgi Exp $
+-- $Id: nbada-atomic_single_writer_registers.ads,v 1.2 2002/01/12 00:23:53 anders Exp $
 
 generic
    type Element_Type is private;
@@ -27,10 +27,7 @@ package Wait_Free is
 
 private
 
-   type Atomic_Boolean is new Boolean;
---   pragma Atomic (Atomic_Boolean);
-
-   type Boolean_Array is array (Positive range <>) of Atomic_Boolean;
+   type Boolean_Array is array (Positive range <>) of Boolean;
    pragma Atomic_Components (Boolean_Array);
    type Element_Array is array (Positive range <>) of Element_Type;
    pragma Volatile_Components (Element_Array);
@@ -39,8 +36,10 @@ private
       record
          Reading  : Boolean_Array (1 .. No_Of_Readers) := (others => False);
          Writing  : Boolean_Array (1 .. No_Of_Readers) := (others => False);
-         Wflag    : Atomic_Boolean := False;
-         Switch   : Atomic_Boolean := False;
+         Wflag    : Boolean := False;
+         pragma Atomic (Wflag);
+         Switch   : Boolean := False;
+         pragma Atomic (Switch);
          Buff1    : Element_Type;
          pragma Volatile (Buff1);
          Buff2    : Element_Type;

@@ -3,7 +3,7 @@
 -- Description     :
 -- Author          : Anders Gidenstam
 -- Created On      : Sat Oct 20 00:04:58 2001
--- $Id: nbada-atomic_single_writer_registers.adb,v 1.1 2001/10/20 17:45:55 d96andgi Exp $
+-- $Id: nbada-atomic_single_writer_registers.adb,v 1.2 2002/01/12 00:23:53 anders Exp $
 
 package body Wait_Free is
 
@@ -26,10 +26,10 @@ package body Wait_Free is
    procedure Read  (Register  : in out Atomic_1_M_Register;
                     Reader_No : in     Positive;
                     Value     :    out Element_Type) is
-      Sflag       : Atomic_Boolean;
-      Sflag2      : Atomic_Boolean;
-      Sswitch     : Atomic_Boolean;
-      Sswitch2    : Atomic_Boolean;
+      Sflag       : Boolean;
+      Sflag2      : Boolean;
+      Sswitch     : Boolean;
+      Sswitch2    : Boolean;
       Buff1_Value : Element_Type;
       Buff2_Value : Element_Type;
    begin

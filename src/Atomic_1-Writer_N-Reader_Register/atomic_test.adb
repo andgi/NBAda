@@ -3,7 +3,7 @@
 -- Description     : Test of wait-free constructions.
 -- Author          : Anders Gidenstam
 -- Created On      : Sat Oct 20 00:43:30 2001
--- $Id: atomic_test.adb,v 1.1 2001/10/20 17:45:55 d96andgi Exp $
+-- $Id: atomic_test.adb,v 1.2 2002/01/12 00:23:53 anders Exp $
 
 with Ada.Text_IO; use Ada.Text_IO;
 
@@ -48,6 +48,7 @@ procedure Atomic_Test is
    task body Reader is
       Str : My_String;
    begin
+      delay 1.0;
       loop
          Read (Reg, No, Str);
          if Str /= Str1 and Str /= Str2 then
