@@ -25,7 +25,7 @@ Supported platforms
    - Intel IA32 compatible processors (486(?) or Pentium and newer).
 
   As the binding uses GNAT syntax for the inline assembler, other compilers
-  than GNAT is unlikley to work.
+  than GNAT is unlikely to work.
 
 Test programs
 
