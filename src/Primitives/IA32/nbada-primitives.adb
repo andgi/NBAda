@@ -4,7 +4,7 @@
 -- Description     : Synchronization primitives.
 -- Author          : Anders Gidenstam
 -- Created On      : Fri Jul  5 14:53:50 2002
--- $Id: nbada-primitives.adb,v 1.2 2004/09/20 23:03:34 anders Exp $
+-- $Id: nbada-primitives.adb,v 1.3 2004/09/20 23:18:13 anders Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
@@ -81,7 +81,7 @@ package body Primitives is
 
    ----------------------------------------------------------------------------
    -- My GCC does not generate 64-bit aware code, so 64-bit objects cannot be
-   -- handled atomically.
+   -- handled atomically. Not tested on IA32 yet.
    ----------------------------------------------------------------------------
 
    ----------------------------------------------------------------------------
@@ -148,21 +148,13 @@ package body Primitives is
       System.Machine_Code.Asm
         (Template =>
            "#BEGIN Fetch_And_Add_32"      & LF &
---            "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
---            "retry1:"                       & LF & HT &   -- retry:
---            "ld [%0], %%l0"                 & LF & HT &   --  l0 <- [%0]
---            "add %%l0, %1, %%l1"            & LF & HT &   --  l1 <- l0 + %1
---            "cas [%0], %%l0, %%l1"          & LF & HT &   --  cas [%0] l0 l1
---            "cmp %%l0, %%l1"                & LF & HT &   --  if l0 /= l1
---            "bne retry1"                    & LF & HT &   --   goto retry
---            "nop"                           & LF & HT &
---            "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
+           "lock"                         & LF & HT &
+           "xaddl %1, (%0)"               & LF & HT &   -- Fetch & add
            "#END Fetch_And_Add_32",
          Inputs   => (Unsigned_32_Access'Asm_Input         -- %0 = Target
                       ("r", Unsigned_32_Access (Target)),
                       Unsigned_32'Asm_Input ("r",          -- %1 = Increment
                                              Increment)),
---         Clobber  => "l0,l1",
          Volatile => True);
    end Fetch_And_Add;
 
@@ -178,23 +170,15 @@ package body Primitives is
       System.Machine_Code.Asm
         (Template =>
            "#BEGIN Fetch_And_Add_32"      & LF &
---            "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
---            "retry2:"                       & LF & HT &   -- retry:
---            "ld [%1], %%l0"                 & LF & HT &   --  l0 <- [%1]
---            "add %%l0, %2, %%l1"            & LF & HT &   --  l1 <- l0 + %2
---            "cas [%1], %%l0, %%l1"          & LF & HT &   --  cas [%1] l0 l1
---            "cmp %%l0, %%l1"                & LF & HT &   --  if l0 /= l1
---            "bne retry2"                    & LF & HT &   --   goto retry
---            "nop"                           & LF & HT &
---            "mov %%l1, %0"                  & LF & HT &   --  %0 <- l1
---            "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
+           "lock"                         & LF & HT &
+           "xaddl %2, (%1)"               & LF & HT &   -- Fetch & add
+           "movl %2, %0"                  & LF & HT &
            "#END Fetch_And_Add_32",
          Outputs  => Unsigned_32'Asm_Output ("=r", Tmp),   -- %0 = Tmp
          Inputs   => (Unsigned_32_Access'Asm_Input         -- %1 = Target
                       ("r", Unsigned_32_Access (Target)),
                       Unsigned_32'Asm_Input ("r",          -- %2 = Increment
                                              Increment)),
---         Clobber  => "l0,l1",
          Volatile => True);
       return Tmp;
    end Fetch_And_Add;
