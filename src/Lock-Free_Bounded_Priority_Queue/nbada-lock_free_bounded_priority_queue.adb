@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 12:15:16 2002
--- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.11 2003/02/27 17:08:32 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.12 2003/02/28 11:06:55 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
@@ -415,6 +415,23 @@ package body Non_Blocking_Priority_Queue is
          Helped   : Boolean;
       begin
          New_Leaf := new Heap_Entry;
+
+         -- Fix the root to avoid problems if the leaf is directly below
+         -- root. This only needs to be done once since no other
+         -- preliminary phase may interfere with us.
+         if Status.Size <= 3 then
+            declare
+               New_Root : Heap_Entry;
+               Old_Root : Heap_Entry_Access;
+            begin
+               Read_And_Fix (Queue,
+                             Index      => Queue.Heap'First,
+                             Op_ID      => Status.Op_ID,
+                             Old_Entry  => Old_Root,
+                             Clean_Copy => New_Root,
+                             Helped     => Helped);
+            end;
+         end if;
 
          Phase_1 : loop
             -- Read leaf.
