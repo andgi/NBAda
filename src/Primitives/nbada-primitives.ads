@@ -4,7 +4,7 @@
 -- Description     : Synchronization primitives.
 -- Author          : Anders Gidenstam
 -- Created On      : Fri Jul  5 12:27:13 2002
--- $Id: nbada-primitives.ads,v 1.5 2003/03/12 13:42:18 andersg Exp $
+-- $Id: nbada-primitives.ads,v 1.6 2003/03/12 13:43:14 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Interfaces;
@@ -53,30 +53,30 @@ package Primitives is
    pragma Inline (Boolean_Compare_And_Swap_32);
    pragma Inline_Always (Boolean_Compare_And_Swap_32);
 
-    ----------------------------------------------------------------------------
-    -- Compare and Swap 64
-    generic
-       -- Use pragma Atomic and pragma Volatile for Target.
-       -- Element'Object_Size MUST be 64.
-       type Element is private;
-    procedure Compare_And_Swap_64 (Target    : access Element;
-                                   Old_Value : in     Element;
-                                   New_Value : in out Element);
-    pragma Inline (Compare_And_Swap_64);
-    pragma Inline_Always (Compare_And_Swap_64);
+   ----------------------------------------------------------------------------
+   -- Compare and Swap 64
+   generic
+      -- Use pragma Atomic and pragma Volatile for Target.
+      -- Element'Object_Size MUST be 64.
+      type Element is private;
+   procedure Compare_And_Swap_64 (Target    : access Element;
+                                  Old_Value : in     Element;
+                                  New_Value : in out Element);
+   pragma Inline (Compare_And_Swap_64);
+   pragma Inline_Always (Compare_And_Swap_64);
 
-    ----------------------------------------------------------------------------
-    -- Boolean Compare and Swap 64
-    generic
-       -- Use pragma Atomic and pragma Volatile for Target.
-       -- Element'Object_Size MUST be 64.
-       type Element is private;
-    function Boolean_Compare_And_Swap_64 (Target    : access Element;
-                                          Old_Value : in     Element;
-                                          New_Value : in     Element)
-                                         return Boolean;
-    pragma Inline (Boolean_Compare_And_Swap_64);
-    pragma Inline_Always (Boolean_Compare_And_Swap_64);
+   ----------------------------------------------------------------------------
+   -- Boolean Compare and Swap 64
+   generic
+      -- Use pragma Atomic and pragma Volatile for Target.
+      -- Element'Object_Size MUST be 64.
+      type Element is private;
+   function Boolean_Compare_And_Swap_64 (Target    : access Element;
+                                         Old_Value : in     Element;
+                                         New_Value : in     Element)
+                                        return Boolean;
+   pragma Inline (Boolean_Compare_And_Swap_64);
+   pragma Inline_Always (Boolean_Compare_And_Swap_64);
 
    ----------------------------------------------------------------------------
    -- Fetch and Add
