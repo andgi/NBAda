@@ -1,0 +1,65 @@
+-------------------------------------------------------------------------------
+--                              -*- Mode: Ada -*-
+-- Filename        : hash_tables.ads
+-- Description     : A simple closed hash table.
+-- Author          : Anders Gidenstam
+-- Created On      : Thu Nov 25 21:51:42 2004
+-- $Id: nbada-internals-hash_tables.ads,v 1.1 2004/11/25 22:56:53 anders Exp $
+-------------------------------------------------------------------------------
+
+generic
+   type Element_Type is private;
+   with function "=" (Left, Right : Element_Type) return Boolean is <>;
+   with function Hash (Key        : Element_Type;
+                       Table_Size : Positive) return Natural;
+
+package Hash_Tables is
+
+   pragma Elaborate_Body (Hash_Tables);
+
+   type Hash_Table (Size : Positive) is private;
+
+   procedure Clear (Table :    out Hash_Table);
+   -- Clear a hash table.
+
+   procedure Insert (Key   : in     Element_Type;
+                     Table : in out Hash_Table);
+   -- Insert an element.
+
+   procedure Delete (Key   : in     Element_Type;
+                     Table : in out Hash_Table);
+   -- Delete an element.
+
+   function Member (Key   : in Element_Type;
+                    Table : in Hash_Table) return Boolean;
+   -- Find an element.
+
+   procedure Find (Key   : in out Element_Type;
+                   Table : in     Hash_Table);
+   -- Find an element.
+
+   function Find (Key   : in Element_Type;
+                  Table : in Hash_Table) return Element_Type;
+   -- Find an element.
+
+   Item_Not_Found : exception;
+
+private
+
+   type Entry_Status is (Valid, Empty, Deleted);
+
+   type Hash_Entry is
+      record
+         Element : Element_Type;
+         Status  : Entry_Status := Empty;
+      end record;
+
+   subtype Hash_Index is Natural;
+   type Hash_Array is array (Hash_Index range <>) of Hash_Entry;
+
+   type Hash_Table (Size : Positive) is
+      record
+         Table : Hash_Array (0 .. Size);
+      end record;
+
+end Hash_Tables;
