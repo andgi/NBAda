@@ -4,7 +4,7 @@
 -- Description     : Synchronization primitives.
 -- Author          : Anders Gidenstam
 -- Created On      : Fri Jul  5 12:27:13 2002
--- $Id: nbada-primitives.ads,v 1.1 2002/07/12 15:01:53 andersg Exp $
+-- $Id: nbada-primitives.ads,v 1.2 2002/07/18 12:02:55 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Interfaces;
@@ -16,6 +16,7 @@ package Primitives is
    --
    --
    ----------------------------------------------------------------------------
+   pragma Pure (Primitives);
 
    ----------------------------------------------------------------------------
    -- Not_Implemented is raised if a particular primitive is not implemented
