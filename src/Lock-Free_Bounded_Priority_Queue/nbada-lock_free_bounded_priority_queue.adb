@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 12:15:16 2002
--- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.16 2003/03/13 10:38:49 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.17 2003/03/13 13:02:11 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
@@ -48,8 +48,9 @@ package body Non_Blocking_Priority_Queue is
    -- Read and fix a heap entry, ie complete any unfinished older
    -- operations on it, except for parts of Op_ID (to avoid recursive
    -- breakdown).
-   -- Helped is true if the Op_ID of the heap entry is larger than Op_ID.
-   -- The Clean_Copy is invalid when Helped is true.
+   -- Helped is true if the Op_ID of the heap entry is larger than or
+   -- equal to Op_ID.
+   -- The Old_Entry and Clean_Copy is invalid when Helped is true.
    procedure Read_And_Fix (Queue      : in out Priority_Queue_Type;
                            Index      : in     Heap_Index;
                            Op_ID      : in     Operation_ID;
@@ -57,6 +58,16 @@ package body Non_Blocking_Priority_Queue is
                            Helped     :    out Boolean;
                            Old_Entry  :    out Heap_Entry_Access;
                            Ignore_SIFTING_2_Leaf : in Boolean := False);
+   -- Read a heap entry.
+   -- Will attempt to detect helping. A null entry is interpreted as helped.
+   -- The_Entry is invalid if helped.
+   procedure Read (Queue      : in out Priority_Queue_Type;
+                   Index      : in     Heap_Index;
+                   Op_ID      : in     Operation_ID;
+                   The_Entry  :    out Heap_Entry_Access;
+                   Helped     :    out Boolean);
+   pragma Inline (Read);
+   pragma Inline_Always (Read);
 
    -- Sort two heap entries. Used in the sifting phase of delete min.
    -- Assumes that the parent is already involved.
@@ -352,7 +363,6 @@ package body Non_Blocking_Priority_Queue is
          New_Leaf.Op_ID    := Status.Op_ID;
          New_Leaf.Sift_Pos := Heap_Index'First;
 
-         Primitives.Membar;
          if not CAS (Target    => Queue.Heap (Status.Size)'Access,
                      Old_Value => null,
                      New_Value => New_Leaf) then
@@ -392,7 +402,6 @@ package body Non_Blocking_Priority_Queue is
             New_Root.Sift_Pos := Status.Size;
 
             -- Commit root.
-            Primitives.Membar;
             exit when CAS (Target    => Queue.Heap (Heap_Index'First)'Access,
                            Old_Value => Root,
                            New_Value => New_Root);
@@ -458,7 +467,6 @@ package body Non_Blocking_Priority_Queue is
             New_Leaf.Op_Id   := Status.Op_ID;
             New_Leaf.Old_Key := New_Leaf.Key;
 
-            Primitives.Membar;
             exit when CAS (Target    => Queue.Heap (Status.Size + 1)'Access,
                            Old_Value => Leaf,
                            New_Value => New_Leaf);
@@ -475,7 +483,7 @@ package body Non_Blocking_Priority_Queue is
             Root     : Heap_Entry_Access;
             Leaf     : Heap_Entry_Access;
             New_Root : Heap_Entry_Access;
-            Helped   : Boolean;
+            Helped_R, Helped_L : Boolean;
       begin
          if Status.Size > 0 then
             New_Root := new Heap_Entry;
@@ -488,18 +496,18 @@ package body Non_Blocking_Priority_Queue is
                              Op_ID      => Status.Op_ID,
                              Old_Entry  => Root,
                              Clean_Copy => New_Root.all,
-                             Helped     => Helped);
+                             Helped     => Helped_R);
 
                -- Read deleted leaf.
-               Primitives.Membar;
-               Leaf := Queue.Heap (Status.Size + 1);
+               Read(Queue,
+                    Index     => Status.Size + 1,
+                    Op_ID     => Status.Op_ID,
+                    The_Entry => Leaf,
+                    Helped    => Helped_L);
 
                -- Exit if helped.
-               if (Helped or
-                   Leaf = null)
-                 or else
-                  (Leaf.Status /= DELETED or
-                   Leaf.Op_ID /= Status.Op_ID) then
+               if (Helped_R or Helped_L) or else
+                 (Leaf.Status /= DELETED) then
                   Free (New_Root);
                   exit Phase_2;
                end if;
@@ -531,12 +539,14 @@ package body Non_Blocking_Priority_Queue is
                       New_Value => New_Root);
             end loop Phase_2;
          else
-            Primitives.Membar;
-            Root := Queue.Heap (Queue.Heap'First);
+            Read(Queue,
+                 Index     => Queue.Heap'First,
+                 Op_ID     => Status.Op_ID,
+                 The_Entry => Root,
+                 Helped    => Helped_R);
 
             -- Store min if we haven't been helped.
-            if Root /= null and then
-              (Root.Op_ID = Status.Op_ID) then
+            if not Helped_R then
                Status.Op_Arg.all := Root.Key;
                Primitives.Membar;
             end if;
@@ -550,18 +560,21 @@ package body Non_Blocking_Priority_Queue is
 
       -- Phase 3: Remove deleted leaf.
       declare
-         Leaf     : Heap_Entry_Access;
+         Leaf   : Heap_Entry_Access;
+         Helped : Boolean;
       begin
          Phase_3 : loop
             -- Read deleted leaf.
-            Primitives.Membar;
-            Leaf := Queue.Heap (Status.Size + 1);
+            Read(Queue,
+                 Index     => Status.Size + 1,
+                 Op_ID     => Status.Op_ID,
+                 The_Entry => Leaf,
+                 Helped    => Helped);
 
             -- Skip if helped:
-            exit Phase_3 when Leaf = null or else Leaf.Op_ID /= Status.Op_ID;
+            exit Phase_3 when Helped;
 
             -- Commit empty leaf.
-            Primitives.Membar;
             exit Phase_3 when
               CAS (Target    => Queue.Heap (Status.Size + 1)'Access,
                    Old_Value => Leaf,
@@ -793,6 +806,22 @@ package body Non_Blocking_Priority_Queue is
    end Read_And_Fix;
 
    ----------------------------------------------------------------------------
+   -- Read.
+   procedure Read (Queue      : in out Priority_Queue_Type;
+                   Index      : in     Heap_Index;
+                   Op_ID      : in     Operation_ID;
+                   The_Entry  :    out Heap_Entry_Access;
+                   Helped     :    out Boolean) is
+   begin
+      Primitives.Membar;
+      The_Entry := Queue.Heap (Index);
+
+      -- Check if helped.
+      Helped := The_Entry = null or else
+        (The_Entry.Op_ID > Op_ID);
+   end Read;
+
+   ----------------------------------------------------------------------------
    -- Sort two heap entries. Assumes that the Parent is in state SIFTING_1.
    procedure Sort_Parent_Child (Queue  : in out Priority_Queue_Type;
                                 Parent : in     Heap_Index;
@@ -814,15 +843,18 @@ package body Non_Blocking_Priority_Queue is
          --Child              : Heap_Index;
          Child_Entry        : Heap_Entry_Access;
          New_Entry          : Heap_Entry_Access;
-         Helped_L, Helped_R : Boolean;
+         Helped_L, Helped_R, Helped_P : Boolean;
       begin
          New_Left_Entry  := new Heap_Entry;
          New_Right_Entry := new Heap_Entry;
 
          Phase_1 : loop
             -- Read Parent and Child entries.
-            Primitives.Membar;
-            Parent_Entry := Queue.Heap (Parent);
+            Read(Queue,
+                 Index     => Parent,
+                 Op_ID     => Op_ID,
+                 The_Entry => Parent_Entry,
+                 Helped    => Helped_P);
             Read_And_Fix (Queue,
                           Index      => Left_Child,
                           Op_ID      => Op_ID,
@@ -842,9 +874,8 @@ package body Non_Blocking_Priority_Queue is
             --exit Phase_1 when Helped_L or Helped_R;
 
             -- Exit if helped.
-            if Parent_Entry = null or else
-              (Parent_Entry.Status /= SIFTING_1 or
-               Parent_Entry.Op_ID /= Op_ID) then
+            if Helped_P or else
+              (Parent_Entry.Status /= SIFTING_1) then
                -- We have been helped.
                Free (New_Left_Entry);
                Free (New_Right_Entry);
@@ -909,7 +940,6 @@ package body Non_Blocking_Priority_Queue is
                exit Phase_1;
             end if;
 
-            Primitives.Membar;
             if CAS (Target    => Queue.Heap (Child)'Access,
                     Old_Value => Child_Entry,
                     New_Value => New_Entry) then
@@ -929,19 +959,27 @@ package body Non_Blocking_Priority_Queue is
 --         Child              : Heap_Index;
          Child_Entry        : Heap_Entry_Access;
          New_Entry          : Heap_Entry_Access;
+         Helped_P, Helped_C : Boolean := True;
       begin
          New_Entry := new Heap_Entry;
          Phase_2 : loop
             -- Read Parent and Child entries.
             -- Should be done through Fix? No we're already supposed to "own"
             -- both the parent and the child.
-            Primitives.Membar;
-            Parent_Entry := Queue.Heap (Parent);
+            Read(Queue,
+                 Index     => Parent,
+                 Op_ID     => Op_ID,
+                 The_Entry => Parent_Entry,
+                 Helped    => Helped_P);
 
             -- Read and select child.
             -- This needs to be checked!!
             if Child in Queue.Heap'Range then
-               Child_Entry  := Queue.Heap (Child);
+               Read(Queue,
+                    Index     => Child,
+                    Op_ID     => Op_ID,
+                    The_Entry => Child_Entry,
+                    Helped    => Helped_C);
             else
                Child_Entry := null;
             end if;
@@ -964,9 +1002,7 @@ package body Non_Blocking_Priority_Queue is
 --             end;
 
             -- Exit if helped.
-            if  Parent_Entry = null or else
-              (Parent_Entry.Op_ID /= Op_ID or
-               Parent_Entry.Status /= SIFTING_1) then
+            if Helped_P or else Parent_Entry.Status /= SIFTING_1 then
                Free (New_Entry);
                exit Phase_2;
             end if;
@@ -1020,7 +1056,6 @@ package body Non_Blocking_Priority_Queue is
                Done := True;
             end if;
 
-            Primitives.Membar;
             exit when CAS (Target    => Queue.Heap (Parent)'Access,
                            Old_Value => Parent_Entry,
                            New_Value => New_Entry);
@@ -1032,21 +1067,24 @@ package body Non_Blocking_Priority_Queue is
          --         Child              : Heap_Index;
          Child_Entry        : Heap_Entry_Access;
          New_Entry          : Heap_Entry_Access;
+         Helped             : Boolean := True;
       begin
          New_Entry := new Heap_Entry;
          Phase_3 : loop
             -- Read Child entry.
             -- Should be done through Fix?
             if Child in Queue.Heap'Range then
-               Primitives.Membar;
-               Child_Entry  := Queue.Heap (Child);
+               Read(Queue,
+                    Index     => Child,
+                    Op_ID     => Op_ID,
+                    The_Entry => Child_Entry,
+                    Helped    => Helped);
             else
                Child_Entry := null;
             end if;
 
             -- Check if this step needs to be done.
-            if Child_Entry /= null and then
-              Child_Entry.Op_ID = Op_ID then
+            if not Helped then
                -- This operation is still unfinished.
 
                if Child_Entry.Status = SWAP_WITH_PARENT then
@@ -1066,7 +1104,6 @@ package body Non_Blocking_Priority_Queue is
                exit Phase_3;
             end if;
 
-            Primitives.Membar;
             exit when CAS (Target    => Queue.Heap (Child)'Access,
                            Old_Value => Child_Entry,
                            New_Value => New_Entry);
@@ -1104,46 +1141,36 @@ package body Non_Blocking_Priority_Queue is
          Anc_Entry     : Heap_Entry_Access;
          Leaf_Entry    : Heap_Entry_Access;
          Ancestor      : Heap_Index;
+         Helped_A, Helped_L : Boolean;
       begin
          New_Entry := new Heap_Entry;
          Phase_1 : loop
             -- Read ancestor and leaf entries.
-            Primitives.Membar;
-            Leaf_Entry  := Queue.Heap (Leaf);
+            Read(Queue,
+                 Index     => Leaf,
+                 Op_ID     => Op_ID,
+                 The_Entry => Leaf_Entry,
+                 Helped    => Helped_L);
 
             -- Check if helped.
-            if Leaf_Entry = null or else
-              (Leaf_Entry.Op_ID /= Op_ID) then
+            if Helped_L then
                Free (New_Entry);
                exit Phase_1;
             end if;
 
-            Ancestor    := Leaf_Entry.Sift_Pos;
-            Anc_Entry   := Queue.Heap (Ancestor);
-
-            -- Security check.
-            if Anc_Entry = null or Leaf_Entry = null then
-               if Anc_Entry = null then
-                  Ada.Text_IO.Put_Line
-                    ("Implicit_Sift_Down.Phase 1: Anc_Entry null!");
-               end if;
-               if Leaf_Entry = null then
-                  Ada.Text_IO.Put_Line
-                    ("Implicit_Sift_Down.Phase 1: Leaf_Entry null!");
-               end if;
-               Ada.Text_IO.Put_Line
-                 ("Implicit_Sift_Down.Phase 2: " &
-                  "Op_ID =" & Operation_ID'Image (Op_ID) &
-                  ", Ancestor =" & Heap_Index'Image (Ancestor) &
-                  ", Leaf =" & Heap_Index'Image (Leaf) & ".");
-               raise Constraint_Error;
-            end if;
+            Ancestor := Leaf_Entry.Sift_Pos;
+            Read(Queue,
+                 Index     => Ancestor,
+                 Op_ID     => Op_ID,
+                 The_Entry => Anc_Entry,
+                 Helped    => Helped_A);
 
             -- Exit if helped.
-            if Anc_Entry.Status /= SIFTING_2 or
-              Leaf_Entry.Status /= SIFTING_2 or
-              Anc_Entry.Op_ID /= Leaf_Entry.Op_ID or
-              Anc_Entry.Op_ID /= Op_ID then
+            if Helped_L or else
+              (Anc_Entry.Status /= SIFTING_2 or
+               Leaf_Entry.Status /= SIFTING_2 or
+               Anc_Entry.Op_ID /= Leaf_Entry.Op_ID or
+               Anc_Entry.Op_ID /= Op_ID) then
                -- We have been helped. Try to increase sift_pos (but not yet).
 
                Free (New_Entry);
@@ -1192,12 +1219,14 @@ package body Non_Blocking_Priority_Queue is
 
          Phase_2 : loop
             -- Read new ancestor and leaf entries.
-            Primitives.Membar;
-            Leaf_Entry    := Queue.Heap (Leaf);
+            Read(Queue,
+                 Index     => Leaf,
+                 Op_ID     => Op_ID,
+                 The_Entry => Leaf_Entry,
+                 Helped    => Helped);
 
             -- Check if helped.
-            if Leaf_Entry = null or else
-              (Leaf_Entry.Op_ID /= Op_ID) then
+            if Helped then
                -- We have been helped.
                Free (New_Entry);
                exit Phase_2;
@@ -1256,7 +1285,6 @@ package body Non_Blocking_Priority_Queue is
             New_Entry.Op_ID    := Leaf_Entry.Op_ID;
             New_Entry.Sift_Pos := Leaf;
 
-            Primitives.Membar;
             exit when CAS (Target    => Queue.Heap (New_Ancestor)'Access,
                            Old_Value => New_Anc_Entry,
                            New_Value => New_Entry);
@@ -1271,34 +1299,44 @@ package body Non_Blocking_Priority_Queue is
          New_Anc_Entry : Heap_Entry_Access;
          Ancestor      : Heap_Index;
          New_Ancestor  : Heap_Index;
+         Helped, Helped_A, Helped_NA : Boolean;
       begin
          New_Entry := new Heap_Entry;
 
          Phase_3 : loop
             -- Read ancestor and leaf entries.
-            Primitives.Membar;
-            Leaf_Entry    := Queue.Heap (Leaf);
+            Read(Queue,
+                 Index     => Leaf,
+                 Op_ID     => Op_ID,
+                 The_Entry => Leaf_Entry,
+                 Helped    => Helped);
 
             -- Check if helped.
-            if Leaf_Entry = null or else
-              (Leaf_Entry.Op_ID /= Op_ID) then
+            if Helped then
                -- We have been helped.
                Free (New_Entry);
                exit Phase_3;
             end if;
 
             Ancestor      := Leaf_Entry.Sift_Pos;
-            Anc_Entry     := Queue.Heap (Ancestor);
+            Read(Queue,
+                 Index     => Ancestor,
+                 Op_ID     => Op_ID,
+                 The_Entry => Anc_Entry,
+                 Helped    => Helped_A);
+
             New_Ancestor  := Next_Ancestor (Leaf, Ancestor);
-            New_Anc_Entry := Queue.Heap (New_Ancestor);
+            Read(Queue,
+                 Index     => New_Ancestor,
+                 Op_ID     => Op_ID,
+                 The_Entry => New_Anc_Entry,
+                 Helped    => Helped_NA);
 
             -- Exit if helped.
-            if Anc_Entry.Status /= SIFTING_2 or
-              (New_Anc_Entry.Status /= SIFTING_2 and New_Ancestor /= Leaf) or
-              Leaf_Entry.Op_ID /= Anc_Entry.Op_ID or
-              Leaf_Entry.Op_ID /= New_Anc_Entry.Op_ID or
-              Leaf_Entry.Op_ID /= Op_ID then
-
+            if (Helped_A or Helped_NA) or else
+              (Anc_Entry.Status /= SIFTING_2 or
+               (New_Anc_Entry.Status /= SIFTING_2 and New_Ancestor /= Leaf))
+            then
                -- We have been helped.
                Free (New_Entry);
                exit Phase_3;
@@ -1349,7 +1387,6 @@ package body Non_Blocking_Priority_Queue is
                exit Phase_3;
             end if;
 
-            Primitives.Membar;
             exit when CAS (Target    => Queue.Heap (Ancestor)'Access,
                            Old_Value => Anc_Entry,
                            New_Value => New_Entry);
@@ -1364,41 +1401,45 @@ package body Non_Blocking_Priority_Queue is
          New_Anc_Entry : Heap_Entry_Access;
          Ancestor      : Heap_Index;
          New_Ancestor  : Heap_Index;
+         Helped, Helped_A, Helped_NA : Boolean;
       begin
          New_Entry := new Heap_Entry;
 
          Phase_4 : loop
             -- Read ancestor and leaf entries.
-            Primitives.Membar;
-            Leaf_Entry    := Queue.Heap (Leaf);
+            Read(Queue,
+                 Index     => Leaf,
+                 Op_ID     => Op_ID,
+                 The_Entry => Leaf_Entry,
+                 Helped    => Helped);
 
             -- Check if helped.
-            if Leaf_Entry = null or else
-              (Leaf_Entry.Op_ID /= Op_ID) then
+            if Helped then
                -- We have been helped.
                Free (New_Entry);
                exit Phase_4;
             end if;
 
             Ancestor      := Leaf_Entry.Sift_Pos;
-            Anc_Entry     := Queue.Heap (Ancestor);
-            New_Ancestor  := Next_Ancestor (Leaf, Ancestor);
-            New_Anc_Entry := Queue.Heap (New_Ancestor);
+            Read(Queue,
+                 Index     => Ancestor,
+                 Op_ID     => Op_ID,
+                 The_Entry => Anc_Entry,
+                 Helped    => Helped_A);
 
-            -- Security check.
-            if Leaf_Entry = null or Anc_Entry = null or
-              New_Anc_Entry = null then
-               Ada.Text_IO.Put_Line ("Implicit_Sift_Down: Null pointer!");
-               raise Constraint_Error;
-            end if;
+            New_Ancestor  := Next_Ancestor (Leaf, Ancestor);
+            Read(Queue,
+                 Index     => New_Ancestor,
+                 Op_ID     => Op_ID,
+                 The_Entry => New_Anc_Entry,
+                 Helped    => Helped_NA);
 
             -- Exit if helped.
-            if (Anc_Entry.Status /= Stable and Anc_Entry.Op_ID <= Op_ID) or
-              (New_Anc_Entry.Status /= SIFTING_2 and New_Ancestor /= Leaf) or
-              Leaf_Entry.Op_ID /= New_Anc_Entry.Op_ID or
-              Leaf_Entry.Op_ID /= Op_ID or
-              (Leaf_Entry.Status /= SIFTING_2 and
-               Leaf_Entry.Status /= SWAP_WITH_ANC) then
+            if (Helped_A or Helped_NA) or else
+              ((Anc_Entry.Status /= Stable and Anc_Entry.Op_ID <= Op_ID) or
+               (New_Anc_Entry.Status /= SIFTING_2 and New_Ancestor /= Leaf) or
+               (Leaf_Entry.Status /= SIFTING_2 and
+                Leaf_Entry.Status /= SWAP_WITH_ANC)) then
 
                -- We have been helped.
                Free (New_Entry);
@@ -1419,7 +1460,6 @@ package body Non_Blocking_Priority_Queue is
                --New_Entry.Op_ID    := 0;
             end if;
 
-            Primitives.Membar;
             exit when CAS (Target    => Queue.Heap (Leaf)'Access,
                            Old_Value => Leaf_Entry,
                            New_Value => New_Entry);
@@ -1460,7 +1500,6 @@ package body Non_Blocking_Priority_Queue is
                   exit;
                end if;
 
-               Primitives.Membar;
                exit when CAS (Target    => Queue.Heap (I)'Access,
                               Old_Value => Old_Entry,
                               New_Value => New_Entry);
