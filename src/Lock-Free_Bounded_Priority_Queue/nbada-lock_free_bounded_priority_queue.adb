@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 12:15:16 2002
--- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.8 2003/02/25 16:56:48 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.9 2003/02/26 10:52:32 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
@@ -590,7 +590,7 @@ package body Non_Blocking_Priority_Queue is
           end if;
 
          -- Check if this operation is still pending.
-         -- Think HARD on if this is the RIGHT WAY to detect this.
+         -- Think HARD on whether this is the RIGHT WAY to detect this.
          if Old_Entry.Op_ID /= Op_ID then
             case Old_Entry.Status is
                ----------------------------------------------------------------
@@ -636,9 +636,6 @@ package body Non_Blocking_Priority_Queue is
                         Leaf  => Old_Entry.Sift_Pos,
                         Op_ID => Old_Entry.Op_ID,
                         Done  => Done);
-                     -- Return copy.
-                     --Old_Entry := Queue.Heap (Index);
-                     --Clean_Copy := Old_Entry.all;
                   else
                      -- We hit a SIFTING_2 leaf.
                      if Ignore_SIFTING_2_Leaf then
@@ -670,9 +667,6 @@ package body Non_Blocking_Priority_Queue is
                   -- Implement this!!
                   Ada.Text_IO.Put_Line (Image (Queue));
                   raise Constraint_Error;
-                  -- Copy.
-                  --Clean_Copy := Old_Entry.all;
-                  --Clean_Copy.Status := STABLE;
 
                ----------------------------------------------------------------
                when SWAP_WITH_ANC =>
@@ -742,60 +736,73 @@ package body Non_Blocking_Priority_Queue is
                                 Parent : in     Heap_Index;
                                 Op_ID  : in     Operation_ID;
                                 Done   :    out Boolean) is
-      Parent_Entry       : Heap_Entry_Access;
-      Left_Child_Entry   : Heap_Entry_Access;
-      Right_Child_Entry  : Heap_Entry_Access;
-      New_Left_Entry     : Heap_Entry_Access;
-      New_Right_Entry    : Heap_Entry_Access;
       Left_Child         : constant Heap_Index := 2 * Parent;
       Right_Child        : constant Heap_Index := Left_Child + 1;
-      Child_Entry        : Heap_Entry_Access;
-      New_Entry          : Heap_Entry_Access;
       Child              : Heap_Index;
-      Helped_L, Helped_R : Boolean;
    begin
       Done := False;
 
       -- Phase 1: Set Child to SWAP_WITH_PARENT iff parent > smallest child.
-      New_Left_Entry  := new Heap_Entry;
-      New_Right_Entry := new Heap_Entry;
-      Phase_1 : loop
-         -- Read Parent and Child entries.
-         Primitives.Membar_StoreStore_LoadStore;
-         Parent_Entry := Queue.Heap (Parent);
-         Read_And_Fix (Queue,
-                       Index      => Left_Child,
-                       Op_ID      => Op_ID,
-                       Old_Entry  => Left_Child_Entry,
-                       Clean_Copy => New_Left_Entry.all,
-                       Helped     => Helped_L,
-                       Ignore_SIFTING_2_Leaf => True);
-         Read_And_Fix (Queue,
-                       Index      => Right_Child,
-                       Op_ID      => Op_ID,
-                       Old_Entry  => Right_Child_Entry,
-                       Clean_Copy => New_Right_Entry.all,
-                       Helped     => Helped_R,
-                       Ignore_SIFTING_2_Leaf => True);
+      declare
+         Parent_Entry       : Heap_Entry_Access;
+         Left_Child_Entry   : Heap_Entry_Access;
+         Right_Child_Entry  : Heap_Entry_Access;
+         New_Left_Entry     : Heap_Entry_Access;
+         New_Right_Entry    : Heap_Entry_Access;
+         --Child              : Heap_Index;
+         Child_Entry        : Heap_Entry_Access;
+         New_Entry          : Heap_Entry_Access;
+         Helped_L, Helped_R : Boolean;
+      begin
+         New_Left_Entry  := new Heap_Entry;
+         New_Right_Entry := new Heap_Entry;
 
-         -- MUST investigate the helping detection further!
-         --exit Phase_1 when Helped_L or Helped_R;
+         Phase_1 : loop
+            -- Read Parent and Child entries.
+            Primitives.Membar_StoreStore_LoadStore;
+            Parent_Entry := Queue.Heap (Parent);
+            Read_And_Fix (Queue,
+                          Index      => Left_Child,
+                          Op_ID      => Op_ID,
+                          Old_Entry  => Left_Child_Entry,
+                          Clean_Copy => New_Left_Entry.all,
+                          Helped     => Helped_L,
+                          Ignore_SIFTING_2_Leaf => True);
+            Read_And_Fix (Queue,
+                          Index      => Right_Child,
+                          Op_ID      => Op_ID,
+                          Old_Entry  => Right_Child_Entry,
+                          Clean_Copy => New_Right_Entry.all,
+                          Helped     => Helped_R,
+                          Ignore_SIFTING_2_Leaf => True);
 
-         -- Exit if helped.
-         if Parent_Entry = null or else
-           (Parent_Entry.Status /= SIFTING_1 or
-            Parent_Entry.Op_ID /= Op_ID) then
-            -- We have been helped.
-            Free (New_Left_Entry);
-            Free (New_Right_Entry);
-            exit Phase_1;
-         end if;
+            -- MUST investigate the helping detection further!
+            --exit Phase_1 when Helped_L or Helped_R;
 
-         -- This operation is still unfinished.
+            -- Exit if helped.
+            if Parent_Entry = null or else
+              (Parent_Entry.Status /= SIFTING_1 or
+               Parent_Entry.Op_ID /= Op_ID) then
+               -- We have been helped.
+               Free (New_Left_Entry);
+               Free (New_Right_Entry);
+               exit Phase_1;
+            end if;
 
-         -- Select child.
-         if Left_Child_Entry /= null and Right_Child_Entry /= null then
-            if Right_Child_Entry.Key > Left_Child_Entry.Key then
+            -- This operation is still unfinished.
+
+            -- Select child.
+            if Left_Child_Entry /= null and Right_Child_Entry /= null then
+               if Right_Child_Entry.Key > Left_Child_Entry.Key then
+                  Child_Entry := Left_Child_Entry;
+                  Child       := Left_Child;
+                  New_Entry   := New_Left_Entry;
+               else
+                  Child_Entry := Right_Child_Entry;
+                  Child       := Right_Child;
+                  New_Entry   := New_Right_Entry;
+               end if;
+            elsif Left_Child_Entry /= null then
                Child_Entry := Left_Child_Entry;
                Child       := Left_Child;
                New_Entry   := New_Left_Entry;
@@ -804,182 +811,205 @@ package body Non_Blocking_Priority_Queue is
                Child       := Right_Child;
                New_Entry   := New_Right_Entry;
             end if;
-         elsif Left_Child_Entry /= null then
-               Child_Entry := Left_Child_Entry;
-               Child       := Left_Child;
-               New_Entry   := New_Left_Entry;
-         else
-            Child_Entry := Right_Child_Entry;
-            Child       := Right_Child;
-            New_Entry   := New_Right_Entry;
-         end if;
 
-         if Child_Entry /= null then
-            -- There is a child.
+            if Child_Entry /= null then
+               -- There is a child.
 
-            if Child_Entry.Status = STABLE and
-              Parent_Entry.Key > New_Entry.Key then
-               -- Swap.
-               -- Prepare new Child entry.
-               New_Entry.Status  := SWAP_WITH_PARENT;
-               New_Entry.Old_Key := Child_Entry.Key;
-               New_Entry.Key     := Parent_Entry.Key;
-               New_Entry.Op_ID   := Op_ID;
+               if Child_Entry.Status = STABLE and
+                 Parent_Entry.Key > New_Entry.Key then
+                  -- Swap.
+                  -- Prepare new Child entry.
+                  New_Entry.Status  := SWAP_WITH_PARENT;
+                  New_Entry.Old_Key := Child_Entry.Key;
+                  New_Entry.Key     := Parent_Entry.Key;
+                  New_Entry.Op_ID   := Op_ID;
 
-            elsif Child_Entry.Status /= STABLE then
-               Ada.Text_IO.Put_Line
-                 ("Sort_Parent_Child: Child " &
-                  Heap_Index'Image (Child) & " not STABLE! (" &
-                  Entry_Status'Image (Child_Entry.Status) & ")");
-               Ada.Text_IO.Put_Line (Image (Queue));
-               raise Constraint_Error;
+               elsif Child_Entry.Status /= STABLE then
+                  Ada.Text_IO.Put_Line
+                    ("Sort_Parent_Child: Child " &
+                     Heap_Index'Image (Child) & " not STABLE! (" &
+                     Entry_Status'Image (Child_Entry.Status) & ")");
+                  Ada.Text_IO.Put_Line (Image (Queue));
+                  raise Constraint_Error;
+               else
+                  -- No swap needed so we are finished.
+                  -- But is the clean copy of the child committed?!
+                  Free (New_Left_Entry);
+                  Free (New_Right_Entry);
+                  Done := True;
+                  exit Phase_1;
+               end if;
             else
-               -- No swap needed so we are finished.
-               -- But is the clean copy of the child committed?!
+               -- No child, so we are finished.
                Free (New_Left_Entry);
                Free (New_Right_Entry);
                Done := True;
                exit Phase_1;
             end if;
-         else
-            -- No child, so we are finished.
-            Free (New_Left_Entry);
-            Free (New_Right_Entry);
-            Done := True;
-            exit Phase_1;
-         end if;
 
-         Primitives.Membar_StoreLoad;
-         if CAS (Target    => Queue.Heap (Child)'Access,
-                 Old_Value => Child_Entry,
-                 New_Value => New_Entry) then
-            if New_Entry = New_Left_Entry then
-               Free (New_Right_Entry);
-            else
-               Free (New_Left_Entry);
+            Primitives.Membar_StoreLoad;
+            if CAS (Target    => Queue.Heap (Child)'Access,
+                    Old_Value => Child_Entry,
+                    New_Value => New_Entry) then
+               if New_Entry = New_Left_Entry then
+                  Free (New_Right_Entry);
+               else
+                  Free (New_Left_Entry);
+               end if;
+               exit Phase_1;
             end if;
-            exit Phase_1;
-         end if;
-      end loop Phase_1;
+         end loop Phase_1;
+      end;
 
       -- Step 2: Update Parent.
-      New_Entry := new Heap_Entry;
-      Phase_2 : loop
-         -- Read Parent and Child entries.
-         -- Should be done through Fix? No we're already supposed to "own"
-         -- both the parent and the child.
-         Primitives.Membar_StoreStore_LoadStore;
-         Parent_Entry := Queue.Heap (Parent);
-         -- Read child.
-         if Child in Queue.Heap'Range then
+      declare
+         Parent_Entry       : Heap_Entry_Access;
+--         Child              : Heap_Index;
+         Child_Entry        : Heap_Entry_Access;
+         New_Entry          : Heap_Entry_Access;
+      begin
+         New_Entry := new Heap_Entry;
+         Phase_2 : loop
+            -- Read Parent and Child entries.
+            -- Should be done through Fix? No we're already supposed to "own"
+            -- both the parent and the child.
             Primitives.Membar_StoreStore_LoadStore;
-            Child_Entry  := Queue.Heap (Child);
-         else
-            Child_Entry := null;
-         end if;
+            Parent_Entry := Queue.Heap (Parent);
 
-         -- Exit if helped.
-         if  Parent_Entry = null or else
-           (Parent_Entry.Op_ID /= Op_ID or
-            Parent_Entry.Status /= SIFTING_1) then
-            Free (New_Entry);
-            exit Phase_2;
-         end if;
+            -- Read and select child.
+            -- This needs to be checked!!
+            if Child in Queue.Heap'Range then
+               Child_Entry  := Queue.Heap (Child);
+            else
+               Child_Entry := null;
+            end if;
+--             declare
+--                Left_Child_Entry   : Heap_Entry_Access;
+--                Right_Child_Entry  : Heap_Entry_Access;
+--             begin
+--                Primitives.Membar_StoreStore_LoadStore;
+--                if Left_Child in Queue.Heap'Range then
+--                   Left_Child_Entry  := Queue.Heap (Left_Child);
+--                else
+--                   Left_Child_Entry := null;
+--                end if;
+--                if Right_Child in Queue.Heap'Range then
+--                   Right_Child_Entry  := Queue.Heap (Right_Child);
+--                else
+--                   Right_Child_Entry := null;
+--                end if;
 
-         -- This operation is still unfinished.
-         -- Check whether we have a child entry or not.
-         -- For some child states the child should be treated as empty.
-         if Child_Entry /= null and then not
-           (Child_Entry.Status = SIFTING_2 or
-            Child_Entry.Status = SWAP_WITH_ANC) then
+--             end;
 
-            if Parent_Entry.Status = SIFTING_1 and
-              Child_Entry.Op_ID = Op_ID and
-              Child_Entry.Status = SWAP_WITH_PARENT then
-               -- Swap parent key and make stable.
-               -- Prepare new Parent entry.
-               New_Entry.all := Parent_Entry.all;
+            -- Exit if helped.
+            if  Parent_Entry = null or else
+              (Parent_Entry.Op_ID /= Op_ID or
+               Parent_Entry.Status /= SIFTING_1) then
+               Free (New_Entry);
+               exit Phase_2;
+            end if;
 
-               New_Entry.Status  := STABLE;
-               New_Entry.Key     := Child_Entry.Old_Key;
-               --New_Entry.Op_ID   := 0;
+            -- This operation is still unfinished.
+            -- Check whether we have a child entry or not.
+            -- For some child states the child should be treated as empty.
+            if Child_Entry /= null and then not
+              (Child_Entry.Status = SIFTING_2 or
+               Child_Entry.Status = SWAP_WITH_ANC) then
 
-            elsif Parent_Entry.Status = SIFTING_1 and
-              Child_Entry.Status = STABLE then
+               if Parent_Entry.Status = SIFTING_1 and
+                 Child_Entry.Op_ID = Op_ID and
+                 Child_Entry.Status = SWAP_WITH_PARENT then
+                  -- Swap parent key and make stable.
+                  -- Prepare new Parent entry.
+                  New_Entry.all := Parent_Entry.all;
+
+                  New_Entry.Status  := STABLE;
+                  New_Entry.Key     := Child_Entry.Old_Key;
+                  --New_Entry.Op_ID   := 0;
+
+               elsif Parent_Entry.Status = SIFTING_1 and
+                 Child_Entry.Status = STABLE then
+                  -- Mark parent stable.
+                  -- Prepare new Parent entry.
+                  New_Entry.all := Parent_Entry.all;
+
+                  New_Entry.Status  := STABLE;
+                  --New_Entry.Op_ID   := 0;
+
+                  Done := True;
+               else
+                  -- Unknown state!
+                  Ada.Text_IO.Put_Line
+                    ("Sort_Parent_Child: Unknown child state " &
+                     Entry_Status'Image (Child_Entry.Status) & " !");
+                  Ada.Text_IO.Put_Line
+                    ("Parent = " & Heap_Index'Image (Parent) & ", " &
+                     "Child  = " & Heap_Index'Image (Child));
+                  Ada.Text_IO.Put_Line (Image (Queue));
+                  raise Constraint_Error;
+               end if;
+            else
+               -- No child. We are done.
                -- Mark parent stable.
-               -- Prepare new Parent entry.
                New_Entry.all := Parent_Entry.all;
-
                New_Entry.Status  := STABLE;
                --New_Entry.Op_ID   := 0;
 
                Done := True;
-            else
-               -- Unknown state!
-               Ada.Text_IO.Put_Line
-                 ("Sort_Parent_Child: Unknown child state " &
-                  Entry_Status'Image (Child_Entry.Status) & " !");
-               Ada.Text_IO.Put_Line
-                 ("Parent = " & Heap_Index'Image (Parent) & ", " &
-                  "Child  = " & Heap_Index'Image (Child));
-               Ada.Text_IO.Put_Line (Image (Queue));
-               raise Constraint_Error;
             end if;
-         else
-            -- No child. We are done.
-            -- Mark parent stable.
-            New_Entry.all := Parent_Entry.all;
-            New_Entry.Status  := STABLE;
-            --New_Entry.Op_ID   := 0;
 
-            Done := True;
-         end if;
-
-         Primitives.Membar_StoreLoad;
-         exit when CAS (Target    => Queue.Heap (Parent)'Access,
-                        Old_Value => Parent_Entry,
-                        New_Value => New_Entry);
-      end loop Phase_2;
+            Primitives.Membar_StoreLoad;
+            exit when CAS (Target    => Queue.Heap (Parent)'Access,
+                           Old_Value => Parent_Entry,
+                           New_Value => New_Entry);
+         end loop Phase_2;
+      end;
 
       -- Step 3: Finish Child.
-      New_Entry := new Heap_Entry;
-      Phase_3 : loop
-         -- Read Child entry.
-         -- Should be done through Fix?
-         if Child in Queue.Heap'Range then
-            Primitives.Membar_StoreStore_LoadStore;
-            Child_Entry  := Queue.Heap (Child);
-         else
-            Child_Entry := null;
-         end if;
-
-         -- Check if this step needs to be done.
-         if Child_Entry /= null and then
-           Child_Entry.Op_ID = Op_ID then
-            -- This operation is still unfinished.
-
-            if Child_Entry.Status = SWAP_WITH_PARENT then
-
-               -- Prepare new Child entry.
-               New_Entry.all := Child_Entry.all;
-               New_Entry.Status := SIFTING_1;
+      declare
+         --         Child              : Heap_Index;
+         Child_Entry        : Heap_Entry_Access;
+         New_Entry          : Heap_Entry_Access;
+      begin
+         New_Entry := new Heap_Entry;
+         Phase_3 : loop
+            -- Read Child entry.
+            -- Should be done through Fix?
+            if Child in Queue.Heap'Range then
+               Primitives.Membar_StoreStore_LoadStore;
+               Child_Entry  := Queue.Heap (Child);
             else
-               -- Nothing to be done.
-               -- And according to the algorithm we can end the sift phase.
+               Child_Entry := null;
+            end if;
+
+            -- Check if this step needs to be done.
+            if Child_Entry /= null and then
+              Child_Entry.Op_ID = Op_ID then
+               -- This operation is still unfinished.
+
+               if Child_Entry.Status = SWAP_WITH_PARENT then
+
+                  -- Prepare new Child entry.
+                  New_Entry.all := Child_Entry.all;
+                  New_Entry.Status := SIFTING_1;
+               else
+                  -- Nothing to be done.
+                  -- And according to the algorithm we can end the sift phase.
+                  Free (New_Entry);
+                  exit Phase_3;
+               end if;
+            else
+               -- We have been helped!
                Free (New_Entry);
                exit Phase_3;
             end if;
-         else
-            -- We have been helped!
-            Free (New_Entry);
-            exit Phase_3;
-         end if;
 
-         Primitives.Membar_StoreLoad;
-         exit when CAS (Target    => Queue.Heap (Child)'Access,
-                        Old_Value => Child_Entry,
-                        New_Value => New_Entry);
-      end loop Phase_3;
+            Primitives.Membar_StoreLoad;
+            exit when CAS (Target    => Queue.Heap (Child)'Access,
+                           Old_Value => Child_Entry,
+                           New_Value => New_Entry);
+         end loop Phase_3;
+      end;
    end Sort_Parent_Child;
 
    ----------------------------------------------------------------------------
