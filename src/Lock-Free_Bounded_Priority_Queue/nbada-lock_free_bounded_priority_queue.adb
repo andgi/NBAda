@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 12:15:16 2002
--- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.5 2003/02/20 17:35:25 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.6 2003/02/21 16:23:17 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
@@ -54,7 +54,8 @@ package body Non_Blocking_Priority_Queue is
                            Op_ID      : in     Operation_ID;
                            Clean_Copy : in out Heap_Entry;
                            Helped     :    out Boolean;
-                           Old_Entry  :    out Heap_Entry_Access);
+                           Old_Entry  :    out Heap_Entry_Access;
+                           Ignore_SIFTING_2_Leaf : in Boolean := False);
 
    -- Sort two heap entries. Used in the sifting phase of delete min.
    -- Assumes that the parent is already involved.
@@ -75,6 +76,7 @@ package body Non_Blocking_Priority_Queue is
                      Element : in     Element_Type) is
       Key    : Element_Access;
       Status : Heap_Status_Access;
+      Debug  : constant Boolean := False;
    begin
       Key := new Element_Type'(Element);
 
@@ -83,16 +85,22 @@ package body Non_Blocking_Priority_Queue is
                 Op         => INSERT,
                 Arg        => Key,
                 New_Status => Status);
-      Ada.Text_IO.Put_Line ("Insert: Entered PP.");
+      if Debug then
+         Ada.Text_IO.Put_Line ("Insert: Entered PP.");
+      end if;
 
       -- Perform preliminary insert phase.
       Insert_PP (Queue,
                  Status => Status);
-      Ada.Text_IO.Put_Line ("Insert: Done PP.");
+      if Debug then
+         Ada.Text_IO.Put_Line ("Insert: Done PP.");
+      end if;
 
       -- Exit preliminary phase.
       Exit_PP (Queue);
-      Ada.Text_IO.Put_Line ("Insert: Exited PP.");
+      if Debug then
+         Ada.Text_IO.Put_Line ("Insert: Exited PP.");
+      end if;
 
       Free (Key);
 
@@ -389,50 +397,60 @@ package body Non_Blocking_Priority_Queue is
    -- Preliminary phase of Delete_Min.
    procedure Delete_Min_PP (Queue  : in out Priority_Queue_Type;
                             Status : in     Heap_Status_Access) is
-      Leaf     : Heap_Entry_Access;
-      New_Leaf : Heap_Entry_Access;
-      Helped   : Boolean;
+      Debug : constant Boolean := False;
    begin
-
-      New_Leaf := new Heap_Entry;
+      if Debug then
+         Ada.Text_IO.Put_Line ("Delete_Min_PP: Initial.");
+         Ada.Text_IO.Put_Line (Image (Queue));
+      end if;
 
       -- Phase 1: Mark highest leaf DELETED.
-      Phase_1 : loop
-         -- Read leaf.
-         Read_And_Fix (Queue,
-                       Index      => Status.Size + 1,
-                       Op_ID      => Status.Op_ID,
-                       Old_Entry  => Leaf,
-                       Clean_Copy => New_Leaf.all,
-                       Helped     => Helped);
+      declare
+         Leaf     : Heap_Entry_Access;
+         New_Leaf : Heap_Entry_Access;
+         Helped   : Boolean;
+      begin
+         New_Leaf := new Heap_Entry;
 
-         if Leaf /= null and
-           not Helped then
+         Phase_1 : loop
+            -- Read leaf.
+            Read_And_Fix (Queue,
+                          Index      => Status.Size + 1,
+                          Op_ID      => Status.Op_ID,
+                          Old_Entry  => Leaf,
+                          Clean_Copy => New_Leaf.all,
+                          Helped     => Helped);
+
+            -- Skip if helped.
+            if Leaf = null or Helped then
+               Free (New_Leaf);
+               exit Phase_1;
+            end if;
+
+            -- Set leaf status to DELETED.
             New_Leaf.Status  := DELETED;
             New_Leaf.Op_Id   := Status.Op_ID;
             New_Leaf.Old_Key := New_Leaf.Key;
-         else
-            -- We have been helped.
-            Free (New_Leaf);
-            exit Phase_1;
-         end if;
 
-         exit when CAS (Target    => Queue.Heap (Status.Size + 1)'Access,
-                        Old_Value => Leaf,
-                        New_Value => New_Leaf);
-      end loop Phase_1;
+            exit when CAS (Target    => Queue.Heap (Status.Size + 1)'Access,
+                           Old_Value => Leaf,
+                           New_Value => New_Leaf);
+         end loop Phase_1;
+      end;
 
-      -- Print status of heap.
---      Ada.Text_IO.Put_Line ("Delete_Min_PP: Removed highest leaf.");
---      Ada.Text_IO.Put_Line (Image (Queue));
+      if Debug then
+         Ada.Text_IO.Put_Line ("Delete_Min_PP: Phase 1.");
+         Ada.Text_IO.Put_Line (Image (Queue));
+      end if;
 
-      -- Phase 2: Fix new root.
-      if Status.Size > 0 then
-         -- Update root.
-         declare
+      -- Phase 2: Update root.
+      declare
             Root     : Heap_Entry_Access;
+            Leaf     : Heap_Entry_Access;
             New_Root : Heap_Entry_Access;
-         begin
+            Helped   : Boolean;
+      begin
+         if Status.Size > 0 then
             New_Root := new Heap_Entry;
             Phase_2 : loop
                -- Read root.
@@ -445,25 +463,38 @@ package body Non_Blocking_Priority_Queue is
                              Clean_Copy => New_Root.all,
                              Helped     => Helped);
 
-               -- Skip if helped.
-               exit when Helped;
+               -- Read deleted leaf.
+               Leaf := Queue.Heap (Status.Size + 1);
 
-               -- Safety check!
-               if New_Root.Status /= Stable then
+               -- Safety checks!
+               if Root = null then
+                  Ada.Text_IO.Put_Line ("Delete_Min_PP: Null root.");
+                  Ada.Text_IO.Put_Line (Image (Queue));
+                  raise Constraint_Error;
+               end if;
+               if New_Root.Status /= STABLE then
                   Ada.Text_IO.Put_Line ("Delete_Min_PP: Unstable root.");
                   Ada.Text_IO.Put_Line (Image (Queue));
                   raise Constraint_Error;
                end if;
 
+               -- Exit if helped.
+               if (Helped or
+                   Leaf = null)
+                 or else
+                  (Leaf.Status /= DELETED or
+                   Leaf.Op_ID /= Status.Op_ID) then
+                  Free (New_Root);
+                  exit Phase_2;
+               end if;
+
                -- Store root key.
                Status.Op_Arg.all := New_Root.Key;
 
-               -- Update root.
-               New_Root.all      := New_Leaf.all;
+               -- Update new root.
+               New_Root.all      := Leaf.all;
                New_Root.Status   := SIFTING_1;
                New_Root.Op_ID    := Status.Op_ID;
-               --New_Root.Sift_Pos := Status.Size;
-               -- Choose branch to follow here. No, that is done in Delete_Min.
 
                -- Commit root.
                exit when
@@ -471,39 +502,53 @@ package body Non_Blocking_Priority_Queue is
                       Old_Value => Root,
                       New_Value => New_Root);
             end loop Phase_2;
-         end;
-      else
-         Status.Op_Arg.all := Leaf.Key;
+         else
+            -- Does this work??
+            Status.Op_Arg.all := Queue.Heap (Queue.Heap'First).Key;
+         end if;
+      end;
+
+      if Debug then
+         Ada.Text_IO.Put_Line ("Delete_Min_PP: Phase 2.");
+         Ada.Text_IO.Put_Line (Image (Queue));
       end if;
 
-      -- Print status of heap.
---      Ada.Text_IO.Put_Line ("Delete_Min_PP: Read and updated root.");
---      Ada.Text_IO.Put_Line (Image (Queue));
-
       -- Phase 3: Remove deleted leaf.
-      Phase_3 : loop
-         -- Read deleted leaf.
-         Leaf := Queue.Heap (Status.Size + 1);
+      declare
+         Leaf     : Heap_Entry_Access;
+      begin
+         Phase_3 : loop
+            -- Read deleted leaf.
+            Leaf := Queue.Heap (Status.Size + 1);
 
-         -- Skip if helped:
-         exit Phase_3 when Leaf = null or else Leaf.Op_ID /= Status.Op_ID;
+            -- Skip if helped:
+            exit Phase_3 when Leaf = null or else Leaf.Op_ID /= Status.Op_ID;
 
-         -- Commit empty leaf.
-         exit Phase_3 when
-           CAS (Target    => Queue.Heap (Status.Size + 1)'Access,
-                Old_Value => Leaf,
-                New_Value => null);
-      end loop Phase_3;
+            -- Commit empty leaf.
+            exit Phase_3 when
+              CAS (Target    => Queue.Heap (Status.Size + 1)'Access,
+                   Old_Value => Leaf,
+                   New_Value => null);
+         end loop Phase_3;
+      end;
+
+      if Debug then
+         Ada.Text_IO.Put_Line ("Delete_Min_PP: Phase 3.");
+         Ada.Text_IO.Put_Line (Image (Queue));
+      end if;
    end Delete_Min_PP;
 
    ----------------------------------------------------------------------------
+   -- Old_Entry = null indicates that we read an empty slot.
    procedure Read_And_Fix (Queue      : in out Priority_Queue_Type;
                            Index      : in     Heap_Index;
                            Op_ID      : in     Operation_ID;
                            Clean_Copy : in out Heap_Entry;
                            Helped     :    out Boolean;
-                           Old_Entry  :    out Heap_Entry_Access) is
-      Done : Boolean;
+                           Old_Entry  :    out Heap_Entry_Access;
+                           Ignore_SIFTING_2_Leaf : in Boolean := False) is
+      Done  : Boolean;
+      Debug : constant Boolean := False;
    begin
       Helped := False;
 
@@ -515,20 +560,27 @@ package body Non_Blocking_Priority_Queue is
          if Index <= Queue.Max_Size then
             Old_Entry := Queue.Heap (Index);
          else
-            Ada.Text_IO.Put_Line ("Read_And_Fix: Node position too large: " &
-                                  Heap_Index'Image (Index) &
-                                  " op " & Operation_ID'Image (Op_ID));
+            if Debug then
+               Ada.Text_IO.Put_Line
+                 ("Read_And_Fix: Node position too large: " &
+                  Heap_Index'Image (Index) &
+                  " op " & Operation_ID'Image (Op_ID));
+            end if;
             Old_Entry := null;
             return;
          end if;
 
-         if Old_Entry = null then
-            Ada.Text_IO.Put_Line ("Read_And_Fix: Read null entry!");
-            return;
-         end if;
+          if Old_Entry = null then
+             if Debug then
+                Ada.Text_IO.Put_Line ("Read_And_Fix: Read null entry!");
+             end if;
+
+             return;
+          end if;
 
          -- Check if this operation is still pending.
-         if Old_Entry.Op_ID < Op_ID then
+         -- Think HARD on if this is the RIGHT WAY to detect this.
+         if Old_Entry.Op_ID /= Op_ID then
             case Old_Entry.Status is
                ----------------------------------------------------------------
                when STABLE =>
@@ -538,13 +590,16 @@ package body Non_Blocking_Priority_Queue is
 
                ----------------------------------------------------------------
                when SIFTING_1 =>
-                  Ada.Text_IO.Put_Line ("Read_And_Fix: Operation" &
-                                        Operation_ID'Image (Op_ID) &
-                                        " hit " &
-                                        Entry_Status'Image (Old_Entry.Status) &
-                                        " from " &
-                                        Operation_ID'Image (Old_Entry.Op_ID) &
-                                        " at" & Heap_Index'Image(Index) & ".");
+                  if Debug then
+                     Ada.Text_IO.Put_Line
+                       ("Read_And_Fix: Operation" &
+                        Operation_ID'Image (Op_ID) &
+                        " hit " &
+                        Entry_Status'Image (Old_Entry.Status) &
+                        " from " &
+                        Operation_ID'Image (Old_Entry.Op_ID) &
+                        " at" & Heap_Index'Image(Index) & ".");
+                  end if;
                   Sort_Parent_Child
                     (Queue,
                      Parent => Index,
@@ -553,14 +608,18 @@ package body Non_Blocking_Priority_Queue is
 
                ----------------------------------------------------------------
                when SIFTING_2 =>
-                  Ada.Text_IO.Put_Line ("Read_And_Fix: Operation" &
-                                        Operation_ID'Image (Op_ID) &
-                                        " hit " &
-                                        Entry_Status'Image (Old_Entry.Status) &
-                                        " from " &
-                                        Operation_ID'Image (Old_Entry.Op_ID) &
-                                        " at" & Heap_Index'Image(Index) & ".");
-                  if Old_Entry.Sift_Pos > Index then
+                  if Debug then
+                     Ada.Text_IO.Put_Line
+                       ("Read_And_Fix: Operation" &
+                        Operation_ID'Image (Op_ID) &
+                        " hit " &
+                        Entry_Status'Image (Old_Entry.Status) &
+                        " from " &
+                        Operation_ID'Image (Old_Entry.Op_ID) &
+                        " at" & Heap_Index'Image(Index) & ".");
+                  end if;
+                  if Old_Entry.Sift_Pos >= Index then
+                     -- We hit the active ancestor to a SIFTING_2 leaf.
                      Implicit_Sift_Down
                        (Queue,
                         Leaf  => Old_Entry.Sift_Pos,
@@ -570,26 +629,34 @@ package body Non_Blocking_Priority_Queue is
                      --Old_Entry := Queue.Heap (Index);
                      --Clean_Copy := Old_Entry.all;
                   else
-                     Implicit_Sift_Down
-                       (Queue,
-                        Leaf  => Index,
-                        Op_ID => Old_Entry.Op_ID,
-                        Done  => Done);
-                     -- Return copy.
-                     --Old_Entry := Queue.Heap (Index);
-                     --Clean_Copy := Old_Entry.all;
+                     -- We hit a SIFTING_2 leaf.
+                     if Ignore_SIFTING_2_Leaf then
+                        -- Treat it as an empty slot.
+                        Old_Entry := null;
+                        return;
+                     else
+                        Implicit_Sift_Down
+                          (Queue,
+                           Leaf  => Index,
+                           Op_ID => Old_Entry.Op_ID,
+                           Done  => Done);
+                     end if;
                   end if;
 
                ----------------------------------------------------------------
                when SWAP_WITH_PARENT =>
-                  Ada.Text_IO.Put_Line ("Read_And_Fix: Operation" &
-                                        Operation_ID'Image (Op_ID) &
-                                        " hit " &
-                                        Entry_Status'Image (Old_Entry.Status) &
-                                        " from " &
-                                        Operation_ID'Image (Old_Entry.Op_ID) &
-                                        " at" & Heap_Index'Image(Index) & ".");
-                  -- This can also happen because of Delete_Min.
+--                  if Debug then
+                     Ada.Text_IO.Put_Line
+                       ("Read_And_Fix: Operation" &
+                        Operation_ID'Image (Op_ID) &
+                        " hit " &
+                        Entry_Status'Image (Old_Entry.Status) &
+                        " from " &
+                        Operation_ID'Image (Old_Entry.Op_ID) &
+                        " at" & Heap_Index'Image(Index) & ".");
+--                  end if;
+
+                  -- Implement this!!
                   Ada.Text_IO.Put_Line (Image (Queue));
                   raise Constraint_Error;
                   -- Copy.
@@ -598,21 +665,35 @@ package body Non_Blocking_Priority_Queue is
 
                ----------------------------------------------------------------
                when SWAP_WITH_ANC =>
-                  Ada.Text_IO.Put_Line ("Read_And_Fix: Operation" &
-                                        Operation_ID'Image (Op_ID) &
-                                        " hit " &
-                                        Entry_Status'Image (Old_Entry.Status) &
-                                        " from " &
-                                        Operation_ID'Image (Old_Entry.Op_ID) &
-                                        " at" & Heap_Index'Image(Index) & ".");
-                  --Ada.Text_IO.Put_Line (Image (Queue));
-                  Implicit_Sift_Down (Queue,
-                                      Leaf  => Index,
-                                      Op_ID => Old_Entry.Op_ID,
-                                      Done  => Done);
-                  -- This can also happen because of Delete_Min.
-                  --Ada.Text_IO.Put_Line (Image (Queue));
-                  --raise Constraint_Error;
+                  if Debug then
+                     Ada.Text_IO.Put_Line
+                       ("Read_And_Fix: Operation" &
+                        Operation_ID'Image (Op_ID) &
+                        " hit " &
+                        Entry_Status'Image (Old_Entry.Status) &
+                        " from " &
+                        Operation_ID'Image (Old_Entry.Op_ID) &
+                        " at" & Heap_Index'Image(Index) & ".");
+                  end if;
+
+                  if Old_Entry.Sift_Pos < Index and Ignore_SIFTING_2_Leaf then
+                     -- We hit a SIFTING_2 leaf with parent above.
+                     -- Treat it as an empty slot.
+                     Old_Entry := null;
+                     return;
+                  else
+                     Implicit_Sift_Down
+                       (Queue,
+                        Leaf  => Index,
+                        Op_ID => Old_Entry.Op_ID,
+                        Done  => Done);
+                  end if;
+
+               when DELETED =>
+                  -- We hit an ongoing preliminary phase.
+                  -- Treat as empty.
+                  Old_Entry := null;
+                  return;
 
                when others =>
                   -- Helping not implemented!
@@ -630,7 +711,7 @@ package body Non_Blocking_Priority_Queue is
             -- fiddeling with this node.
             -- DOUBLE CHECK THIS DETECTION!!
 
-            if Old_Entry.Status /= Deleted then
+            if Old_Entry.Status /= DELETED then
                -- Copy.
                Clean_Copy := Old_Entry.all;
                --Clean_Copy.Status := STABLE;
@@ -655,8 +736,8 @@ package body Non_Blocking_Priority_Queue is
       Right_Child_Entry  : Heap_Entry_Access;
       New_Left_Entry     : Heap_Entry_Access;
       New_Right_Entry    : Heap_Entry_Access;
-      Left_Child         : Heap_Index := 2 * Parent;
-      Right_Child        : Heap_Index := Left_Child + 1;
+      Left_Child         : constant Heap_Index := 2 * Parent;
+      Right_Child        : constant Heap_Index := Left_Child + 1;
       Child_Entry        : Heap_Entry_Access;
       New_Entry          : Heap_Entry_Access;
       Child              : Heap_Index;
@@ -675,35 +756,34 @@ package body Non_Blocking_Priority_Queue is
                        Op_ID      => Op_ID,
                        Old_Entry  => Left_Child_Entry,
                        Clean_Copy => New_Left_Entry.all,
-                       Helped     => Helped_L);
+                       Helped     => Helped_L,
+                       Ignore_SIFTING_2_Leaf => True);
          Read_And_Fix (Queue,
                        Index      => Right_Child,
                        Op_ID      => Op_ID,
                        Old_Entry  => Right_Child_Entry,
                        Clean_Copy => New_Right_Entry.all,
-                       Helped     => Helped_R);
+                       Helped     => Helped_R,
+                       Ignore_SIFTING_2_Leaf => True);
 
          -- MUST investigate the helping detection further!
          --exit Phase_1 when Helped_L or Helped_R;
 
-         -- Check if this step needs to be done.
-         if Parent_Entry /= null and then
-           (Parent_Entry.Status = SIFTING_1 and
-            Parent_Entry.Op_ID = Op_ID) then
-            -- This operation is still unfinished.
+         -- Exit if helped.
+         if Parent_Entry = null or else
+           (Parent_Entry.Status /= SIFTING_1 or
+            Parent_Entry.Op_ID /= Op_ID) then
+            -- We have been helped.
+            Free (New_Left_Entry);
+            Free (New_Right_Entry);
+            exit Phase_1;
+         end if;
 
-            -- Select child.
-            if Left_Child_Entry /= null and Right_Child_Entry /= null then
-               if Right_Child_Entry.Key > Left_Child_Entry.Key then
-                  Child_Entry := Left_Child_Entry;
-                  Child       := Left_Child;
-                  New_Entry   := New_Left_Entry;
-               else
-                  Child_Entry := Right_Child_Entry;
-                  Child       := Right_Child;
-                  New_Entry   := New_Right_Entry;
-               end if;
-            elsif Left_Child_Entry /= null then
+         -- This operation is still unfinished.
+
+         -- Select child.
+         if Left_Child_Entry /= null and Right_Child_Entry /= null then
+            if Right_Child_Entry.Key > Left_Child_Entry.Key then
                Child_Entry := Left_Child_Entry;
                Child       := Left_Child;
                New_Entry   := New_Left_Entry;
@@ -712,44 +792,48 @@ package body Non_Blocking_Priority_Queue is
                Child       := Right_Child;
                New_Entry   := New_Right_Entry;
             end if;
+         elsif Left_Child_Entry /= null then
+               Child_Entry := Left_Child_Entry;
+               Child       := Left_Child;
+               New_Entry   := New_Left_Entry;
+         else
+            Child_Entry := Right_Child_Entry;
+            Child       := Right_Child;
+            New_Entry   := New_Right_Entry;
+         end if;
 
-            if Child_Entry /= null then
-               -- There is a child.
+         if Child_Entry /= null then
+            -- There is a child.
 
+            if Child_Entry.Status = STABLE and
+              Parent_Entry.Key > New_Entry.Key then
+               -- Swap.
+               -- Prepare new Child entry.
+               New_Entry.Status  := SWAP_WITH_PARENT;
+               New_Entry.Old_Key := Child_Entry.Key;
+               New_Entry.Key     := Parent_Entry.Key;
+               New_Entry.Op_ID   := Op_ID;
 
-
-               if Child_Entry.Status = STABLE and
-                 Parent_Entry.Key > New_Entry.Key then
-                  -- Swap.
-                  -- Prepare new Child entry.
-                  New_Entry.Status  := SWAP_WITH_PARENT;
-                  New_Entry.Old_Key := Child_Entry.Key;
-                  New_Entry.Key     := Parent_Entry.Key;
-                  New_Entry.Op_ID   := Op_ID;
-
-               elsif Child_Entry.Status /= STABLE then
-                  Ada.Text_IO.Put_Line
-                    ("Sort_Parent_Child: Child not STABLE!");
-                  raise Constraint_Error;
-               else
-                  -- No swap needed so we are finished.
-                  -- But is the clean copy of the child committed?!
-                  Free (New_Left_Entry);
-                  Free (New_Right_Entry);
-                  Done := True;
-                  exit Phase_1;
-               end if;
+            elsif Child_Entry.Status /= STABLE then
+               Ada.Text_IO.Put_Line
+                 ("Sort_Parent_Child: Child " &
+                  Heap_Index'Image (Child) & " not STABLE! (" &
+                  Entry_Status'Image (Child_Entry.Status) & ")");
+               Ada.Text_IO.Put_Line (Image (Queue));
+               raise Constraint_Error;
             else
-               -- No child, so we are finished.
+               -- No swap needed so we are finished.
+               -- But is the clean copy of the child committed?!
                Free (New_Left_Entry);
                Free (New_Right_Entry);
                Done := True;
                exit Phase_1;
             end if;
          else
-            -- We have been helped.
+            -- No child, so we are finished.
             Free (New_Left_Entry);
             Free (New_Right_Entry);
+            Done := True;
             exit Phase_1;
          end if;
 
@@ -770,65 +854,71 @@ package body Non_Blocking_Priority_Queue is
       New_Entry := new Heap_Entry;
       Phase_2 : loop
          -- Read Parent and Child entries.
-         -- Should be done through Fix?
+         -- Should be done through Fix? No we're already supposed to "own"
+         -- both the parent and the child.
          Parent_Entry := Queue.Heap (Parent);
+         -- Read child.
          if Child in Queue.Heap'Range then
             Child_Entry  := Queue.Heap (Child);
          else
             Child_Entry := null;
          end if;
 
-         -- Check if this step needs to be done.
-         if Parent_Entry /= null and then
-           (Parent_Entry.Op_ID  = Op_ID and
-            Parent_Entry.Status = SIFTING_1) then
-            -- This operation is still unfinished.
+         -- Exit if helped.
+         if  Parent_Entry = null or else
+           (Parent_Entry.Op_ID /= Op_ID or
+            Parent_Entry.Status /= SIFTING_1) then
+            Free (New_Entry);
+            exit Phase_2;
+         end if;
 
-            if Child_Entry /= null then
+         -- This operation is still unfinished.
+         -- Check whether we have a child entry or not.
+         -- For some child states the child should be treated as empty.
+         if Child_Entry /= null and then not
+           (Child_Entry.Status = SIFTING_2 or
+            Child_Entry.Status = SWAP_WITH_ANC) then
 
-               if Parent_Entry.Status = SIFTING_1 and
-                 Child_Entry.Op_ID = Op_ID and
-                 Child_Entry.Status = SWAP_WITH_PARENT then
-                  -- Swap parent key and make stable.
-                  -- Prepare new Parent entry.
-                  New_Entry.all := Parent_Entry.all;
-
-                  New_Entry.Status  := STABLE;
-                  New_Entry.Key     := Child_Entry.Old_Key;
-                  --New_Entry.Op_ID   := 0;
-
-               elsif Parent_Entry.Status = SIFTING_1 and
-                 Child_Entry.Status = STABLE then
-                  -- Mark parent stable.
-                  -- Prepare new Parent entry.
-                  New_Entry.all := Parent_Entry.all;
-
-                  New_Entry.Status  := STABLE;
-                  --New_Entry.Op_ID   := 0;
-
-                  Done := True;
-               else
-                  -- Unknown state!
-                  Ada.Text_IO.Put_Line ("Sort_Parent_Child: Unknown state!");
-                  Ada.Text_IO.Put_Line
-                    ("Parent = " & Heap_Index'Image (Parent) & ", " &
-                     "Child  = " & Heap_Index'Image (Child));
-                  Ada.Text_IO.Put_Line (Image (Queue));
-                  raise Constraint_Error;
-               end if;
-            else
-               -- No child. We are done.
-               -- Mark parent stable.
+            if Parent_Entry.Status = SIFTING_1 and
+              Child_Entry.Op_ID = Op_ID and
+              Child_Entry.Status = SWAP_WITH_PARENT then
+               -- Swap parent key and make stable.
+               -- Prepare new Parent entry.
                New_Entry.all := Parent_Entry.all;
+
+               New_Entry.Status  := STABLE;
+               New_Entry.Key     := Child_Entry.Old_Key;
+               --New_Entry.Op_ID   := 0;
+
+            elsif Parent_Entry.Status = SIFTING_1 and
+              Child_Entry.Status = STABLE then
+               -- Mark parent stable.
+               -- Prepare new Parent entry.
+               New_Entry.all := Parent_Entry.all;
+
                New_Entry.Status  := STABLE;
                --New_Entry.Op_ID   := 0;
 
                Done := True;
+            else
+               -- Unknown state!
+               Ada.Text_IO.Put_Line
+                 ("Sort_Parent_Child: Unknown child state " &
+                  Entry_Status'Image (Child_Entry.Status) & " !");
+               Ada.Text_IO.Put_Line
+                 ("Parent = " & Heap_Index'Image (Parent) & ", " &
+                  "Child  = " & Heap_Index'Image (Child));
+               Ada.Text_IO.Put_Line (Image (Queue));
+               raise Constraint_Error;
             end if;
          else
-            -- We have been helped!
-            Free (New_Entry);
-            exit Phase_2;
+            -- No child. We are done.
+            -- Mark parent stable.
+            New_Entry.all := Parent_Entry.all;
+            New_Entry.Status  := STABLE;
+            --New_Entry.Op_ID   := 0;
+
+            Done := True;
          end if;
 
          exit when CAS (Target    => Queue.Heap (Parent)'Access,
