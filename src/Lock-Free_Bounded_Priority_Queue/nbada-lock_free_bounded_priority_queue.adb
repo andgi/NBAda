@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 12:15:16 2002
--- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.6 2003/02/21 16:23:17 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.7 2003/02/21 17:14:21 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
@@ -306,6 +306,7 @@ package body Non_Blocking_Priority_Queue is
                         Old_Value => Status,
                         New_Value => New_Status);
       end loop;
+      Primitives.Membar_StoreLoad;
    end Enter_PP;
 
    ----------------------------------------------------------------------------
@@ -331,6 +332,7 @@ package body Non_Blocking_Priority_Queue is
                         Old_Value => Status,
                         New_Value => New_Status);
       end loop;
+      Primitives.Membar_StoreLoad;
    end Exit_PP;
 
    ----------------------------------------------------------------------------
@@ -356,6 +358,7 @@ package body Non_Blocking_Priority_Queue is
             Ada.Text_IO.Put_Line (Image (Queue));
             raise Constraint_Error;
          end if;
+         Primitives.Membar_StoreLoad;
       end;
 
       -- Phase 2: Update root.
@@ -389,6 +392,7 @@ package body Non_Blocking_Priority_Queue is
                            Old_Value => Root,
                            New_Value => New_Root);
          end loop;
+         Primitives.Membar_StoreLoad;
       end;
 
    end Insert_PP;
@@ -436,6 +440,7 @@ package body Non_Blocking_Priority_Queue is
                            Old_Value => Leaf,
                            New_Value => New_Leaf);
          end loop Phase_1;
+         Primitives.Membar_StoreLoad;
       end;
 
       if Debug then
@@ -464,6 +469,7 @@ package body Non_Blocking_Priority_Queue is
                              Helped     => Helped);
 
                -- Read deleted leaf.
+               Primitives.Membar_StoreStore_LoadStore;
                Leaf := Queue.Heap (Status.Size + 1);
 
                -- Safety checks!
@@ -502,8 +508,10 @@ package body Non_Blocking_Priority_Queue is
                       Old_Value => Root,
                       New_Value => New_Root);
             end loop Phase_2;
+            Primitives.Membar_StoreLoad;
          else
             -- Does this work??
+            Primitives.Membar_StoreStore_LoadStore;
             Status.Op_Arg.all := Queue.Heap (Queue.Heap'First).Key;
          end if;
       end;
@@ -519,6 +527,7 @@ package body Non_Blocking_Priority_Queue is
       begin
          Phase_3 : loop
             -- Read deleted leaf.
+            Primitives.Membar_StoreStore_LoadStore;
             Leaf := Queue.Heap (Status.Size + 1);
 
             -- Skip if helped:
@@ -530,6 +539,7 @@ package body Non_Blocking_Priority_Queue is
                    Old_Value => Leaf,
                    New_Value => null);
          end loop Phase_3;
+         Primitives.Membar_StoreLoad;
       end;
 
       if Debug then
@@ -558,6 +568,7 @@ package body Non_Blocking_Priority_Queue is
       Help : loop
          -- Read current entry value.
          if Index <= Queue.Max_Size then
+            Primitives.Membar_StoreStore_LoadStore;
             Old_Entry := Queue.Heap (Index);
          else
             if Debug then
@@ -750,6 +761,7 @@ package body Non_Blocking_Priority_Queue is
       New_Right_Entry := new Heap_Entry;
       Phase_1 : loop
          -- Read Parent and Child entries.
+         Primitives.Membar_StoreStore_LoadStore;
          Parent_Entry := Queue.Heap (Parent);
          Read_And_Fix (Queue,
                        Index      => Left_Child,
@@ -848,7 +860,7 @@ package body Non_Blocking_Priority_Queue is
             exit Phase_1;
          end if;
       end loop Phase_1;
-
+      Primitives.Membar_StoreLoad;
 
       -- Step 2: Update Parent.
       New_Entry := new Heap_Entry;
@@ -856,9 +868,11 @@ package body Non_Blocking_Priority_Queue is
          -- Read Parent and Child entries.
          -- Should be done through Fix? No we're already supposed to "own"
          -- both the parent and the child.
+         Primitives.Membar_StoreStore_LoadStore;
          Parent_Entry := Queue.Heap (Parent);
          -- Read child.
          if Child in Queue.Heap'Range then
+            Primitives.Membar_StoreStore_LoadStore;
             Child_Entry  := Queue.Heap (Child);
          else
             Child_Entry := null;
@@ -925,6 +939,7 @@ package body Non_Blocking_Priority_Queue is
                         Old_Value => Parent_Entry,
                         New_Value => New_Entry);
       end loop Phase_2;
+      Primitives.Membar_StoreLoad;
 
       -- Step 3: Finish Child.
       New_Entry := new Heap_Entry;
@@ -932,6 +947,7 @@ package body Non_Blocking_Priority_Queue is
          -- Read Child entry.
          -- Should be done through Fix?
          if Child in Queue.Heap'Range then
+            Primitives.Membar_StoreStore_LoadStore;
             Child_Entry  := Queue.Heap (Child);
          else
             Child_Entry := null;
@@ -963,6 +979,7 @@ package body Non_Blocking_Priority_Queue is
                         Old_Value => Child_Entry,
                         New_Value => New_Entry);
       end loop Phase_3;
+      Primitives.Membar_StoreLoad;
    end Sort_Parent_Child;
 
    ----------------------------------------------------------------------------
@@ -1000,6 +1017,7 @@ package body Non_Blocking_Priority_Queue is
       New_Entry := new Heap_Entry;
       Phase_1 : loop
          -- Read ancestor and leaf entries.
+         Primitives.Membar_StoreStore_LoadStore;
          Leaf_Entry  := Queue.Heap (Leaf);
          Ancestor    := Leaf_Entry.Sift_Pos;
          Anc_Entry   := Queue.Heap (Ancestor);
@@ -1054,12 +1072,14 @@ package body Non_Blocking_Priority_Queue is
                         Old_Value => Leaf_Entry,
                         New_Value => New_Entry);
       end loop Phase_1;
+      Primitives.Membar_StoreLoad;
 
       -- Phase 2: Update new ancestor.
       New_Entry := new Heap_Entry;
 
       Phase_2 : loop
          -- Read new ancestor and leaf entries.
+         Primitives.Membar_StoreStore_LoadStore;
          Leaf_Entry    := Queue.Heap (Leaf);
          New_Ancestor  := Next_Ancestor (Leaf, Leaf_Entry.Sift_Pos);
 
@@ -1113,12 +1133,14 @@ package body Non_Blocking_Priority_Queue is
                         Old_Value => New_Anc_Entry,
                         New_Value => New_Entry);
       end loop Phase_2;
+      Primitives.Membar_StoreLoad;
 
       -- Phase 3: Update old ancestor.
       New_Entry := new Heap_Entry;
 
       Phase_3 : loop
          -- Read ancestor and leaf entries.
+         Primitives.Membar_StoreStore_LoadStore;
          Leaf_Entry    := Queue.Heap (Leaf);
          Ancestor      := Leaf_Entry.Sift_Pos;
          Anc_Entry     := Queue.Heap (Ancestor);
@@ -1172,12 +1194,14 @@ package body Non_Blocking_Priority_Queue is
                         Old_Value => Anc_Entry,
                         New_Value => New_Entry);
       end loop Phase_3;
+      Primitives.Membar_StoreLoad;
 
       -- Phase 4: Update leaf for new ancestor.
       New_Entry := new Heap_Entry;
 
       Phase_4 : loop
          -- Read ancestor and leaf entries.
+         Primitives.Membar_StoreStore_LoadStore;
          Leaf_Entry    := Queue.Heap (Leaf);
          Ancestor      := Leaf_Entry.Sift_Pos;
          Anc_Entry     := Queue.Heap (Ancestor);
@@ -1224,6 +1248,7 @@ package body Non_Blocking_Priority_Queue is
                         Old_Value => Leaf_Entry,
                         New_Value => New_Entry);
       end loop Phase_4;
+      Primitives.Membar_StoreLoad;
 
       -- Check if we have been helped all the way.
       Done := Leaf_Entry.Status = STABLE;
@@ -1267,6 +1292,7 @@ package body Non_Blocking_Priority_Queue is
                exit;
             end if;
          end loop;
+         Primitives.Membar_StoreLoad;
       end loop;
    end Stabilize_Heap;
 
