@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 11:52:12 2002
--- $Id: nbada-lock_free_bounded_priority_queue.ads,v 1.4 2003/02/20 15:35:27 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.ads,v 1.5 2003/03/10 14:43:39 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -14,8 +14,6 @@ generic
    type Element_Type is private;
    with function ">" (Left, Rigth : Element_Type) return Boolean;
    with function Image (Key : Element_Type) return String;
-   -- The minimum key.
-   Min_Key : in Element_Type;
 
 package Non_Blocking_Priority_Queue is
 
@@ -68,7 +66,7 @@ private
    ----------------------------------------------------------------------------
    type Heap_Entry is
       record
-         Key      : Element_Type := Min_Key;
+         Key      : Element_Type;
          Status   : Entry_Status;
          Old_Key  : Element_Type;
          Op_ID    : Operation_ID;
