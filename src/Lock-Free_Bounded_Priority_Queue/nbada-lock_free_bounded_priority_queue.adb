@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 12:15:16 2002
--- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.13 2003/02/28 13:47:38 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.14 2003/03/11 10:48:57 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
@@ -49,6 +49,7 @@ package body Non_Blocking_Priority_Queue is
    -- operations on it, except for parts of Op_ID (to avoid recursive
    -- breakdown).
    -- Helped is true if the Op_ID of the heap entry is larger than Op_ID.
+   -- The Clean_Copy is invalid when Helped is true.
    procedure Read_And_Fix (Queue      : in out Priority_Queue_Type;
                            Index      : in     Heap_Index;
                            Op_ID      : in     Operation_ID;
@@ -610,9 +611,9 @@ package body Non_Blocking_Priority_Queue is
              return;
           end if;
 
-         -- Check if this operation is still pending.
+         -- Check if there is a pending operation.
          -- Think HARD on whether this is the RIGHT WAY to detect this.
-         if Old_Entry.Op_ID /= Op_ID then
+         if Old_Entry.Op_ID < Op_ID then
             case Old_Entry.Status is
                ----------------------------------------------------------------
                when STABLE =>
@@ -674,7 +675,7 @@ package body Non_Blocking_Priority_Queue is
 
                ----------------------------------------------------------------
                when SWAP_WITH_PARENT =>
---                  if Debug then
+                  if Debug then
                      Ada.Text_IO.Put_Line
                        ("Read_And_Fix: Operation" &
                         Operation_ID'Image (Op_ID) &
@@ -683,11 +684,13 @@ package body Non_Blocking_Priority_Queue is
                         " from " &
                         Operation_ID'Image (Old_Entry.Op_ID) &
                         " at" & Heap_Index'Image(Index) & ".");
---                  end if;
+                  end if;
 
-                  -- Implement this!!
-                  Ada.Text_IO.Put_Line (Image (Queue));
-                  raise Constraint_Error;
+                     Sort_Parent_Child
+                       (Queue,
+                        Parent => Index/2,
+                        Op_ID  => Old_Entry.Op_ID,
+                        Done   => Done);
 
                ----------------------------------------------------------------
                when SWAP_WITH_ANC =>
@@ -726,12 +729,16 @@ package body Non_Blocking_Priority_Queue is
                when others =>
                   -- Helping not implemented!
                   Ada.Text_IO.Put_Line
-                    ("Reading unstable entry: " &
-                     Entry_Status'Image (Old_Entry.Status));
+                    ("Read_And_Fix: Operation" &
+                     Operation_ID'Image (Op_ID) &
+                     " hit " &
+                     Entry_Status'Image (Old_Entry.Status) &
+                     " from " &
+                     Operation_ID'Image (Old_Entry.Op_ID) &
+                     " at" & Heap_Index'Image(Index) & ".");
                   raise Constraint_Error;
             end case;
-         else
-            -- Old_Entry.Op_ID = Op_ID:
+         elsif Old_Entry.Op_ID = Op_ID then
             -- This operation has either been helped or is already
             -- fiddeling with this node.
             -- DOUBLE CHECK THIS DETECTION!!
@@ -753,7 +760,23 @@ package body Non_Blocking_Priority_Queue is
                   Clean_Copy := Old_Entry.all;
                   --Helped := Clean_Copy.Op_ID > Op_ID;
             end case;
-            exit Help;
+            return;
+         else
+            -- This operation has been helped.
+            -- DOUBLE CHECK THIS DETECTION!!
+
+            -- The helped operation should not use anything
+            -- Read_And_Fix returns. The Clean copy is not guaranteed to
+            -- be stable.
+
+            -- Do not claim to be helped if we encounter and ignore a
+            -- SIFTING_2 leaf.
+            Helped     := (Old_Entry.Status /= SIFTING_2 and
+                           Old_Entry.Status /= SWAP_WITH_ANC) or
+              not (Old_Entry.Sift_Pos < Index and Ignore_SIFTING_2_Leaf);
+            Old_Entry  := null;
+
+            return;
          end if;
       end loop Help;
    end Read_And_Fix;
