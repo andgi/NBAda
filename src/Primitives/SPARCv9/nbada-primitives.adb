@@ -28,7 +28,7 @@
 -- Description     : Synchronization primitives.
 -- Author          : Anders Gidenstam
 -- Created On      : Fri Jul  5 14:53:50 2002
--- $Id: nbada-primitives.adb,v 1.7 2004/10/25 17:50:11 anders Exp $
+-- $Id: nbada-primitives.adb,v 1.8 2004/11/02 15:54:35 anders Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
@@ -48,6 +48,27 @@ package body Primitives is
    subtype Always_True is Boolean range True .. True;
    type Assertion (Assert : Always_True) is
      null record;
+
+   ----------------------------------------------------------------------------
+   function Atomic_Read_32 (Target : access Element) return Element is
+   begin
+      Membar;
+      declare
+         Tmp : constant Element := Target.all;
+      begin
+         Membar;
+         return Tmp;
+      end;
+   end Atomic_Read_32;
+
+   ----------------------------------------------------------------------------
+   procedure Atomic_Write_32 (Target : access Element;
+                              Value  : in     Element) is
+   begin
+      Membar;
+      Target.all := Value;
+      Membar;
+   end Atomic_Write_32;
 
    ----------------------------------------------------------------------------
    procedure Compare_And_Swap_32 (Target    : access Element;
@@ -146,22 +167,22 @@ package body Primitives is
       A1 : Assertion (Assert => Element'Object_Size = 64);
    begin
       raise Not_Implemented;
-      System.Machine_Code.Asm
-        (Template =>
-           "!#BEGIN Compare_And_Swap_64" & LF & HT &
-           "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
-           "mov %3, %%l0"                & LF & HT &   -- l0 <- %3
-           "casx [%1], %2, %%l0"         & LF & HT &   -- Compare & swap
-           "mov %%l0, %0"                & LF & HT &   -- %0 <- l0
-           "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
-           "!#END Compare_And_Swap_64",
-         Outputs  => Element'Asm_Output ("=r", New_Value), -- %0 = New_Value
-         Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
-                                                Element_Access (Target)),
-                      Element'Asm_Input ("r", Old_Value),  -- %2 = Old_Value
-                      Element'Asm_Input ("r", New_Value)), -- %3 = New_Value
-         Clobber  => "l0",
-         Volatile => True);
+--       System.Machine_Code.Asm
+--         (Template =>
+--            "!#BEGIN Compare_And_Swap_64" & LF & HT &
+--            "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
+--            "mov %3, %%l0"                & LF & HT &   -- l0 <- %3
+--            "casx [%1], %2, %%l0"         & LF & HT &   -- Compare & swap
+--            "mov %%l0, %0"                & LF & HT &   -- %0 <- l0
+--            "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
+--            "!#END Compare_And_Swap_64",
+--          Outputs  => Element'Asm_Output ("=r", New_Value), -- %0 = New_Value
+--          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
+--                                                 Element_Access (Target)),
+--                       Element'Asm_Input ("r", Old_Value),  -- %2 = Old_Value
+--                       Element'Asm_Input ("r", New_Value)), -- %3 = New_Value
+--          Clobber  => "l0",
+--          Volatile => True);
    end Compare_And_Swap_64;
 
    ----------------------------------------------------------------------------
@@ -176,23 +197,23 @@ package body Primitives is
       Tmp : Element;
    begin
       raise Not_Implemented;
-      System.Machine_Code.Asm
-        (Template =>
-           "!#BEGIN Boolean_Compare_And_Swap_64" & LF & HT &
-           "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
-           "mov %3, %%l0"                & LF & HT &   -- l0 <- %3
-           "casx [%1], %2, %%l0"         & LF & HT &   -- Compare & swap
-           "mov %%l0, %0"                & LF & HT &   -- %0 <- l0
-           "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
-           "!#END Boolean_Compare_And_Swap_64",
-         Outputs  => Element'Asm_Output ("=r", Tmp),       -- %0 = Tmp
-         Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
-                                                Element_Access (Target)),
-                      Element'Asm_Input ("r", Old_Value),  -- %2 = Old_Value
-                      Element'Asm_Input ("r", New_Value)), -- %3 = New_Value
-         Clobber  => "l0",
-         Volatile => True);
-      return Tmp = Old_Value;
+--       System.Machine_Code.Asm
+--         (Template =>
+--            "!#BEGIN Boolean_Compare_And_Swap_64" & LF & HT &
+--            "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
+--            "mov %3, %%l0"                & LF & HT &   -- l0 <- %3
+--            "casx [%1], %2, %%l0"         & LF & HT &   -- Compare & swap
+--            "mov %%l0, %0"                & LF & HT &   -- %0 <- l0
+--            "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
+--            "!#END Boolean_Compare_And_Swap_64",
+--          Outputs  => Element'Asm_Output ("=r", Tmp),       -- %0 = Tmp
+--          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
+--                                                 Element_Access (Target)),
+--                       Element'Asm_Input ("r", Old_Value),  -- %2 = Old_Value
+--                       Element'Asm_Input ("r", New_Value)), -- %3 = New_Value
+--          Clobber  => "l0",
+--          Volatile => True);
+--       return Tmp = Old_Value;
    end Boolean_Compare_And_Swap_64;
 
    ----------------------------------------------------------------------------

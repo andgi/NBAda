@@ -28,7 +28,7 @@
 -- Description     : Synchronization primitives.
 -- Author          : Anders Gidenstam
 -- Created On      : Fri Jul  5 14:53:50 2002
--- $Id: nbada-primitives.adb,v 1.5 2004/10/26 00:08:18 anders Exp $
+-- $Id: nbada-primitives.adb,v 1.6 2004/11/02 15:53:47 anders Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
@@ -47,6 +47,19 @@ package body Primitives is
    subtype Always_True is Boolean range True .. True;
    type Assertion (Assert : Always_True) is
      null record;
+
+   ----------------------------------------------------------------------------
+   function Atomic_Read_32 (Target : access Element) return Element is
+   begin
+      return Target.all;
+   end Atomic_Read_32;
+
+   ----------------------------------------------------------------------------
+   procedure Atomic_Write_32 (Target : access Element;
+                              Value  : in     Element) is
+   begin
+      Target.all := Value;
+   end Atomic_Write_32;
 
    ----------------------------------------------------------------------------
    procedure Compare_And_Swap_32 (Target    : access Element;
