@@ -8,7 +8,7 @@
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 23 17:59:44 2005
---  $Id: nbada-large_primitives.ads,v 1.1 2005/02/24 16:05:28 anders Exp $
+--  $Id: nbada-large_primitives.ads,v 1.2 2005/02/24 17:39:44 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
@@ -31,12 +31,16 @@ package Large_Primitives is
 
       type Shared_Element is limited private;
 
-      function Load_Linked (Target : access Shared_Element) return Element;
+      function  Load_Linked (Target : access Shared_Element) return Element;
 
-      function Store_Conditional (Target : access Shared_Element;
-                                  Value  : in     Element) return Boolean;
+      function  Store_Conditional (Target : access Shared_Element;
+                                   Value  : in     Element) return Boolean;
 
-      function Verify_Link (Target : access Shared_Element) return Boolean;
+      procedure Store_Conditional (Target : access Shared_Element;
+                                   Value  : in     Element);
+
+
+      function  Verify_Link (Target : access Shared_Element) return Boolean;
 
 
       procedure Initialize (Target : access Shared_Element;

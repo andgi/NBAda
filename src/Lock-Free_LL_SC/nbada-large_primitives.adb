@@ -8,7 +8,7 @@
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 24 10:25:44 2005
---  $Id: nbada-large_primitives.adb,v 1.1 2005/02/24 16:05:28 anders Exp $
+--  $Id: nbada-large_primitives.adb,v 1.2 2005/02/24 17:39:44 anders Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Conversion;
@@ -128,6 +128,14 @@ package body Large_Primitives is
             end if;
          end loop;
          return False;
+      end Store_Conditional;
+
+      -------------------------------------------------------------------------
+      procedure Store_Conditional (Target : access Shared_Element;
+                                   Value  : in     Element) is
+         Tmp : Boolean;
+      begin
+         Tmp := Store_Conditional (Target, Value);
       end Store_Conditional;
 
       -------------------------------------------------------------------------
