@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 11:52:12 2002
--- $Id: nbada-lock_free_bounded_priority_queue.ads,v 1.2 2003/01/19 13:04:38 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.ads,v 1.3 2003/02/14 10:42:36 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -55,7 +55,9 @@ package Non_Blocking_Priority_Queue is
 private
 
    type Element_Access is access all Element_Type;
-   type Entry_Status is (SIFTING_1, SIFTING_2, SWAP_WITH_PARENT, SWAP_WITH_ANC, STABLE, EMPTY);
+   type Entry_Status is (SIFTING_1, SIFTING_2,
+                         SWAP_WITH_PARENT, SWAP_WITH_ANC,
+                         STABLE, DELETED);
    subtype Heap_Index is Positive;
    type Operation_ID is new Primitives.Unsigned_32;
    type Operation_Type is (INSERT, DELETE_MIN, NONE);
