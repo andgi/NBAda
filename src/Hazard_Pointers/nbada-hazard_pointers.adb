@@ -34,7 +34,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:35:09 2004
---  $Id: nbada-hazard_pointers.adb,v 1.4 2005/02/25 16:26:04 anders Exp $
+--  $Id: nbada-hazard_pointers.adb,v 1.5 2005/02/28 14:23:54 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -138,8 +138,9 @@ package body Hazard_Pointers is
       Local.MM_Next := Shared_Reference (D_List (ID));
       D_List  (ID)  := Local;
       D_Count (ID)  := D_Count (ID) + 1;
-      if D_Count (ID) <= (Node_Count (1.5) * Node_Count (Processes'Last) *
-                          Node_Count (Max_Number_Of_Dereferences))
+      if D_Count (ID) >=
+        Node_Count (1.5 * Float (Node_Count (Processes'Last) *
+                                 Node_Count (Max_Number_Of_Dereferences)))
       then
          Scan (ID);
       end if;
