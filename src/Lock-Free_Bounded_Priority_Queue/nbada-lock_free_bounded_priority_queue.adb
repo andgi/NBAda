@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 12:15:16 2002
--- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.2 2003/01/19 13:05:25 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.3 2003/02/14 10:46:29 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
@@ -152,6 +152,8 @@ package body Non_Blocking_Priority_Queue is
             Sift := not Done;
 
             -- Should choose left or right child with equal probability.
+            -- This is WRONG since we can only move the smaller child to
+            -- the parent position!
             Parent := Heap_Index (2 * Natural (Parent) +
                                   Natural (Status.Op_ID mod 2));
 
@@ -292,6 +294,7 @@ package body Non_Blocking_Priority_Queue is
 
    ----------------------------------------------------------------------------
    -- Exit preliminary phase.
+   -- Must be changed to recognize if it has been helped.
    procedure Exit_PP (Queue : in out Priority_Queue_Type) is
       Status     : Heap_Status_Access;
       New_Status : Heap_Status_Access;
@@ -319,7 +322,7 @@ package body Non_Blocking_Priority_Queue is
    procedure Insert_PP (Queue  : in out Priority_Queue_Type;
                         Status : in     Heap_Status_Access) is
    begin
-      -- Add new leaf.
+      -- Phase 1: Add new leaf.
       declare
          New_Leaf : Heap_Entry_Access;
       begin
@@ -338,7 +341,7 @@ package body Non_Blocking_Priority_Queue is
          end if;
       end;
 
-      -- Update root.
+      -- Phase 2: Update root.
       declare
          Root     : Heap_Entry_Access;
          New_Root : Heap_Entry_Access;
@@ -354,6 +357,7 @@ package body Non_Blocking_Priority_Queue is
                           Old_Entry  => Root,
                           Clean_Copy => New_Root.all);
 
+            -- Skip if helped!
             -- Update root.
             New_Root.Status   := SIFTING_2;
             New_Root.Op_ID    := Status.Op_ID;
@@ -376,23 +380,34 @@ package body Non_Blocking_Priority_Queue is
    begin
       New_Leaf := new Heap_Entry;
 
-      -- Remove highest leaf.
-      loop
+      -- Phase 1: Mark highest leaf DELETED.
+      Phase_1 : loop
          -- Read leaf.
-         -- This should probably be done through the helping Fix
-         -- function.
          Read_And_Fix (Queue,
                        Index      => Status.Size + 1,
                        Op_ID      => Status.Op_ID,
                        Old_Entry  => Leaf,
                        Clean_Copy => New_Leaf.all);
 
-         -- Remove leaf.
+         if Leaf /= null then
+            New_Leaf.Status  := DELETED;
+            New_Leaf.Op_Id   := Status.Op_ID;
+            New_Leaf.Old_Key := New_Leaf.Key;
+         else
+            -- We have been helped.
+            exit Phase_1;
+         end if;
+
          exit when CAS (Target    => Queue.Heap (Status.Size + 1)'Access,
                         Old_Value => Leaf,
-                        New_Value => null);
-      end loop;
+                        New_Value => New_Leaf);
+      end loop Phase_1;
 
+      -- Print status of heap.
+      Ada.Text_IO.Put_Line ("Delete_Min_PP: Removed highest leaf.");
+      Ada.Text_IO.Put_Line (Image (Queue));
+
+      -- Phase 2: Fix new root.
       if Status.Size > 0 then
          -- Update root.
          declare
@@ -430,7 +445,7 @@ package body Non_Blocking_Priority_Queue is
       end if;
 
       -- The clean leaf was only temporary.
-      Free (New_Leaf);
+      --Free (New_Leaf);
    end Delete_Min_PP;
 
    ----------------------------------------------------------------------------
@@ -541,6 +556,7 @@ package body Non_Blocking_Priority_Queue is
       Done := False;
 
       -- Step 1: Set Child to SWAP iff Parent > Child.
+      -- BOTH childs must be checked!!!
       New_Entry := new Heap_Entry;
       Phase_1 : loop
          -- Read Parent and Child entries.
@@ -800,7 +816,9 @@ package body Non_Blocking_Priority_Queue is
          -- Read new ancestor and leaf entries.
          Leaf_Entry    := Queue.Heap (Leaf);
          New_Ancestor  := Next_Ancestor (Leaf, Leaf_Entry.Sift_Pos);
---         New_Anc_Entry := Queue.Heap (New_Ancestor);
+         --         New_Anc_Entry := Queue.Heap (New_Ancestor);
+         -- What if the New_Ancestor and the Leaf is the same?!
+         -- Won't Read_And_Fix freak out?! (But it should fix it.)
          Read_And_Fix (Queue,
                        Index      => New_Ancestor,
                        Op_ID      => Leaf_Entry.Op_ID,
