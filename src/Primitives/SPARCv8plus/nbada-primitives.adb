@@ -4,7 +4,7 @@
 -- Description     : Synchronization primitives.
 -- Author          : Anders Gidenstam
 -- Created On      : Fri Jul  5 14:53:50 2002
--- $Id: nbada-primitives.adb,v 1.2 2002/07/18 13:38:22 andersg Exp $
+-- $Id: nbada-primitives.adb,v 1.3 2003/02/21 17:16:22 andersg Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
@@ -84,56 +84,58 @@ package body Primitives is
    -- handled atomically.
    ----------------------------------------------------------------------------
 
---    ----------------------------------------------------------------------------
---    procedure Compare_And_Swap_64 (Target    : access Element;
---                                   Old_Value : in     Element;
---                                   New_Value : in out Element) is
---       use Ada.Characters.Latin_1;
---       pragma Assert (Element'Object_Size = 64);
---       type Element_Access is access all Element;
---    begin
---       System.Machine_Code.Asm
---         (Template =>
---            "!#BEGIN Compare_And_Swap_64" & LF & HT &
---            "mov %3, %%l0"                & LF & HT &   -- l0 <- %3
---            "casx [%1], %2, %%l0"         & LF & HT &   -- Compare & swap
---            "mov %%l0, %0"                & LF & HT &   -- %0 <- l0
---            "!#END Compare_And_Swap_64",
---          Outputs  => Element'Asm_Output ("=r", New_Value), -- %0 = New_Value
---          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
---                                                 Element_Access (Target)),
---                       Element'Asm_Input ("r", Old_Value),  -- %2 = Old_Value
---                       Element'Asm_Input ("r", New_Value)), -- %3 = New_Value
---          Clobber  => "l0",
---          Volatile => True);
---    end Compare_And_Swap_64;
+    ----------------------------------------------------------------------------
+    procedure Compare_And_Swap_64 (Target    : access Element;
+                                   Old_Value : in     Element;
+                                   New_Value : in out Element) is
+       use Ada.Characters.Latin_1;
+       type Element_Access is access all Element;
 
---    ----------------------------------------------------------------------------
---    function Boolean_Compare_And_Swap_64 (Target    : access Element;
---                                          Old_Value : in     Element;
---                                          New_Value : in     Element)
---                                         return Boolean is
---       use Ada.Characters.Latin_1;
---       pragma Assert (Element'Object_Size = 64);
---       type Element_Access is access all Element;
---       Tmp : Element;
---    begin
---       System.Machine_Code.Asm
---         (Template =>
---            "!#BEGIN Boolean_Compare_And_Swap_64" & LF & HT &
---            "mov %3, %%l0"                & LF & HT &   -- l0 <- %3
---            "cas [%1], %2, %%l0"          & LF & HT &   -- Compare & swap
---            "mov %%l0, %0"                & LF & HT &   -- %0 <- l0
---            "!#END Boolean_Compare_And_Swap_64",
---          Outputs  => Element'Asm_Output ("=r", Tmp),       -- %0 = Tmp
---          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
---                                                 Element_Access (Target)),
---                       Element'Asm_Input ("r", Old_Value),  -- %2 = Old_Value
---                       Element'Asm_Input ("r", New_Value)), -- %3 = New_Value
---          Clobber  => "l0",
---          Volatile => True);
---       return Tmp = Old_Value;
---    end Boolean_Compare_And_Swap_64;
+       A1 : Assertion (Assert => Element'Object_Size = 64);
+    begin
+       System.Machine_Code.Asm
+         (Template =>
+            "!#BEGIN Compare_And_Swap_64" & LF & HT &
+            "mov %3, %%l0"                & LF & HT &   -- l0 <- %3
+            "casx [%1], %2, %%l0"         & LF & HT &   -- Compare & swap
+            "mov %%l0, %0"                & LF & HT &   -- %0 <- l0
+            "!#END Compare_And_Swap_64",
+          Outputs  => Element'Asm_Output ("=r", New_Value), -- %0 = New_Value
+          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
+                                                 Element_Access (Target)),
+                       Element'Asm_Input ("r", Old_Value),  -- %2 = Old_Value
+                       Element'Asm_Input ("r", New_Value)), -- %3 = New_Value
+          Clobber  => "l0",
+          Volatile => True);
+    end Compare_And_Swap_64;
+
+    ----------------------------------------------------------------------------
+    function Boolean_Compare_And_Swap_64 (Target    : access Element;
+                                          Old_Value : in     Element;
+                                          New_Value : in     Element)
+                                         return Boolean is
+       use Ada.Characters.Latin_1;
+       type Element_Access is access all Element;
+
+       A1 : Assertion (Assert => Element'Object_Size = 64);
+       Tmp : Element;
+    begin
+       System.Machine_Code.Asm
+         (Template =>
+            "!#BEGIN Boolean_Compare_And_Swap_64" & LF & HT &
+            "mov %3, %%l0"                & LF & HT &   -- l0 <- %3
+            "casx [%1], %2, %%l0"         & LF & HT &   -- Compare & swap
+            "mov %%l0, %0"                & LF & HT &   -- %0 <- l0
+            "!#END Boolean_Compare_And_Swap_64",
+          Outputs  => Element'Asm_Output ("=r", Tmp),       -- %0 = Tmp
+          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
+                                                 Element_Access (Target)),
+                       Element'Asm_Input ("r", Old_Value),  -- %2 = Old_Value
+                       Element'Asm_Input ("r", New_Value)), -- %3 = New_Value
+          Clobber  => "l0",
+          Volatile => True);
+       return Tmp = Old_Value;
+    end Boolean_Compare_And_Swap_64;
 
    ----------------------------------------------------------------------------
    procedure Fetch_And_Add (Target    : access Unsigned_32;
@@ -191,11 +193,26 @@ package body Primitives is
    end Fetch_And_Add;
 
    ----------------------------------------------------------------------------
-   procedure Membar_StoreLoad_StoreStore is
+   procedure Membar_StoreLoad is
+      use Ada.Characters.Latin_1;
    begin
       System.Machine_Code.Asm
         (Template =>
-           "membar #StoreLoad | #StoreStore");
-   end Membar_StoreLoad_StoreStore;
+           "!#BEGIN Membar_StoreLoad"      & LF & HT &
+           "membar #StoreLoad"             & LF & HT &
+           "!#END Membar_StoreLoad");
+   end Membar_StoreLoad;
+
+   ----------------------------------------------------------------------------
+   procedure Membar_StoreStore_LoadStore is
+      use Ada.Characters.Latin_1;
+   begin
+      System.Machine_Code.Asm
+        (Template =>
+           "!#BEGIN Membar_StoreStore_LoadStore"      & LF & HT &
+           "membar #StoreStore | #LoadStore"          & LF & HT &
+           "!#END Membar_StoreStore_LoadStore");
+   end Membar_StoreStore_LoadStore;
+
 
 end Primitives;
