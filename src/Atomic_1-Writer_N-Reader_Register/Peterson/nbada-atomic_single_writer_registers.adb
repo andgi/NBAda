@@ -3,7 +3,7 @@
 -- Description     :
 -- Author          : Anders Gidenstam
 -- Created On      : Sat Oct 20 00:04:58 2001
--- $Id: nbada-atomic_single_writer_registers.adb,v 1.2 2002/01/12 00:23:53 anders Exp $
+-- $Id: nbada-atomic_single_writer_registers.adb,v 1.3 2002/01/14 14:58:01 anders Exp $
 
 package body Wait_Free is
 
@@ -42,7 +42,7 @@ package body Wait_Free is
       Buff2_Value := Register.Buff2;
       if Register.Reading (Reader_No) = Register.Writing (Reader_No) then
          Value    := Register.Copybuff (Reader_No);
-      elsif Sswitch /= Sswitch2 or Boolean (Sflag) or Boolean (Sflag2) then
+      elsif Sswitch /= Sswitch2 or Sflag or Sflag2 then
          Value    := Buff2_Value;
       else
          Value    := Buff1_Value;
