@@ -28,7 +28,7 @@
 -- Description     : Synchronization primitives.
 -- Author          : Anders Gidenstam
 -- Created On      : Fri Jul  5 12:27:13 2002
--- $Id: nbada-primitives.ads,v 1.9 2004/10/25 17:50:11 anders Exp $
+-- $Id: nbada-primitives.ads,v 1.10 2004/11/02 11:25:23 anders Exp $
 -------------------------------------------------------------------------------
 
 with Interfaces;
@@ -51,6 +51,38 @@ package Primitives is
    --  32 bit unsigned word.
    type Unsigned_32 is mod 2**32;
    pragma Atomic (Unsigned_32);
+
+
+   ----------------------------------------------------------------------------
+   --  Atomic Read 32.
+   --  Reads a 32 bit entity with sequential consistency.
+   generic
+      --  Use pragma Atomic and pragma Volatile for Target.
+      --  Element'Object_Size MUST be 32.
+      type Element is private;
+   function Atomic_Read_32 (Target : access Element) return Element;
+   --  Specification:
+   --    begin atomic
+   --      return Target.all;
+   --    end atomic;
+   pragma Inline (Atomic_Read_32);
+   pragma Inline_Always (Atomic_Read_32);
+
+   ----------------------------------------------------------------------------
+   --  Atomic Write 32.
+   --  Writes a 32 bit entity with sequential consistency.
+   generic
+      --  Use pragma Atomic and pragma Volatile for Target.
+      --  Element'Object_Size MUST be 32.
+      type Element is private;
+   procedure Atomic_Write_32 (Target : access Element;
+                              Value  : in     Element);
+   --  Specification:
+   --    begin atomic
+   --      Target.all := Value;
+   --    end atomic;
+   pragma Inline (Atomic_Write_32);
+   pragma Inline_Always (Atomic_Write_32);
 
    ----------------------------------------------------------------------------
    --  Compare and Swap 32.
