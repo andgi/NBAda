@@ -29,7 +29,7 @@ package body Process_Identification is
       if Process_IDs.Value = 0 then
          Process_IDs.Set_Value
            (Primitives.Fetch_And_Add (Target    => Process_Count'Access,
-                                      Increment => 1));
+                                      Increment => 1) + 1);
       end if;
    end Register;
 
