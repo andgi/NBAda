@@ -4,7 +4,7 @@
 -- Description     : Synchronization primitives.
 -- Author          : Anders Gidenstam
 -- Created On      : Fri Jul  5 14:53:50 2002
--- $Id: nbada-primitives.adb,v 1.1 2002/07/12 15:01:57 andersg Exp $
+-- $Id: nbada-primitives.adb,v 1.2 2002/07/18 13:38:22 andersg Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
@@ -19,12 +19,21 @@ package body Primitives is
    ----------------------------------------------------------------------------
 
    ----------------------------------------------------------------------------
+   -- Home made assert construction. Provides some degree of compile time
+   -- checking.
+   type Boolean_Array is array (Boolean range <>) of Boolean;
+   subtype Always_True is Boolean range True .. True;
+   type Assertion (Assert : Always_True) is
+     null record;
+
+   ----------------------------------------------------------------------------
    procedure Compare_And_Swap_32 (Target    : access Element;
                                   Old_Value : in     Element;
                                   New_Value : in out Element) is
       use Ada.Characters.Latin_1;
-      pragma Assert (Element'Object_Size = 32);
       type Element_Access is access all Element;
+
+      A1 : Assertion (Assert => Element'Object_Size = 32);
    begin
       System.Machine_Code.Asm
         (Template =>
@@ -48,8 +57,9 @@ package body Primitives is
                                          New_Value : in     Element)
                                         return Boolean is
       use Ada.Characters.Latin_1;
-      pragma Assert (Element'Object_Size = 32);
       type Element_Access is access all Element;
+
+      A1  : Assertion (Assert => Element'Object_Size = 32);
       Tmp : Element;
    begin
       System.Machine_Code.Asm
