@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 12:15:16 2002
--- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.22 2003/03/13 19:56:52 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.23 2003/03/17 11:02:57 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
@@ -66,7 +66,8 @@ package body Non_Blocking_Priority_Queue is
                    Index      : in     Heap_Index;
                    Op_ID      : in     Operation_ID;
                    The_Entry  :    out Heap_Entry_Access;
-                   Helped     :    out Boolean);
+                   Helped     :    out Boolean;
+                   Ignore_SIFTING_2_Leaf : in Boolean := False);
    pragma Inline (Read);
    pragma Inline_Always (Read);
 
@@ -398,8 +399,9 @@ package body Non_Blocking_Priority_Queue is
                           Helped     => Helped);
 
             -- Skip if helped.
-            if Helped or else
-              (Root.Op_Id = Status.Op_Id and Root.Status = SIFTING_2) then
+            if (Helped or Root = null) or else
+              (Root.Op_Id = Status.Op_Id and Root.Status = SIFTING_2)
+            then
                Free (New_Root);
                exit Phase_2;
             end if;
@@ -819,14 +821,18 @@ package body Non_Blocking_Priority_Queue is
                    Index      : in     Heap_Index;
                    Op_ID      : in     Operation_ID;
                    The_Entry  :    out Heap_Entry_Access;
-                   Helped     :    out Boolean) is
+                   Helped     :    out Boolean;
+                   Ignore_SIFTING_2_Leaf : in Boolean := False) is
    begin
       Primitives.Membar;
       The_Entry := Queue.Heap (Index);
 
       -- Check if helped.
       Helped := The_Entry = null or else
-        (The_Entry.Op_ID > Op_ID);
+        (The_Entry.Op_ID > Op_ID and
+         ((The_Entry.Status /= SIFTING_2 and
+           The_Entry.Status /= SWAP_WITH_ANC) or
+          not (The_Entry.Sift_Pos < Index and Ignore_SIFTING_2_Leaf)));
    end Read;
 
    ----------------------------------------------------------------------------
@@ -926,7 +932,7 @@ package body Non_Blocking_Priority_Queue is
 
                if Child_Entry.Status = STABLE then
 
-                  if  Parent_Entry.Key > New_Entry.Key then
+                  if Parent_Entry.Key > New_Entry.Key then
                      -- Swap.
                      -- Prepare new Child entry.
                      New_Entry.Status  := SWAP_WITH_PARENT;
@@ -995,19 +1001,20 @@ package body Non_Blocking_Priority_Queue is
                     Index     => Child,
                     Op_ID     => Op_ID,
                     The_Entry => Child_Entry,
-                    Helped    => Helped);
+                    Helped    => Helped,
+                    Ignore_SIFTING_2_Leaf => True);
             else
                Child_Entry := null;
                Helped      := False;
             end if;
             -- In this case no child is good news and means that we can
             -- mark the parent as stable.
-            if (Helped and Child_Entry /= null) or
-              (Child_Entry /= null and then Child_Entry.Status = SIFTING_1)
-            then
-               Free (New_Entry);
-               exit Phase_2;
-            end if;
+             if (Helped and Child_Entry /= null) or
+               (Child_Entry /= null and then Child_Entry.Status = SIFTING_1)
+             then
+                Free (New_Entry);
+                exit Phase_2;
+             end if;
 
             -- This operation is still unfinished.
             -- Check whether we have a child entry or not.
@@ -1079,7 +1086,7 @@ package body Non_Blocking_Priority_Queue is
             end if;
             -- Exit if the child has been helped or is nonexistant.
             -- We should probably set Done to true here.
-            if Helped or Child_Entry = null then
+            if Helped or else (Child_Entry.Status /= SWAP_WITH_PARENT) then
                Free (New_Entry);
                exit Phase_3;
             end if;
@@ -1235,31 +1242,12 @@ package body Non_Blocking_Priority_Queue is
                           Clean_Copy => New_Entry.all,
                           Helped     => Helped);
 
-            -- Security check. Only applies if we have not been helped.
-            if not Helped and (Leaf_Entry = null or New_Anc_Entry = null) then
-               if New_Anc_Entry = null then
-                  Ada.Text_IO.Put_Line
-                    ("Implicit_Sift_Down.Phase 2: New_Anc_Entry null!");
-               end if;
-               if Leaf_Entry = null then
-                  Ada.Text_IO.Put_Line
-                    ("Implicit_Sift_Down.Phase 2: Leaf_Entry null!");
-               end if;
-               Ada.Text_IO.Put_Line
-                 ("Implicit_Sift_Down.Phase 2: " &
-                  "Op_ID =" & Operation_ID'Image (Op_ID) &
-                  ", Ancestor =" & Heap_Index'Image (Leaf_Entry.Sift_Pos) &
-                  ", Leaf =" & Heap_Index'Image (Leaf) &
-                  ", New ancestor =" & Heap_Index'Image (New_Ancestor) & ".");
-               raise Constraint_Error;
-            end if;
-
             -- Exit if helped.
-            if Helped or else
+            if (Helped or Leaf_Entry = null or New_Anc_Entry = null) or else
               ((Leaf_Entry.Status /= SWAP_WITH_ANC and
                 Leaf_Entry.Status /= SIFTING_2) or
-               New_Anc_Entry.Status /= STABLE) then
-
+               New_Anc_Entry.Status /= STABLE)
+            then
                -- We have been helped.
                Free (New_Entry);
                exit Phase_2;
