@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 11:52:12 2002
--- $Id: nbada-lock_free_bounded_priority_queue.ads,v 1.3 2003/02/14 10:42:36 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.ads,v 1.4 2003/02/20 15:35:27 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -47,6 +47,9 @@ package Non_Blocking_Priority_Queue is
 
    -- Image.
    function Image (Queue : Priority_Queue_Type) return String;
+
+   -- For debugging use only.
+   procedure Stabilize_Heap (Queue : in out Priority_Queue_Type);
 
    -- Exceptions
    Queue_Full  : exception;
