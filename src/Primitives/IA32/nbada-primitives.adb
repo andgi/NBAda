@@ -28,7 +28,7 @@
 -- Description     : Synchronization primitives.
 -- Author          : Anders Gidenstam
 -- Created On      : Fri Jul  5 14:53:50 2002
--- $Id: nbada-primitives.adb,v 1.4 2004/09/21 20:13:50 anders Exp $
+-- $Id: nbada-primitives.adb,v 1.5 2004/10/26 00:08:18 anders Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
@@ -96,12 +96,36 @@ package body Primitives is
          Outputs  => Element'Asm_Output ("=g", Tmp),       -- %0 = Tmp
          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
                                                 Element_Access (Target)),
-                      Element'Asm_Input ("r", Old_Value),  -- %2 = Old_Value
-                      Element'Asm_Input ("g", New_Value)), -- %3 = New_Value
+                      Element'Asm_Input ("g", Old_Value),  -- %2 = Old_Value
+                      Element'Asm_Input ("r", New_Value)), -- %3 = New_Value
          Clobber  => "eax",
          Volatile => True);
       return Tmp = Old_Value;
    end Boolean_Compare_And_Swap_32;
+
+   ----------------------------------------------------------------------------
+   procedure Void_Compare_And_Swap_32 (Target    : access Element;
+                                       Old_Value : in     Element;
+                                       New_Value : in     Element) is
+      use Ada.Characters.Latin_1;
+      type Element_Access is access all Element;
+
+      A1  : Assertion (Assert => Element'Object_Size = 32);
+   begin
+      System.Machine_Code.Asm
+        (Template =>
+           "#BEGIN Void_Compare_And_Swap_32" & LF & HT &
+           "movl %1, %%eax"              & LF & HT &
+           "lock"                        & LF & HT &
+           "cmpxchg %2, (%0)"            & LF & HT &   -- Compare & swap
+           "#END Void_Compare_And_Swap_32",
+         Inputs   => (Element_Access'Asm_Input ("r",       -- %0 = Target
+                                                Element_Access (Target)),
+                      Element'Asm_Input ("g", Old_Value),  -- %1 = Old_Value
+                      Element'Asm_Input ("r", New_Value)), -- %2 = New_Value
+         Clobber  => "eax",
+         Volatile => True);
+   end Void_Compare_And_Swap_32;
 
    ----------------------------------------------------------------------------
    --  The newer IA32 CPUs supports atomic operations on 64 bit objects.
@@ -133,6 +157,18 @@ package body Primitives is
    begin
       raise Not_Implemented;
    end Boolean_Compare_And_Swap_64;
+
+   ----------------------------------------------------------------------------
+   procedure Void_Compare_And_Swap_64 (Target    : access Element;
+                                       Old_Value : in     Element;
+                                       New_Value : in     Element) is
+      use Ada.Characters.Latin_1;
+      type Element_Access is access all Element;
+
+      A1 : Assertion (Assert => Element'Object_Size = 64);
+   begin
+      raise Not_Implemented;
+   end Void_Compare_And_Swap_64;
 
    ----------------------------------------------------------------------------
    procedure Fetch_And_Add (Target    : access Unsigned_32;
