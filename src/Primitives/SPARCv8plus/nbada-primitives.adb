@@ -1,10 +1,34 @@
 -------------------------------------------------------------------------------
+-- Primitives - A binding to the synchronization primitives of the hardware.
+-- Copyright (C) 2004  Anders Gidenstam
+--
+-- This program is free software; you can redistribute it and/or modify
+-- it under the terms of the GNU General Public License as published by
+-- the Free Software Foundation; either version 2 of the License, or
+-- (at your option) any later version.
+--
+-- This program is distributed in the hope that it will be useful,
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-- GNU General Public License for more details.
+--
+-- You should have received a copy of the GNU General Public License
+-- along with this program; if not, write to the Free Software
+-- Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--
+-- As a special exception, if other files instantiate generics from this
+-- unit, or you link this unit with other files to produce an executable,
+-- this unit does not by itself cause the resulting executable to be
+-- covered by the GNU General Public License. This exception does not
+-- however invalidate any other reasons why the executable file might be
+-- covered by the GNU Public License.
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 -- Filename        : primitives.adb
 -- Description     : Synchronization primitives.
 -- Author          : Anders Gidenstam
 -- Created On      : Fri Jul  5 14:53:50 2002
--- $Id: nbada-primitives.adb,v 1.5 2003/03/12 13:40:55 andersg Exp $
+-- $Id: nbada-primitives.adb,v 1.6 2004/09/21 20:05:23 anders Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
@@ -13,14 +37,14 @@ with Ada.Characters.Latin_1;
 package body Primitives is
 
    ----------------------------------------------------------------------------
-   -- Synchronization primitives for SPARC v9.
+   --  Synchronization primitives for SPARC v9.
    --
-   -- Requires the flags '-cargs -Wa,-xarch=v8plus' to gnatmake.
+   --  Requires the flags '-cargs -Wa,-xarch=v8plus' to gnatmake.
    ----------------------------------------------------------------------------
 
    ----------------------------------------------------------------------------
-   -- Home made assert construction. Provides some degree of compile time
-   -- checking.
+   --  Home made assert construction. Provides some degree of compile time
+   --  checking.
    subtype Always_True is Boolean range True .. True;
    type Assertion (Assert : Always_True) is
      null record;
@@ -83,8 +107,8 @@ package body Primitives is
    end Boolean_Compare_And_Swap_32;
 
    ----------------------------------------------------------------------------
-   -- My GCC does not generate 64-bit aware code, so 64-bit objects cannot be
-   -- handled atomically.
+   --  My GCC does not generate 64-bit aware code, so 64-bit objects cannot be
+   --  handled atomically.
    ----------------------------------------------------------------------------
 
    ----------------------------------------------------------------------------
@@ -96,6 +120,7 @@ package body Primitives is
 
       A1 : Assertion (Assert => Element'Object_Size = 64);
    begin
+      raise Not_Implemented;
       System.Machine_Code.Asm
         (Template =>
            "!#BEGIN Compare_And_Swap_64" & LF & HT &
@@ -125,6 +150,7 @@ package body Primitives is
       A1 : Assertion (Assert => Element'Object_Size = 64);
       Tmp : Element;
    begin
+      raise Not_Implemented;
       System.Machine_Code.Asm
         (Template =>
            "!#BEGIN Boolean_Compare_And_Swap_64" & LF & HT &
@@ -214,28 +240,5 @@ package body Primitives is
            "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
            "!#END Membar");
    end Membar;
-
-   ----------------------------------------------------------------------------
-   procedure Membar_StoreLoad is
-      use Ada.Characters.Latin_1;
-   begin
-      System.Machine_Code.Asm
-        (Template =>
-           "!#BEGIN Membar_StoreLoad"      & LF & HT &
-           "membar #StoreLoad"             & LF & HT &
-           "!#END Membar_StoreLoad");
-   end Membar_StoreLoad;
-
-   ----------------------------------------------------------------------------
-   procedure Membar_StoreStore_LoadStore is
-      use Ada.Characters.Latin_1;
-   begin
-      System.Machine_Code.Asm
-        (Template =>
-           "!#BEGIN Membar_StoreStore_LoadStore"      & LF & HT &
-           "membar #StoreStore | #LoadStore"          & LF & HT &
-           "!#END Membar_StoreStore_LoadStore");
-   end Membar_StoreStore_LoadStore;
-
 
 end Primitives;
