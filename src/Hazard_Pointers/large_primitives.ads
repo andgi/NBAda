@@ -1,14 +1,39 @@
 -------------------------------------------------------------------------------
+--  Large Primitives - An implementation of Maged Michael's LL/SC primitives.
+--  Copyright (C) 2005  Anders Gidenstam
+--
+--  This program is free software; you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation; either version 2 of the License, or
+--  (at your option) any later version.
+--
+--  This program is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--
+--  As a special exception, if other files instantiate generics from this
+--  unit, or you link this unit with other files to produce an executable,
+--  this unit does not by itself cause the resulting executable to be
+--  covered by the GNU General Public License. This exception does not
+--  however invalidate any other reasons why the executable file might be
+--  covered by the GNU Public License.
+--
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : large_primitives.ads
 --  Description     : Software Load-Linked and Store-Conditional for large
 --                    words.
---                    From Maged Michael,
+--                    Based on the algorithm in Maged Michael,
 --                    "Practical Lock-Free and Wait-Free LL/SC/VL
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 23 17:59:44 2005
---  $Id: large_primitives.ads,v 1.2 2005/02/24 17:39:44 anders Exp $
+--  $Id: large_primitives.ads,v 1.3 2005/02/25 16:13:55 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;

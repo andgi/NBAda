@@ -1,17 +1,43 @@
 -------------------------------------------------------------------------------
+--  Large Primitives - An implementation of Maged Michael's LL/SC primitives.
+--  Copyright (C) 2005  Anders Gidenstam
+--
+--  This program is free software; you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation; either version 2 of the License, or
+--  (at your option) any later version.
+--
+--  This program is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--
+--  As a special exception, if other files instantiate generics from this
+--  unit, or you link this unit with other files to produce an executable,
+--  this unit does not by itself cause the resulting executable to be
+--  covered by the GNU General Public License. This exception does not
+--  however invalidate any other reasons why the executable file might be
+--  covered by the GNU Public License.
+--
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : large_primitives.adb
 --  Description     : Software Load-Linked and Store-Conditional for large
 --                    words.
---                    From Maged Michael,
+--                    Based on the algorithm in Maged Michael,
 --                    "Practical Lock-Free and Wait-Free LL/SC/VL
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 24 10:25:44 2005
---  $Id: large_primitives.adb,v 1.2 2005/02/24 17:39:44 anders Exp $
+--  $Id: large_primitives.adb,v 1.3 2005/02/25 16:16:12 anders Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Conversion;
+with Lock_Free_Fixed_Size_Storage_Pools;
 
 with Primitives;
 with Ada.Text_IO;
@@ -51,18 +77,32 @@ package body Large_Primitives is
 
    package body Load_Linked_Store_Conditional is
 
-      --  Process local static data.
-      Safe_Block : array (Processes) of Object_Value_Access;
-
+      -------------------------------------------------------------------------
+      --  Types and static variables.
+      -------------------------------------------------------------------------
       type Shared_Element_Access is access all Shared_Element;
 
       function To_Shared_Reference_Access is
          new Ada.Unchecked_Conversion (Shared_Element_Access,
                                        Shared_Reference_Access);
-
       function  Get_Block  (ID : in Processes) return Object_Value_Access;
       procedure Keep_Block (ID : in Processes;
                             B  : in Object_Value_Access);
+
+      --  Process local static data.
+      Safe_Block : array (Processes) of Object_Value_Access;
+
+      -------------------------------------------------------------------------
+      --  Storage pool for the nodes.
+      -------------------------------------------------------------------------
+--        Node_Pool :
+--          Lock_Free_Fixed_Size_Storage_Pools.Lock_Free_Storage_Pool
+--          (Pool_Size  => 4_096,
+--           Block_Size => Object_Value'Max_Size_In_Storage_Elements);
+
+      type Object_Value_Access2 is access Object_Value;
+--      for Object_Value_Access2'Storage_Pool use Node_Pool;
+
 
       -------------------------------------------------------------------------
       function Load_Linked (Target : access Shared_Element) return Element is
@@ -183,7 +223,8 @@ package body Large_Primitives is
             return Tmp;
          else
             Primitives.Fetch_And_Add (Allocated'Access, 1);
-            return new Object_Value;
+            return
+              Object_Value_Access (Object_Value_Access2'(new Object_Value));
          end if;
       end Get_Block;
 

@@ -1,10 +1,35 @@
 -------------------------------------------------------------------------------
+--  Large Primitives - An implementation of Maged Michael's LL/SC primitives.
+--  Copyright (C) 2005  Anders Gidenstam
+--
+--  This program is free software; you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation; either version 2 of the License, or
+--  (at your option) any later version.
+--
+--  This program is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--
+--  As a special exception, if other files instantiate generics from this
+--  unit, or you link this unit with other files to produce an executable,
+--  this unit does not by itself cause the resulting executable to be
+--  covered by the GNU General Public License. This exception does not
+--  however invalidate any other reasons why the executable file might be
+--  covered by the GNU Public License.
+--
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : large_primitives_test.adb
 --  Description     : Test of large word LL/SC/VL and hazard pointers.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 24 15:00:10 2005
---  $Id: large_primitives_test.adb,v 1.1 2005/02/24 16:05:42 anders Exp $
+--  $Id: large_primitives_test.adb,v 1.2 2005/02/25 16:18:45 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
@@ -61,7 +86,7 @@ procedure Large_Primitives_Test is
             Primitives.Fetch_And_Add (Loaded'Access, 1);
 
             --  Work.
-            for J in 1 .. 50_000 loop
+            for J in 1 .. 1_000 loop
                C := C + Primitives.Unsigned_32 (J);
             end loop;
 
@@ -97,7 +122,7 @@ procedure Large_Primitives_Test is
       declare
          ID  : constant PID.Process_ID_Type := PID.Process_ID;
          Tmp : My_String;
-         B   : Boolean;
+         --B   : Boolean;
       begin
          for I in 1 .. 100_000 loop
             Tmp := Load_Linked (A'Access);
@@ -132,7 +157,7 @@ begin
    Ada.Text_IO.Put_Line (String (Load_Linked (A'Access)));
 
    declare
-      Tasks1 : array (1 .. 2) of Tester;
+      Tasks1 : array (1 .. 25) of Tester;
 --      Tasks2 : array (1 .. 25) of Loader;
    begin
       null;
