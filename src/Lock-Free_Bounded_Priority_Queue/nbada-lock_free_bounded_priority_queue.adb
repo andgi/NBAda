@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 12:15:16 2002
--- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.24 2003/03/24 15:04:20 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.25 2003/04/03 16:17:43 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
@@ -536,6 +536,7 @@ package body Non_Blocking_Priority_Queue is
 
                -- Store root key.
                Status.Op_Arg.all := New_Root.Key;
+               Primitives.Membar;
 
                -- Update new root.
                New_Root.all      := Leaf.all;
