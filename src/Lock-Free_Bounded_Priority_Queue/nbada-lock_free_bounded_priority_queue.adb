@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 12:15:16 2002
--- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.20 2003/03/13 17:51:39 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.21 2003/03/13 18:01:12 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
@@ -37,7 +37,8 @@ package body Non_Blocking_Priority_Queue is
                        Arg        : in     Element_Access;
                        New_Status :    out Heap_Status_Access);
    -- Exit preliminary phase.
-   procedure Exit_PP (Queue : in out Priority_Queue_Type);
+   procedure Exit_PP (Queue : in out Priority_Queue_Type;
+                      Op_ID : in     Operation_ID);
 
    -- Preliminary phase of Insert.
    procedure Insert_PP (Queue  : in out Priority_Queue_Type;
@@ -110,7 +111,7 @@ package body Non_Blocking_Priority_Queue is
       end if;
 
       -- Exit preliminary phase.
-      Exit_PP (Queue);
+      Exit_PP (Queue, Status.Op_ID);
       if Debug then
          Ada.Text_IO.Put_Line ("Insert: Exited PP.");
       end if;
@@ -159,7 +160,7 @@ package body Non_Blocking_Priority_Queue is
       Sift := Status.Size > 0;
 
       -- Exit preliminary phase.
-      Exit_PP (Queue);
+      Exit_PP (Queue, Status.Op_ID);
 
       -- Sift phase.
       -- Uses lazy sifting for now.
@@ -315,7 +316,6 @@ package body Non_Blocking_Priority_Queue is
          New_Status.Op_Arg := Arg;
 
          -- Commit status record.
-         Primitives.Membar;
          exit when CAS (Target    => Queue.Status'Access,
                         Old_Value => Status,
                         New_Value => New_Status);
@@ -325,14 +325,21 @@ package body Non_Blocking_Priority_Queue is
    ----------------------------------------------------------------------------
    -- Exit preliminary phase.
    -- Must be changed to recognize if it has been helped.
-   procedure Exit_PP (Queue : in out Priority_Queue_Type) is
+   procedure Exit_PP (Queue : in out Priority_Queue_Type;
+                      Op_ID : in     Operation_ID) is
       Status     : Heap_Status_Access;
       New_Status : Heap_Status_Access;
    begin
       New_Status := new Heap_Status;
       loop
          -- Read heap status.
+         Primitives.Membar;
          Status := Queue.Status;
+
+         if Status.Op_ID > Op_ID or Status.Op_Type = NONE then
+            Free (New_Status);
+            exit;
+         end if;
 
          -- Set up new status record.
          New_Status.Op_Type := NONE;
@@ -341,7 +348,6 @@ package body Non_Blocking_Priority_Queue is
          New_Status.Op_Arg  := null;
 
          -- Commit status record.
-         Primitives.Membar;
          exit when CAS (Target    => Queue.Status'Access,
                         Old_Value => Status,
                         New_Value => New_Status);
