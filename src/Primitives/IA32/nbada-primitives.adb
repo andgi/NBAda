@@ -4,7 +4,7 @@
 -- Description     : Synchronization primitives.
 -- Author          : Anders Gidenstam
 -- Created On      : Fri Jul  5 14:53:50 2002
--- $Id: nbada-primitives.adb,v 1.1 2004/09/20 22:51:35 anders Exp $
+-- $Id: nbada-primitives.adb,v 1.2 2004/09/20 23:03:34 anders Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
@@ -35,19 +35,19 @@ package body Primitives is
    begin
       System.Machine_Code.Asm
         (Template =>
-           "!#BEGIN Compare_And_Swap_32" & LF & HT &
-	   "movl %2, %%eax"              & LF & HT &
+           "#BEGIN Compare_And_Swap_32" & LF & HT &
+           "movl %2, %%eax"              & LF & HT &
            "lock"                        & LF & HT &
-	   "cmpxchg %3, (%1)"            & LF & HT &   -- Compare & swap
- 	   "movl %%eax, %0"              & LF & HT &
-          "!#END Compare_And_Swap_32",
-         Outputs  => Element'Asm_Output ("=r", New_Value), -- %0 = New_Value
+           "cmpxchg %3, (%1)"            & LF & HT &   -- Compare & swap
+           "movl %%eax, %0"              & LF & HT &
+           "#END Compare_And_Swap_32",
+         Outputs  => Element'Asm_Output ("=g", New_Value), -- %0 = New_Value
          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
                                                 Element_Access (Target)),
-                      Element'Asm_Input ("r", Old_Value),  -- %2 = Old_Value
+                      Element'Asm_Input ("g", Old_Value),  -- %2 = Old_Value
                       Element'Asm_Input ("r", New_Value)), -- %3 = New_Value
          Clobber  => "eax",
-	 Volatile => True);
+         Volatile => True);
    end Compare_And_Swap_32;
 
    ----------------------------------------------------------------------------
@@ -63,19 +63,19 @@ package body Primitives is
    begin
       System.Machine_Code.Asm
         (Template =>
-           "!#BEGIN Compare_And_Swap_32" & LF & HT &
-	   "movl %2, %%eax"              & LF & HT &
+           "#BEGIN Compare_And_Swap_32" & LF & HT &
+           "movl %2, %%eax"              & LF & HT &
            "lock"                        & LF & HT &
-	   "cmpxchg %3, (%1)"            & LF & HT &   -- Compare & swap
- 	   "movl %%eax, %0"              & LF & HT &
-          "!#END Compare_And_Swap_32",
-         Outputs  => Element'Asm_Output ("=r", Tmp),       -- %0 = Tmp
+           "cmpxchg %3, (%1)"            & LF & HT &   -- Compare & swap
+           "movl %%eax, %0"              & LF & HT &
+           "#END Compare_And_Swap_32",
+         Outputs  => Element'Asm_Output ("=g", Tmp),       -- %0 = Tmp
          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
                                                 Element_Access (Target)),
                       Element'Asm_Input ("r", Old_Value),  -- %2 = Old_Value
-                      Element'Asm_Input ("r", New_Value)), -- %3 = New_Value
+                      Element'Asm_Input ("g", New_Value)), -- %3 = New_Value
          Clobber  => "eax",
-	 Volatile => True);
+         Volatile => True);
       return Tmp = Old_Value;
    end Boolean_Compare_And_Swap_32;
 
@@ -95,19 +95,19 @@ package body Primitives is
    begin
       System.Machine_Code.Asm
         (Template =>
-           "!#BEGIN Compare_And_Swap_32" & LF & HT &
--- 	   "movl %2, %%eax"              & LF & HT &
+           "#BEGIN Compare_And_Swap_32" & LF & HT &
+--         "movl %2, %%eax"              & LF & HT &
 --            "lock"                        & LF & HT &
--- 	   "cmpxchg8b %3, (%1)"          & LF & HT &   -- Compare & swap
---  	   "movl %%eax, %0"              & LF & HT &
-          "!#END Compare_And_Swap_32",
+--         "cmpxchg8b %3, (%1)"          & LF & HT &   -- Compare & swap
+--         "movl %%eax, %0"              & LF & HT &
+           "#END Compare_And_Swap_32",
          Outputs  => Element'Asm_Output ("=r", New_Value), -- %0 = New_Value
          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
                                                 Element_Access (Target)),
                       Element'Asm_Input ("r", Old_Value),  -- %2 = Old_Value
                       Element'Asm_Input ("r", New_Value)), -- %3 = New_Value
          Clobber  => "eax",
-	 Volatile => True);
+         Volatile => True);
    end Compare_And_Swap_64;
 
    ----------------------------------------------------------------------------
@@ -123,19 +123,19 @@ package body Primitives is
    begin
       System.Machine_Code.Asm
         (Template =>
-           "!#BEGIN Compare_And_Swap_32" & LF & HT &
--- 	   "movl %2, %%eax"              & LF & HT &
+           "#BEGIN Compare_And_Swap_32" & LF & HT &
+--         "movl %2, %%eax"              & LF & HT &
 --            "lock"                        & LF & HT &
--- 	   "cmpxchg8b %3, (%1)"          & LF & HT &   -- Compare & swap
---  	   "movl %%eax, %0"              & LF & HT &
-          "!#END Compare_And_Swap_32",
+--         "cmpxchg8b %3, (%1)"          & LF & HT &   -- Compare & swap
+--         "movl %%eax, %0"              & LF & HT &
+           "#END Compare_And_Swap_32",
          Outputs  => Element'Asm_Output ("=r", Tmp),       -- %0 = Tmp
          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
                                                 Element_Access (Target)),
                       Element'Asm_Input ("r", Old_Value),  -- %2 = Old_Value
                       Element'Asm_Input ("r", New_Value)), -- %3 = New_Value
          Clobber  => "eax",
-	 Volatile => True);
+         Volatile => True);
       return Tmp = Old_Value;
    end Boolean_Compare_And_Swap_64;
 
@@ -147,7 +147,7 @@ package body Primitives is
    begin
       System.Machine_Code.Asm
         (Template =>
-           "!#BEGIN Fetch_And_Add_32"      & LF &
+           "#BEGIN Fetch_And_Add_32"      & LF &
 --            "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
 --            "retry1:"                       & LF & HT &   -- retry:
 --            "ld [%0], %%l0"                 & LF & HT &   --  l0 <- [%0]
@@ -157,7 +157,7 @@ package body Primitives is
 --            "bne retry1"                    & LF & HT &   --   goto retry
 --            "nop"                           & LF & HT &
 --            "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
-           "!#END Fetch_And_Add_32",
+           "#END Fetch_And_Add_32",
          Inputs   => (Unsigned_32_Access'Asm_Input         -- %0 = Target
                       ("r", Unsigned_32_Access (Target)),
                       Unsigned_32'Asm_Input ("r",          -- %1 = Increment
@@ -177,7 +177,7 @@ package body Primitives is
    begin
       System.Machine_Code.Asm
         (Template =>
-           "!#BEGIN Fetch_And_Add_32"      & LF &
+           "#BEGIN Fetch_And_Add_32"      & LF &
 --            "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
 --            "retry2:"                       & LF & HT &   -- retry:
 --            "ld [%1], %%l0"                 & LF & HT &   --  l0 <- [%1]
@@ -188,7 +188,7 @@ package body Primitives is
 --            "nop"                           & LF & HT &
 --            "mov %%l1, %0"                  & LF & HT &   --  %0 <- l1
 --            "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
-           "!#END Fetch_And_Add_32",
+           "#END Fetch_And_Add_32",
          Outputs  => Unsigned_32'Asm_Output ("=r", Tmp),   -- %0 = Tmp
          Inputs   => (Unsigned_32_Access'Asm_Input         -- %1 = Target
                       ("r", Unsigned_32_Access (Target)),
