@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 12:15:16 2002
--- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.21 2003/03/13 18:01:12 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.22 2003/03/13 19:56:52 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
@@ -289,6 +289,7 @@ package body Non_Blocking_Priority_Queue is
                when NONE =>
                   exit;
             end case;
+            Exit_PP (Queue, Status.Op_ID);
          end loop;
 
          -- Attempt to start preliminary phase
