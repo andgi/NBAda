@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 12:15:16 2002
--- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.23 2003/03/17 11:02:57 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.24 2003/03/24 15:04:20 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
@@ -620,6 +620,7 @@ package body Non_Blocking_Priority_Queue is
          if Index <= Queue.Max_Size then
             Primitives.Membar;
             Old_Entry := Queue.Heap (Index);
+            Primitives.Membar;
          else
             if Debug then
                Ada.Text_IO.Put_Line
@@ -714,11 +715,11 @@ package body Non_Blocking_Priority_Queue is
                         " at" & Heap_Index'Image(Index) & ".");
                   end if;
 
-                     Sort_Parent_Child
-                       (Queue,
-                        Parent => Index/2,
-                        Op_ID  => Old_Entry.Op_ID,
-                        Done   => Done);
+                  Sort_Parent_Child
+                    (Queue,
+                     Parent => Index/2,
+                     Op_ID  => Old_Entry.Op_ID,
+                     Done   => Done);
 
                ----------------------------------------------------------------
                when SWAP_WITH_ANC =>
@@ -833,6 +834,7 @@ package body Non_Blocking_Priority_Queue is
          ((The_Entry.Status /= SIFTING_2 and
            The_Entry.Status /= SWAP_WITH_ANC) or
           not (The_Entry.Sift_Pos < Index and Ignore_SIFTING_2_Leaf)));
+      Primitives.Membar;
    end Read;
 
    ----------------------------------------------------------------------------
@@ -1137,36 +1139,38 @@ package body Non_Blocking_Priority_Queue is
 
       -- Phase 1: Update leaf for swap
       declare
-         New_Entry     : Heap_Entry_Access;
-         Anc_Entry     : Heap_Entry_Access;
-         Leaf_Entry    : Heap_Entry_Access;
-         Helped_A, Helped_L : Boolean;
+         New_Entry  : Heap_Entry_Access;
+         Anc_Entry  : Heap_Entry_Access;
+         Leaf_Entry : Heap_Entry_Access;
+         Helped     : Boolean;
       begin
          New_Entry := new Heap_Entry;
          Phase_1 : loop
-            -- Read ancestor and leaf entries.
+            -- Read leaf entry.
             Read(Queue,
                  Index     => Leaf,
                  Op_ID     => Op_ID,
                  The_Entry => Leaf_Entry,
-                 Helped    => Helped_L);
+                 Helped    => Helped);
 
             -- Check if helped.
-            if Helped_L then
+            if Helped then
                Free (New_Entry);
                exit Phase_1;
             end if;
 
+            -- Read ancestor entry.
             Read(Queue,
                  Index     => Ancestor,
                  Op_ID     => Op_ID,
                  The_Entry => Anc_Entry,
-                 Helped    => Helped_A);
+                 Helped    => Helped);
 
             -- Exit if helped.
-            if (Helped_L or Helped_A) or else
-              (Anc_Entry.Status /= SIFTING_2 or
-               Leaf_Entry.Status /= SIFTING_2) then
+            if Helped or else (Anc_Entry.Status    /= SIFTING_2 or
+                               Leaf_Entry.Status   /= SIFTING_2 or
+                               Leaf_Entry.Sift_Pos /= Ancestor)
+            then
                -- We have been helped. Try to increase sift_pos (but not yet).
 
                Free (New_Entry);
@@ -1221,8 +1225,9 @@ package body Non_Blocking_Priority_Queue is
                  Helped    => Helped);
 
             -- Check if helped.
-            if Helped or else Leaf_Entry.Sift_Pos /= Ancestor then
-               -- We have been helped.
+            if Helped or else (Leaf_Entry.Sift_Pos /= Ancestor or
+                               Leaf_Entry.Status = STABLE) then
+               -- We have been helped (or are finished).
                Free (New_Entry);
                exit Phase_2;
             end if;
@@ -1243,11 +1248,20 @@ package body Non_Blocking_Priority_Queue is
                           Helped     => Helped);
 
             -- Exit if helped.
-            if (Helped or Leaf_Entry = null or New_Anc_Entry = null) or else
-              ((Leaf_Entry.Status /= SWAP_WITH_ANC and
-                Leaf_Entry.Status /= SIFTING_2) or
-               New_Anc_Entry.Status /= STABLE)
+            if (Helped or New_Anc_Entry = null) or else
+              --((Leaf_Entry.Status /= SWAP_WITH_ANC and
+              --  Leaf_Entry.Status /= SIFTING_2) or
+              (New_Anc_Entry.Status /= STABLE)
             then
+               if New_Anc_Entry /= null and then
+                 (New_Anc_Entry.Status /= STABLE and
+                  New_Anc_Entry.Op_Id < Op_Id)
+               then
+                  Ada.Text_IO.Put_Line ("Read_And_Fix faild to clean " &
+                                        Heap_Index'Image (New_Ancestor) & "!");
+                  raise Constraint_Error;
+               end if;
+
                -- We have been helped.
                Free (New_Entry);
                exit Phase_2;
@@ -1364,7 +1378,10 @@ package body Non_Blocking_Priority_Queue is
                  Helped    => Helped);
 
             -- Check if helped.
-            if Helped or else Leaf_Entry.Sift_Pos /= Ancestor then
+            if Helped or else (Leaf_Entry.Sift_Pos /= Ancestor or
+                               (Leaf_Entry.Status /= SIFTING_2 and
+                                Leaf_Entry.Status /= SWAP_WITH_ANC))
+            then
                -- We have been helped.
                Free (New_Entry);
                exit Phase_4;
@@ -1379,10 +1396,8 @@ package body Non_Blocking_Priority_Queue is
 
             -- Exit if helped.
             if Helped or else
-              ((New_Anc_Entry.Status /= SIFTING_2 and New_Ancestor /= Leaf) or
-               (Leaf_Entry.Status /= SIFTING_2 and
-                Leaf_Entry.Status /= SWAP_WITH_ANC)) then
-
+              (New_Anc_Entry.Status /= SIFTING_2 and New_Ancestor /= Leaf)
+            then
                -- We have been helped.
                Free (New_Entry);
                exit Phase_4;
