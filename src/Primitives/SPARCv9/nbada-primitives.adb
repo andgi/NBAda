@@ -4,7 +4,7 @@
 -- Description     : Synchronization primitives.
 -- Author          : Anders Gidenstam
 -- Created On      : Fri Jul  5 14:53:50 2002
--- $Id: nbada-primitives.adb,v 1.3 2003/02/21 17:16:22 andersg Exp $
+-- $Id: nbada-primitives.adb,v 1.4 2003/02/27 17:07:46 andersg Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
@@ -191,6 +191,17 @@ package body Primitives is
          Volatile => True);
       return Tmp;
    end Fetch_And_Add;
+
+   ----------------------------------------------------------------------------
+   procedure Membar is
+      use Ada.Characters.Latin_1;
+   begin
+      System.Machine_Code.Asm
+        (Template =>
+           "!#BEGIN Membar"      & LF & HT &
+           "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
+           "!#END Membar");
+   end Membar;
 
    ----------------------------------------------------------------------------
    procedure Membar_StoreLoad is

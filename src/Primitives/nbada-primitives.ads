@@ -4,7 +4,7 @@
 -- Description     : Synchronization primitives.
 -- Author          : Anders Gidenstam
 -- Created On      : Fri Jul  5 12:27:13 2002
--- $Id: nbada-primitives.ads,v 1.3 2003/02/21 17:16:15 andersg Exp $
+-- $Id: nbada-primitives.ads,v 1.4 2003/02/27 17:07:56 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Interfaces;
@@ -93,6 +93,8 @@ package Primitives is
 
    ----------------------------------------------------------------------------
    -- Memory barriers
+   procedure Membar;
+   pragma Inline (Membar);
    procedure Membar_StoreLoad;
    pragma Inline (Membar_StoreLoad);
    pragma Inline_Always (Membar_StoreLoad);
