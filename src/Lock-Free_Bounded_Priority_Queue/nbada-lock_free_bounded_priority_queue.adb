@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 12:15:16 2002
--- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.10 2003/02/26 11:21:23 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.11 2003/02/27 17:08:32 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
@@ -302,7 +302,7 @@ package body Non_Blocking_Priority_Queue is
          New_Status.Op_Arg := Arg;
 
          -- Commit status record.
-         Primitives.Membar_StoreLoad;
+         Primitives.Membar;
          exit when CAS (Target    => Queue.Status'Access,
                         Old_Value => Status,
                         New_Value => New_Status);
@@ -328,7 +328,7 @@ package body Non_Blocking_Priority_Queue is
          New_Status.Op_Arg  := null;
 
          -- Commit status record.
-         Primitives.Membar_StoreLoad;
+         Primitives.Membar;
          exit when CAS (Target    => Queue.Status'Access,
                         Old_Value => Status,
                         New_Value => New_Status);
@@ -351,7 +351,7 @@ package body Non_Blocking_Priority_Queue is
          New_Leaf.Op_ID    := Status.Op_ID;
          New_Leaf.Sift_Pos := Heap_Index'First;
 
-         Primitives.Membar_StoreLoad;
+         Primitives.Membar;
          if not CAS (Target    => Queue.Heap (Status.Size)'Access,
                      Old_Value => null,
                      New_Value => New_Leaf) then
@@ -388,7 +388,7 @@ package body Non_Blocking_Priority_Queue is
             New_Root.Sift_Pos := Status.Size;
 
             -- Commit root.
-            Primitives.Membar_StoreLoad;
+            Primitives.Membar;
             exit when CAS (Target    => Queue.Heap (Heap_Index'First)'Access,
                            Old_Value => Root,
                            New_Value => New_Root);
@@ -436,7 +436,7 @@ package body Non_Blocking_Priority_Queue is
             New_Leaf.Op_Id   := Status.Op_ID;
             New_Leaf.Old_Key := New_Leaf.Key;
 
-            Primitives.Membar_StoreLoad;
+            Primitives.Membar;
             exit when CAS (Target    => Queue.Heap (Status.Size + 1)'Access,
                            Old_Value => Leaf,
                            New_Value => New_Leaf);
@@ -469,7 +469,7 @@ package body Non_Blocking_Priority_Queue is
                              Helped     => Helped);
 
                -- Read deleted leaf.
-               Primitives.Membar_StoreStore_LoadStore;
+               Primitives.Membar;
                Leaf := Queue.Heap (Status.Size + 1);
 
                -- Safety checks!
@@ -503,7 +503,7 @@ package body Non_Blocking_Priority_Queue is
                New_Root.Op_ID    := Status.Op_ID;
 
                -- Commit root.
-               Primitives.Membar_StoreLoad;
+               Primitives.Membar;
                exit when
                  CAS (Target    => Queue.Heap (Heap_Index'First)'Access,
                       Old_Value => Root,
@@ -511,7 +511,7 @@ package body Non_Blocking_Priority_Queue is
             end loop Phase_2;
          else
             -- Does this work??
-            Primitives.Membar_StoreStore_LoadStore;
+            Primitives.Membar;
             Status.Op_Arg.all := Queue.Heap (Queue.Heap'First).Key;
          end if;
       end;
@@ -527,14 +527,14 @@ package body Non_Blocking_Priority_Queue is
       begin
          Phase_3 : loop
             -- Read deleted leaf.
-            Primitives.Membar_StoreStore_LoadStore;
+            Primitives.Membar;
             Leaf := Queue.Heap (Status.Size + 1);
 
             -- Skip if helped:
             exit Phase_3 when Leaf = null or else Leaf.Op_ID /= Status.Op_ID;
 
             -- Commit empty leaf.
-            Primitives.Membar_StoreLoad;
+            Primitives.Membar;
             exit Phase_3 when
               CAS (Target    => Queue.Heap (Status.Size + 1)'Access,
                    Old_Value => Leaf,
@@ -568,7 +568,7 @@ package body Non_Blocking_Priority_Queue is
       Help : loop
          -- Read current entry value.
          if Index <= Queue.Max_Size then
-            Primitives.Membar_StoreStore_LoadStore;
+            Primitives.Membar;
             Old_Entry := Queue.Heap (Index);
          else
             if Debug then
@@ -756,7 +756,7 @@ package body Non_Blocking_Priority_Queue is
 
          Phase_1 : loop
             -- Read Parent and Child entries.
-            Primitives.Membar_StoreStore_LoadStore;
+            Primitives.Membar;
             Parent_Entry := Queue.Heap (Parent);
             Read_And_Fix (Queue,
                           Index      => Left_Child,
@@ -844,7 +844,7 @@ package body Non_Blocking_Priority_Queue is
                exit Phase_1;
             end if;
 
-            Primitives.Membar_StoreLoad;
+            Primitives.Membar;
             if CAS (Target    => Queue.Heap (Child)'Access,
                     Old_Value => Child_Entry,
                     New_Value => New_Entry) then
@@ -870,7 +870,7 @@ package body Non_Blocking_Priority_Queue is
             -- Read Parent and Child entries.
             -- Should be done through Fix? No we're already supposed to "own"
             -- both the parent and the child.
-            Primitives.Membar_StoreStore_LoadStore;
+            Primitives.Membar;
             Parent_Entry := Queue.Heap (Parent);
 
             -- Read and select child.
@@ -884,7 +884,7 @@ package body Non_Blocking_Priority_Queue is
 --                Left_Child_Entry   : Heap_Entry_Access;
 --                Right_Child_Entry  : Heap_Entry_Access;
 --             begin
---                Primitives.Membar_StoreStore_LoadStore;
+--                Primitives.Membar;
 --                if Left_Child in Queue.Heap'Range then
 --                   Left_Child_Entry  := Queue.Heap (Left_Child);
 --                else
@@ -955,7 +955,7 @@ package body Non_Blocking_Priority_Queue is
                Done := True;
             end if;
 
-            Primitives.Membar_StoreLoad;
+            Primitives.Membar;
             exit when CAS (Target    => Queue.Heap (Parent)'Access,
                            Old_Value => Parent_Entry,
                            New_Value => New_Entry);
@@ -973,7 +973,7 @@ package body Non_Blocking_Priority_Queue is
             -- Read Child entry.
             -- Should be done through Fix?
             if Child in Queue.Heap'Range then
-               Primitives.Membar_StoreStore_LoadStore;
+               Primitives.Membar;
                Child_Entry  := Queue.Heap (Child);
             else
                Child_Entry := null;
@@ -1001,7 +1001,7 @@ package body Non_Blocking_Priority_Queue is
                exit Phase_3;
             end if;
 
-            Primitives.Membar_StoreLoad;
+            Primitives.Membar;
             exit when CAS (Target    => Queue.Heap (Child)'Access,
                            Old_Value => Child_Entry,
                            New_Value => New_Entry);
@@ -1043,7 +1043,7 @@ package body Non_Blocking_Priority_Queue is
          New_Entry := new Heap_Entry;
          Phase_1 : loop
             -- Read ancestor and leaf entries.
-            Primitives.Membar_StoreStore_LoadStore;
+            Primitives.Membar;
             Leaf_Entry  := Queue.Heap (Leaf);
             Ancestor    := Leaf_Entry.Sift_Pos;
             Anc_Entry   := Queue.Heap (Ancestor);
@@ -1092,7 +1092,7 @@ package body Non_Blocking_Priority_Queue is
                exit Phase_1;
             end if;
 
-            Primitives.Membar_StoreLoad;
+            Primitives.Membar;
             exit when CAS (Target    => Queue.Heap (Leaf)'Access,
                            Old_Value => Leaf_Entry,
                            New_Value => New_Entry);
@@ -1111,7 +1111,7 @@ package body Non_Blocking_Priority_Queue is
 
          Phase_2 : loop
             -- Read new ancestor and leaf entries.
-            Primitives.Membar_StoreStore_LoadStore;
+            Primitives.Membar;
             Leaf_Entry    := Queue.Heap (Leaf);
             New_Ancestor  := Next_Ancestor (Leaf, Leaf_Entry.Sift_Pos);
 
@@ -1156,7 +1156,7 @@ package body Non_Blocking_Priority_Queue is
             New_Entry.Op_ID    := Leaf_Entry.Op_ID;
             New_Entry.Sift_Pos := Leaf;
 
-            Primitives.Membar_StoreLoad;
+            Primitives.Membar;
             exit when CAS (Target    => Queue.Heap (New_Ancestor)'Access,
                            Old_Value => New_Anc_Entry,
                            New_Value => New_Entry);
@@ -1176,7 +1176,7 @@ package body Non_Blocking_Priority_Queue is
 
          Phase_3 : loop
             -- Read ancestor and leaf entries.
-            Primitives.Membar_StoreStore_LoadStore;
+            Primitives.Membar;
             Leaf_Entry    := Queue.Heap (Leaf);
             Ancestor      := Leaf_Entry.Sift_Pos;
             Anc_Entry     := Queue.Heap (Ancestor);
@@ -1228,7 +1228,7 @@ package body Non_Blocking_Priority_Queue is
                exit Phase_3;
             end if;
 
-            Primitives.Membar_StoreLoad;
+            Primitives.Membar;
             exit when CAS (Target    => Queue.Heap (Ancestor)'Access,
                            Old_Value => Anc_Entry,
                            New_Value => New_Entry);
@@ -1248,7 +1248,7 @@ package body Non_Blocking_Priority_Queue is
 
          Phase_4 : loop
             -- Read ancestor and leaf entries.
-            Primitives.Membar_StoreStore_LoadStore;
+            Primitives.Membar;
             Leaf_Entry    := Queue.Heap (Leaf);
             Ancestor      := Leaf_Entry.Sift_Pos;
             Anc_Entry     := Queue.Heap (Ancestor);
@@ -1293,7 +1293,7 @@ package body Non_Blocking_Priority_Queue is
                Done := True;
             end if;
 
-            Primitives.Membar_StoreLoad;
+            Primitives.Membar;
             exit when CAS (Target    => Queue.Heap (Leaf)'Access,
                            Old_Value => Leaf_Entry,
                            New_Value => New_Entry);
@@ -1334,7 +1334,7 @@ package body Non_Blocking_Priority_Queue is
                   exit;
                end if;
 
-               Primitives.Membar_StoreLoad;
+               Primitives.Membar;
                exit when CAS (Target    => Queue.Heap (I)'Access,
                               Old_Value => Old_Entry,
                               New_Value => New_Entry);
