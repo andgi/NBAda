@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 12:15:16 2002
--- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.15 2003/03/12 15:22:27 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.16 2003/03/13 10:38:49 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
@@ -481,8 +481,8 @@ package body Non_Blocking_Priority_Queue is
             New_Root := new Heap_Entry;
             Phase_2 : loop
                -- Read root.
-               -- This should be done through the helping Fix
-               -- function.
+               -- This is done with helping Fix function although the
+               -- root is fixed above.
                Read_And_Fix (Queue,
                              Index      => Heap_Index'First,
                              Op_ID      => Status.Op_ID,
@@ -525,16 +525,21 @@ package body Non_Blocking_Priority_Queue is
                New_Root.Op_ID    := Status.Op_ID;
 
                -- Commit root.
-               Primitives.Membar;
                exit when
                  CAS (Target    => Queue.Heap (Heap_Index'First)'Access,
                       Old_Value => Root,
                       New_Value => New_Root);
             end loop Phase_2;
          else
-            -- Does this work??
             Primitives.Membar;
-            Status.Op_Arg.all := Queue.Heap (Queue.Heap'First).Key;
+            Root := Queue.Heap (Queue.Heap'First);
+
+            -- Store min if we haven't been helped.
+            if Root /= null and then
+              (Root.Op_ID = Status.Op_ID) then
+               Status.Op_Arg.all := Root.Key;
+               Primitives.Membar;
+            end if;
          end if;
       end;
 
@@ -741,28 +746,32 @@ package body Non_Blocking_Priority_Queue is
                   raise Constraint_Error;
             end case;
          elsif Old_Entry.Op_ID = Op_ID then
-            -- This operation has either been helped or is already
-            -- fiddeling with this node.
-            -- DOUBLE CHECK THIS DETECTION!!
+            -- Since Read_And_Fix is only used before an operation has
+            -- managed to update an entry, Old_Entry.Op_ID = Op_ID
+            -- indicates that the operation has been helped.
 
-            case Old_Entry.Status is
-               when DELETED =>
-                  -- Ignore this entry.
-                  Old_Entry := null;
-
-               when STABLE =>
-                  -- We must have been helped since the entry is STABLE and
-                  -- Old_Entry.Op_ID = Op_ID, i.e. our op is finished with it.
-                  Clean_Copy := Old_Entry.all;
-                  Helped := True;
-
-               when others =>
-                  -- We need to finish with this entry.
-                  -- Copy.
-                  Clean_Copy := Old_Entry.all;
-                  --Helped := Clean_Copy.Op_ID > Op_ID;
-            end case;
+            Old_Entry := null;
+            Helped := True;
             return;
+
+--             case Old_Entry.Status is
+--                when DELETED =>
+--                   -- Ignore this entry.
+--                   Old_Entry := null;
+
+--                when STABLE =>
+--                   -- We must have been helped since the entry is STABLE and
+--                   -- Old_Entry.Op_ID = Op_ID, i.e. our op is finished with it.
+--                   Clean_Copy := Old_Entry.all;
+--                   Helped := True;
+
+--                when others =>
+--                   -- We need to finish with this entry.
+--                   -- Copy.
+--                   Clean_Copy := Old_Entry.all;
+--                   --Helped := Clean_Copy.Op_ID > Op_ID;
+--             end case;
+--             return;
          else
             -- This operation has been helped.
             -- DOUBLE CHECK THIS DETECTION!!
@@ -1101,6 +1110,14 @@ package body Non_Blocking_Priority_Queue is
             -- Read ancestor and leaf entries.
             Primitives.Membar;
             Leaf_Entry  := Queue.Heap (Leaf);
+
+            -- Check if helped.
+            if Leaf_Entry = null or else
+              (Leaf_Entry.Op_ID /= Op_ID) then
+               Free (New_Entry);
+               exit Phase_1;
+            end if;
+
             Ancestor    := Leaf_Entry.Sift_Pos;
             Anc_Entry   := Queue.Heap (Ancestor);
 
@@ -1130,8 +1147,6 @@ package body Non_Blocking_Priority_Queue is
                -- We have been helped. Try to increase sift_pos (but not yet).
 
                Free (New_Entry);
-               -- Check if we have been helped all the way.
-               Done := Leaf_Entry.Status = STABLE;
                exit Phase_1;
             end if;
 
@@ -1151,7 +1166,6 @@ package body Non_Blocking_Priority_Queue is
 
                New_Entry.all     := Leaf_Entry.all;
                New_Entry.Status  := STABLE;
-               Done := True;
 
             else
                -- Don't swap, increase sift_pos (but not yet).
@@ -1180,6 +1194,15 @@ package body Non_Blocking_Priority_Queue is
             -- Read new ancestor and leaf entries.
             Primitives.Membar;
             Leaf_Entry    := Queue.Heap (Leaf);
+
+            -- Check if helped.
+            if Leaf_Entry = null or else
+              (Leaf_Entry.Op_ID /= Op_ID) then
+               -- We have been helped.
+               Free (New_Entry);
+               exit Phase_2;
+            end if;
+
             New_Ancestor  := Next_Ancestor (Leaf, Leaf_Entry.Sift_Pos);
 
             -- Is the New_Ancestor and the Leaf the same?
@@ -1224,8 +1247,6 @@ package body Non_Blocking_Priority_Queue is
 
                -- We have been helped.
                Free (New_Entry);
-               -- Check if we have been helped all the way.
-               Done := Leaf_Entry.Status = STABLE;
                exit Phase_2;
             end if;
 
@@ -1257,10 +1278,31 @@ package body Non_Blocking_Priority_Queue is
             -- Read ancestor and leaf entries.
             Primitives.Membar;
             Leaf_Entry    := Queue.Heap (Leaf);
+
+            -- Check if helped.
+            if Leaf_Entry = null or else
+              (Leaf_Entry.Op_ID /= Op_ID) then
+               -- We have been helped.
+               Free (New_Entry);
+               exit Phase_3;
+            end if;
+
             Ancestor      := Leaf_Entry.Sift_Pos;
             Anc_Entry     := Queue.Heap (Ancestor);
             New_Ancestor  := Next_Ancestor (Leaf, Ancestor);
             New_Anc_Entry := Queue.Heap (New_Ancestor);
+
+            -- Exit if helped.
+            if Anc_Entry.Status /= SIFTING_2 or
+              (New_Anc_Entry.Status /= SIFTING_2 and New_Ancestor /= Leaf) or
+              Leaf_Entry.Op_ID /= Anc_Entry.Op_ID or
+              Leaf_Entry.Op_ID /= New_Anc_Entry.Op_ID or
+              Leaf_Entry.Op_ID /= Op_ID then
+
+               -- We have been helped.
+               Free (New_Entry);
+               exit Phase_3;
+            end if;
 
             -- Security check.
             if Leaf_Entry = null or Anc_Entry = null or
@@ -1281,20 +1323,6 @@ package body Non_Blocking_Priority_Queue is
                   ", Leaf =" & Heap_Index'Image (Leaf) &
                   ", New ancestor =" & Heap_Index'Image (New_Ancestor) & ".");
                raise Constraint_Error;
-            end if;
-
-            -- Exit if helped.
-            if Anc_Entry.Status /= SIFTING_2 or
-              (New_Anc_Entry.Status /= SIFTING_2 and New_Ancestor /= Leaf) or
-              Leaf_Entry.Op_ID /= Anc_Entry.Op_ID or
-              Leaf_Entry.Op_ID /= New_Anc_Entry.Op_ID or
-              Leaf_Entry.Op_ID /= Op_ID then
-
-               -- We have been helped.
-               Free (New_Entry);
-               -- Check if we have been helped all the way.
-               Done := Leaf_Entry.Status = STABLE;
-               exit Phase_3;
             end if;
 
             -- There might be work to do.
@@ -1343,6 +1371,15 @@ package body Non_Blocking_Priority_Queue is
             -- Read ancestor and leaf entries.
             Primitives.Membar;
             Leaf_Entry    := Queue.Heap (Leaf);
+
+            -- Check if helped.
+            if Leaf_Entry = null or else
+              (Leaf_Entry.Op_ID /= Op_ID) then
+               -- We have been helped.
+               Free (New_Entry);
+               exit Phase_4;
+            end if;
+
             Ancestor      := Leaf_Entry.Sift_Pos;
             Anc_Entry     := Queue.Heap (Ancestor);
             New_Ancestor  := Next_Ancestor (Leaf, Ancestor);
@@ -1365,8 +1402,6 @@ package body Non_Blocking_Priority_Queue is
 
                -- We have been helped.
                Free (New_Entry);
-               -- Check if we have been helped all the way.
-               Done := Leaf_Entry.Status = STABLE;
                exit Phase_4;
             end if;
 
@@ -1382,8 +1417,6 @@ package body Non_Blocking_Priority_Queue is
                New_Entry.all      := Leaf_Entry.all;
                New_Entry.Status   := STABLE;
                --New_Entry.Op_ID    := 0;
-
-               Done := True;
             end if;
 
             Primitives.Membar;
@@ -1393,7 +1426,7 @@ package body Non_Blocking_Priority_Queue is
          end loop Phase_4;
 
          -- Check if we have been helped all the way.
-         Done := Leaf_Entry.Status = STABLE;
+         Done := Leaf_Entry = null or else Leaf_Entry.Status = STABLE;
       end;
    end Implicit_Sift_Down;
 
