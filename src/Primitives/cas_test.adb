@@ -4,7 +4,7 @@
 -- Description     : Test of synchronization primitives package.
 -- Author          : Anders Gidenstam
 -- Created On      : Fri Jul  5 16:09:25 2002
--- $Id: cas_test.adb,v 1.1 2003/12/13 17:22:33 andersg Exp $
+-- $Id: cas_test.adb,v 1.2 2003/12/13 17:25:48 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Text_IO;
@@ -45,7 +45,7 @@ begin
    CAS (A'Access,
         Old_Value => B,
         New_Value => C);
-   if A /= C then
+   if A /= 2 then
       Ada.Text_IO.Put_Line ("Compare_And_Swap_32 is faulty!");
    end if;
 
