@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 12:15:16 2002
--- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.19 2003/03/13 15:34:50 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.20 2003/03/13 17:51:39 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
@@ -917,29 +917,29 @@ package body Non_Blocking_Priority_Queue is
             if Child_Entry /= null then
                -- There is a child.
 
-               if Child_Entry.Status = STABLE and
-                 Parent_Entry.Key > New_Entry.Key then
-                  -- Swap.
-                  -- Prepare new Child entry.
-                  New_Entry.Status  := SWAP_WITH_PARENT;
-                  New_Entry.Old_Key := Child_Entry.Key;
-                  New_Entry.Key     := Parent_Entry.Key;
-                  New_Entry.Op_ID   := Op_ID;
+               if Child_Entry.Status = STABLE then
 
-               elsif Child_Entry.Status /= STABLE then
+                  if  Parent_Entry.Key > New_Entry.Key then
+                     -- Swap.
+                     -- Prepare new Child entry.
+                     New_Entry.Status  := SWAP_WITH_PARENT;
+                     New_Entry.Old_Key := Child_Entry.Key;
+                     New_Entry.Key     := Parent_Entry.Key;
+                     New_Entry.Op_ID   := Op_ID;
+                  else
+                     -- Update Op_ID.
+                     -- Prepare new Child entry.
+                     New_Entry.all     := Child_Entry.all;
+                     New_Entry.Op_ID   := Op_ID;
+                  end if;
+
+               else
                   Ada.Text_IO.Put_Line
                     ("Sort_Parent_Child: Child " &
                      Heap_Index'Image (Child) & " not STABLE! (" &
                      Entry_Status'Image (Child_Entry.Status) & ")");
                   Ada.Text_IO.Put_Line (Image (Queue));
                   raise Constraint_Error;
-               else
-                  -- No swap needed so we are finished.
-                  -- But is the clean copy of the child committed?!
-                  Free (New_Left_Entry);
-                  Free (New_Right_Entry);
-                  Done := True;
-                  exit Phase_1;
                end if;
             else
                -- No child, so we are finished.
@@ -995,7 +995,9 @@ package body Non_Blocking_Priority_Queue is
             end if;
             -- In this case no child is good news and means that we can
             -- mark the parent as stable.
-            if Helped and Child_Entry /= null then
+            if (Helped and Child_Entry /= null) or
+              (Child_Entry /= null and then Child_Entry.Status = SIFTING_1)
+            then
                Free (New_Entry);
                exit Phase_2;
             end if;
@@ -1005,7 +1007,8 @@ package body Non_Blocking_Priority_Queue is
             -- For some child states the child should be treated as empty.
             if Child_Entry /= null and then not
               (Child_Entry.Status = SIFTING_2 or
-               Child_Entry.Status = SWAP_WITH_ANC) then
+               Child_Entry.Status = SWAP_WITH_ANC)
+            then
 
                if Child_Entry.Status = SWAP_WITH_PARENT then
                   -- Swap parent key and make stable.
