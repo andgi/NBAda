@@ -1,0 +1,40 @@
+
+Ada binding to some hardware synchronization primitives
+-------------------------------------------------------
+
+Copyright (C) 2004  Anders Gidenstam
+
+
+Introduction
+
+  The instruction sets of current processors often include support
+  for hardware synchronization primitives which can be used to
+  synchronize concurrent threads without using locks. 
+
+  I should write more here, but for the time being I'll refer to
+  to the web-pages and publications by the research group I work in.
+ 
+  http://www.cs.chalmers.se/~dcs/research.html#Synchronization
+  http://www.cs.chalmers.se/~dcs/cgi-bin/readbib.py?1
+
+Supported platforms
+
+  Presently the binding supports 32-bit versions of the
+  'Compare & Swap' and 'Fetch & Add' synchronization primitives on
+   - SPARC v8+ and v9 based Sun workstations
+   - Intel IA32 compatible processors (486(?) or Pentium and newer).
+
+  As the binding uses GNAT syntax for the inline assembler, other compilers
+  than GNAT is unlikley to work.
+
+Test programs
+
+  The very minimal test programs can be compiled with the following commands:
+
+  On IA32:
+  > gnatmake -I./IA32 cas_test
+  > gnatmake -I./IA32 faa_test
+
+  On SPARC:
+  > gnatmake -I./SPARCv9 cas_test -cargs -Wa,-xarch=v8plus
+  > gnatmake -I./SPARCv9 faa_test -cargs -Wa,-xarch=v8plus
