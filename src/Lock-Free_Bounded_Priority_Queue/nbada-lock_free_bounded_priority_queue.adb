@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 12:15:16 2002
--- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.17 2003/03/13 13:02:11 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.18 2003/03/13 15:04:58 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
@@ -76,12 +76,13 @@ package body Non_Blocking_Priority_Queue is
                                 Op_ID  : in     Operation_ID;
                                 Done   :    out Boolean);
 
-   -- Implicit_Sift_Down. Used by insert.
-   -- Assumes that the leaf and is already involved in sifting.
-   procedure Implicit_Sift_Down (Queue : in out Priority_Queue_Type;
-                                 Leaf  : in     Heap_Index;
-                                 Op_ID : in     Operation_ID;
-                                 Done  :    out Boolean);
+   -- Implicit_Sift_Down.
+   -- Used by Insert and Read_And_Fix to perform one sift down step.
+   -- The leaf and the ancestor should already be involved in sifting.
+   procedure Implicit_Sift_Down (Queue    : in out Priority_Queue_Type;
+                                 Leaf     : in     Heap_Index;
+                                 Ancestor : in     Heap_Index;
+                                 Op_ID    : in     Operation_ID);
 
    ----------------------------------------------------------------------------
    procedure Insert (Queue   : in out Priority_Queue_Type;
@@ -673,9 +674,9 @@ package body Non_Blocking_Priority_Queue is
                      -- We hit the active ancestor to a SIFTING_2 leaf.
                      Implicit_Sift_Down
                        (Queue,
-                        Leaf  => Old_Entry.Sift_Pos,
-                        Op_ID => Old_Entry.Op_ID,
-                        Done  => Done);
+                        Leaf     => Old_Entry.Sift_Pos,
+                        Ancestor => Index,
+                        Op_ID    => Old_Entry.Op_ID);
                   else
                      -- We hit a SIFTING_2 leaf.
                      if Ignore_SIFTING_2_Leaf then
@@ -685,9 +686,9 @@ package body Non_Blocking_Priority_Queue is
                      else
                         Implicit_Sift_Down
                           (Queue,
-                           Leaf  => Index,
-                           Op_ID => Old_Entry.Op_ID,
-                           Done  => Done);
+                           Leaf     => Index,
+                           Ancestor => Old_Entry.Sift_Pos,
+                           Op_ID    => Old_Entry.Op_ID);
                      end if;
                   end if;
 
@@ -731,9 +732,9 @@ package body Non_Blocking_Priority_Queue is
                   else
                      Implicit_Sift_Down
                        (Queue,
-                        Leaf  => Index,
-                        Op_ID => Old_Entry.Op_ID,
-                        Done  => Done);
+                        Leaf     => Index,
+                        Ancestor => Old_Entry.Sift_Pos,
+                        Op_ID    => Old_Entry.Op_ID);
                   end if;
 
                ----------------------------------------------------------------
@@ -1112,12 +1113,11 @@ package body Non_Blocking_Priority_Queue is
    end Sort_Parent_Child;
 
    ----------------------------------------------------------------------------
-   -- Implicit_Sift_Down. Used by insert.
-   -- Assumes that the leaf is already involved in sifting.
-   procedure Implicit_Sift_Down (Queue : in out Priority_Queue_Type;
-                                 Leaf  : in     Heap_Index;
-                                 Op_ID : in     Operation_ID;
-                                 Done  :    out Boolean) is
+   -- Implicit_Sift_Down.
+   procedure Implicit_Sift_Down (Queue    : in out Priority_Queue_Type;
+                                 Leaf     : in     Heap_Index;
+                                 Ancestor : in     Heap_Index;
+                                 Op_ID    : in     Operation_ID) is
 
       function Next_Ancestor (Child, Ancestor : Heap_Index)
                              return Heap_Index is
@@ -1132,15 +1132,15 @@ package body Non_Blocking_Priority_Queue is
          return Child;
       end Next_Ancestor;
 
+      -- The new ancestor index.
+      New_Ancestor : constant Heap_Index := Next_Ancestor (Leaf, Ancestor);
    begin
-      Done := False;
 
       -- Phase 1: Update leaf for swap
       declare
          New_Entry     : Heap_Entry_Access;
          Anc_Entry     : Heap_Entry_Access;
          Leaf_Entry    : Heap_Entry_Access;
-         Ancestor      : Heap_Index;
          Helped_A, Helped_L : Boolean;
       begin
          New_Entry := new Heap_Entry;
@@ -1158,7 +1158,6 @@ package body Non_Blocking_Priority_Queue is
                exit Phase_1;
             end if;
 
-            Ancestor := Leaf_Entry.Sift_Pos;
             Read(Queue,
                  Index     => Ancestor,
                  Op_ID     => Op_ID,
@@ -1166,11 +1165,9 @@ package body Non_Blocking_Priority_Queue is
                  Helped    => Helped_A);
 
             -- Exit if helped.
-            if Helped_L or else
+            if (Helped_L or Helped_A) or else
               (Anc_Entry.Status /= SIFTING_2 or
-               Leaf_Entry.Status /= SIFTING_2 or
-               Anc_Entry.Op_ID /= Leaf_Entry.Op_ID or
-               Anc_Entry.Op_ID /= Op_ID) then
+               Leaf_Entry.Status /= SIFTING_2) then
                -- We have been helped. Try to increase sift_pos (but not yet).
 
                Free (New_Entry);
@@ -1195,7 +1192,7 @@ package body Non_Blocking_Priority_Queue is
                New_Entry.Status  := STABLE;
 
             else
-               -- Don't swap, increase sift_pos (but not yet).
+               -- Don't swap, increase the leaf's sift_pos (but not yet).
 
                Free (New_Entry);
                exit Phase_1;
@@ -1212,13 +1209,12 @@ package body Non_Blocking_Priority_Queue is
          New_Entry     : Heap_Entry_Access;
          Leaf_Entry    : Heap_Entry_Access;
          New_Anc_Entry : Heap_Entry_Access;
-         New_Ancestor  : Heap_Index;
          Helped        : Boolean;
       begin
          New_Entry := new Heap_Entry;
 
          Phase_2 : loop
-            -- Read new ancestor and leaf entries.
+            -- Read leaf.
             Read(Queue,
                  Index     => Leaf,
                  Op_ID     => Op_ID,
@@ -1226,13 +1222,11 @@ package body Non_Blocking_Priority_Queue is
                  Helped    => Helped);
 
             -- Check if helped.
-            if Helped then
+            if Helped or else Leaf_Entry.Sift_Pos /= Ancestor then
                -- We have been helped.
                Free (New_Entry);
                exit Phase_2;
             end if;
-
-            New_Ancestor  := Next_Ancestor (Leaf, Leaf_Entry.Sift_Pos);
 
             -- Is the New_Ancestor and the Leaf the same?
             if Leaf = New_Ancestor then
@@ -1241,6 +1235,7 @@ package body Non_Blocking_Priority_Queue is
                exit Phase_2;
             end if;
 
+            -- Read new ancestor.
             Read_And_Fix (Queue,
                           Index      => New_Ancestor,
                           Op_ID      => Op_ID,
@@ -1271,8 +1266,7 @@ package body Non_Blocking_Priority_Queue is
             if Helped or else
               ((Leaf_Entry.Status /= SWAP_WITH_ANC and
                 Leaf_Entry.Status /= SIFTING_2) or
-               New_Anc_Entry.Status /= STABLE or
-               Leaf_Entry.Op_ID /= Op_ID) then
+               New_Anc_Entry.Status /= STABLE) then
 
                -- We have been helped.
                Free (New_Entry);
@@ -1297,9 +1291,7 @@ package body Non_Blocking_Priority_Queue is
          Anc_Entry     : Heap_Entry_Access;
          Leaf_Entry    : Heap_Entry_Access;
          New_Anc_Entry : Heap_Entry_Access;
-         Ancestor      : Heap_Index;
-         New_Ancestor  : Heap_Index;
-         Helped, Helped_A, Helped_NA : Boolean;
+         Helped        : Boolean;
       begin
          New_Entry := new Heap_Entry;
 
@@ -1312,65 +1304,48 @@ package body Non_Blocking_Priority_Queue is
                  Helped    => Helped);
 
             -- Check if helped.
-            if Helped then
+            if Helped or else Leaf_Entry.Sift_Pos /= Ancestor then
                -- We have been helped.
                Free (New_Entry);
                exit Phase_3;
             end if;
 
-            Ancestor      := Leaf_Entry.Sift_Pos;
+            -- Read ancestor.
             Read(Queue,
                  Index     => Ancestor,
                  Op_ID     => Op_ID,
                  The_Entry => Anc_Entry,
-                 Helped    => Helped_A);
+                 Helped    => Helped);
 
-            New_Ancestor  := Next_Ancestor (Leaf, Ancestor);
+            -- Exit if helped.
+            if Helped or else Anc_Entry.Status /= SIFTING_2 then
+               -- We have been helped.
+               Free (New_Entry);
+               exit Phase_3;
+            end if;
+
             Read(Queue,
                  Index     => New_Ancestor,
                  Op_ID     => Op_ID,
                  The_Entry => New_Anc_Entry,
-                 Helped    => Helped_NA);
+                 Helped    => Helped);
 
             -- Exit if helped.
-            if (Helped_A or Helped_NA) or else
-              (Anc_Entry.Status /= SIFTING_2 or
-               (New_Anc_Entry.Status /= SIFTING_2 and New_Ancestor /= Leaf))
+            if Helped or else
+              (New_Anc_Entry.Status /= SIFTING_2 and New_Ancestor /= Leaf)
             then
                -- We have been helped.
                Free (New_Entry);
                exit Phase_3;
             end if;
 
-            -- Security check.
-            if Leaf_Entry = null or Anc_Entry = null or
-              New_Anc_Entry = null then
-               Ada.Text_IO.Put_Line ("Implicit_Sift_Down: Null pointer!");
-               if Anc_Entry = null then
-                  Ada.Text_IO.Put_Line
-                    ("Implicit_Sift_Down.Phase 3: Anc_Entry null!");
-               end if;
-               if Leaf_Entry = null then
-                  Ada.Text_IO.Put_Line
-                    ("Implicit_Sift_Down.Phase 3: Leaf_Entry null!");
-               end if;
-               Ada.Text_IO.Put_Line
-                 ("Implicit_Sift_Down.Phase 3: " &
-                  "Op_ID =" & Operation_ID'Image (Op_ID) &
-                  ", Ancestor =" & Heap_Index'Image (Ancestor) &
-                  ", Leaf =" & Heap_Index'Image (Leaf) &
-                  ", New ancestor =" & Heap_Index'Image (New_Ancestor) & ".");
-               raise Constraint_Error;
-            end if;
-
-            -- There might be work to do.
+            -- There is work to do.
 
             if Leaf_Entry.Status = SIFTING_2 then
                -- Mark old ancestor as stable.
 
                New_Entry.all      := Anc_Entry.all;
                New_Entry.Status   := STABLE;
-               --New_Entry.Op_ID    := 0;
 
             elsif Leaf_Entry.Status = SWAP_WITH_ANC then
                -- Update key and mark old ancestor as stable
@@ -1378,12 +1353,10 @@ package body Non_Blocking_Priority_Queue is
                New_Entry.all      := Anc_Entry.all;
                New_Entry.Key      := Leaf_Entry.Old_Key;
                New_Entry.Status   := STABLE;
-               --New_Entry.Op_ID    := 0;
 
             else
-               -- We have been helped.
+               -- We have been helped. (Should never get here.)
                Free (New_Entry);
-
                exit Phase_3;
             end if;
 
@@ -1396,17 +1369,14 @@ package body Non_Blocking_Priority_Queue is
       -- Phase 4: Update leaf for new ancestor.
       declare
          New_Entry     : Heap_Entry_Access;
-         Anc_Entry     : Heap_Entry_Access;
          Leaf_Entry    : Heap_Entry_Access;
          New_Anc_Entry : Heap_Entry_Access;
-         Ancestor      : Heap_Index;
-         New_Ancestor  : Heap_Index;
-         Helped, Helped_A, Helped_NA : Boolean;
+         Helped        : Boolean;
       begin
          New_Entry := new Heap_Entry;
 
          Phase_4 : loop
-            -- Read ancestor and leaf entries.
+            -- Read leaf entry.
             Read(Queue,
                  Index     => Leaf,
                  Op_ID     => Op_ID,
@@ -1414,30 +1384,22 @@ package body Non_Blocking_Priority_Queue is
                  Helped    => Helped);
 
             -- Check if helped.
-            if Helped then
+            if Helped or else Leaf_Entry.Sift_Pos /= Ancestor then
                -- We have been helped.
                Free (New_Entry);
                exit Phase_4;
             end if;
 
-            Ancestor      := Leaf_Entry.Sift_Pos;
-            Read(Queue,
-                 Index     => Ancestor,
-                 Op_ID     => Op_ID,
-                 The_Entry => Anc_Entry,
-                 Helped    => Helped_A);
-
-            New_Ancestor  := Next_Ancestor (Leaf, Ancestor);
+            -- Read new ancestor entry.
             Read(Queue,
                  Index     => New_Ancestor,
                  Op_ID     => Op_ID,
                  The_Entry => New_Anc_Entry,
-                 Helped    => Helped_NA);
+                 Helped    => Helped);
 
             -- Exit if helped.
-            if (Helped_A or Helped_NA) or else
-              ((Anc_Entry.Status /= Stable and Anc_Entry.Op_ID <= Op_ID) or
-               (New_Anc_Entry.Status /= SIFTING_2 and New_Ancestor /= Leaf) or
+            if Helped or else
+              ((New_Anc_Entry.Status /= SIFTING_2 and New_Ancestor /= Leaf) or
                (Leaf_Entry.Status /= SIFTING_2 and
                 Leaf_Entry.Status /= SWAP_WITH_ANC)) then
 
@@ -1457,16 +1419,13 @@ package body Non_Blocking_Priority_Queue is
                -- We are finished.
                New_Entry.all      := Leaf_Entry.all;
                New_Entry.Status   := STABLE;
-               --New_Entry.Op_ID    := 0;
+               New_Entry.Sift_Pos := Heap_Index'Last;
             end if;
 
             exit when CAS (Target    => Queue.Heap (Leaf)'Access,
                            Old_Value => Leaf_Entry,
                            New_Value => New_Entry);
          end loop Phase_4;
-
-         -- Check if we have been helped all the way.
-         Done := Leaf_Entry = null or else Leaf_Entry.Status = STABLE;
       end;
    end Implicit_Sift_Down;
 
