@@ -4,7 +4,7 @@
 --  Description     : Ada implementation of Maged Michael's Hazard Pointers.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:35:09 2004
---  $Id: nbada-hazard_pointers.adb,v 1.2 2005/02/24 16:04:51 anders Exp $
+--  $Id: nbada-hazard_pointers.adb,v 1.3 2005/02/24 17:40:35 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -160,12 +160,14 @@ package body Hazard_Pointers is
       New_D_List  : Node_Access := null;
       New_D_Count : Node_Count  := 0;
       Node        : Node_Access;
+      Ref         : Shared_Reference;
    begin
       --  Snapshot all hazard pointers.
       for P in Hazard_Pointer'Range (1) loop
          for I in Hazard_Pointer'Range (2) loop
-            Node := Node_Access (Hazard_Pointer (P, I));
-            if Node /= null then
+            Ref := Hazard_Pointer (P, I);
+            if Ref /= null then
+               Node := Node_Access (Ref);
                Insert (Node, P_Set);
             end if;
          end loop;
