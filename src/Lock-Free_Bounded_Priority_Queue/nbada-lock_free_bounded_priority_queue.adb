@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 12:15:16 2002
--- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.9 2003/02/26 10:52:32 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.10 2003/02/26 11:21:23 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
@@ -694,22 +694,20 @@ package body Non_Blocking_Priority_Queue is
                         Done  => Done);
                   end if;
 
+               ----------------------------------------------------------------
                when DELETED =>
                   -- We hit an ongoing preliminary phase.
                   -- Treat as empty.
                   Old_Entry := null;
                   return;
 
+               ----------------------------------------------------------------
                when others =>
                   -- Helping not implemented!
                   Ada.Text_IO.Put_Line
                     ("Reading unstable entry: " &
                      Entry_Status'Image (Old_Entry.Status));
                   raise Constraint_Error;
-                  -- Copy.
-                  --Clean_Copy := Old_Entry.all;
-                  --Clean_Copy.Status := STABLE;
-                  --exit Help;
             end case;
          else
             -- This operation has either been helped or is already
@@ -719,7 +717,6 @@ package body Non_Blocking_Priority_Queue is
             if Old_Entry.Status /= DELETED then
                -- Copy.
                Clean_Copy := Old_Entry.all;
-               --Clean_Copy.Status := STABLE;
                Helped := Clean_Copy.Op_ID > Op_ID;
                return;
             else
@@ -1033,37 +1030,44 @@ package body Non_Blocking_Priority_Queue is
          return Child;
       end Next_Ancestor;
 
-      New_Entry     : Heap_Entry_Access;
-      Anc_Entry     : Heap_Entry_Access;
-      Leaf_Entry    : Heap_Entry_Access;
-      New_Anc_Entry : Heap_Entry_Access;
-      Ancestor      : Heap_Index;
-      New_Ancestor  : Heap_Index;
-      Helped        : Boolean;
    begin
       Done := False;
 
       -- Phase 1: Update leaf for swap
-      New_Entry := new Heap_Entry;
-      Phase_1 : loop
-         -- Read ancestor and leaf entries.
-         Primitives.Membar_StoreStore_LoadStore;
-         Leaf_Entry  := Queue.Heap (Leaf);
-         Ancestor    := Leaf_Entry.Sift_Pos;
-         Anc_Entry   := Queue.Heap (Ancestor);
+      declare
+         New_Entry     : Heap_Entry_Access;
+         Anc_Entry     : Heap_Entry_Access;
+         Leaf_Entry    : Heap_Entry_Access;
+         Ancestor      : Heap_Index;
+      begin
+         New_Entry := new Heap_Entry;
+         Phase_1 : loop
+            -- Read ancestor and leaf entries.
+            Primitives.Membar_StoreStore_LoadStore;
+            Leaf_Entry  := Queue.Heap (Leaf);
+            Ancestor    := Leaf_Entry.Sift_Pos;
+            Anc_Entry   := Queue.Heap (Ancestor);
 
-         -- Security check.
-         if Anc_Entry = null or Leaf_Entry = null then
-            Ada.Text_IO.Put_Line ("Implicit_Sift_Down: Null pointer!");
-            raise Constraint_Error;
-         end if;
+            -- Security check.
+            if Anc_Entry = null or Leaf_Entry = null then
+               Ada.Text_IO.Put_Line ("Implicit_Sift_Down: Null pointer!");
+               raise Constraint_Error;
+            end if;
 
-         if Anc_Entry.Status = SIFTING_2 and
-           Leaf_Entry.Status = SIFTING_2 and
-           Anc_Entry.Op_ID = Leaf_Entry.Op_ID and
-           Anc_Entry.Op_ID = Op_ID then
+            -- Exit if helped.
+            if Anc_Entry.Status /= SIFTING_2 or
+              Leaf_Entry.Status /= SIFTING_2 or
+              Anc_Entry.Op_ID /= Leaf_Entry.Op_ID or
+              Anc_Entry.Op_ID /= Op_ID then
+               -- We have been helped. Increase sift_pos (but not yet).
+
+               Free (New_Entry);
+               -- Check if we have been helped all the way.
+               Done := Leaf_Entry.Status = STABLE;
+               exit Phase_1;
+            end if;
+
             -- The leaf's status is ok because of Op_Id
-
             if Anc_Entry.Key > Leaf_Entry.Key then
                -- Swap.
                -- Prepare new Leaf entry.
@@ -1082,112 +1086,124 @@ package body Non_Blocking_Priority_Queue is
                Done := True;
 
             else
-              -- Don't swap, increase sift_pos (but not yet).
+               -- Don't swap, increase sift_pos (but not yet).
 
-              Free (New_Entry);
-              exit Phase_1;
+               Free (New_Entry);
+               exit Phase_1;
             end if;
 
-         else
-            -- We have been helped. Increase sift_pos (but not yet).
-
-            Free (New_Entry);
-            -- Check if we have been helped all the way.
-            Done := Leaf_Entry.Status = STABLE;
-            exit Phase_1;
-
-         end if;
-
-         Primitives.Membar_StoreLoad;
-         exit when CAS (Target    => Queue.Heap (Leaf)'Access,
-                        Old_Value => Leaf_Entry,
-                        New_Value => New_Entry);
-      end loop Phase_1;
+            Primitives.Membar_StoreLoad;
+            exit when CAS (Target    => Queue.Heap (Leaf)'Access,
+                           Old_Value => Leaf_Entry,
+                           New_Value => New_Entry);
+         end loop Phase_1;
+      end;
 
       -- Phase 2: Update new ancestor.
-      New_Entry := new Heap_Entry;
+      declare
+         New_Entry     : Heap_Entry_Access;
+         Leaf_Entry    : Heap_Entry_Access;
+         New_Anc_Entry : Heap_Entry_Access;
+         New_Ancestor  : Heap_Index;
+         Helped        : Boolean;
+      begin
+         New_Entry := new Heap_Entry;
 
-      Phase_2 : loop
-         -- Read new ancestor and leaf entries.
-         Primitives.Membar_StoreStore_LoadStore;
-         Leaf_Entry    := Queue.Heap (Leaf);
-         New_Ancestor  := Next_Ancestor (Leaf, Leaf_Entry.Sift_Pos);
+         Phase_2 : loop
+            -- Read new ancestor and leaf entries.
+            Primitives.Membar_StoreStore_LoadStore;
+            Leaf_Entry    := Queue.Heap (Leaf);
+            New_Ancestor  := Next_Ancestor (Leaf, Leaf_Entry.Sift_Pos);
 
+            -- Is the New_Ancestor and the Leaf the same?
+            if Leaf = New_Ancestor then
+               -- Do nothing.
+               Free (New_Entry);
+               exit Phase_2;
+            end if;
 
-         -- Is the New_Ancestor and the Leaf the same?
-         if Leaf = New_Ancestor then
-            -- Do nothing.
-            Free (New_Entry);
-            exit Phase_2;
-         end if;
+            --         New_Anc_Entry := Queue.Heap (New_Ancestor);
+            Read_And_Fix (Queue,
+                          Index      => New_Ancestor,
+                          Op_ID      => Op_ID,
+                          Old_Entry  => New_Anc_Entry,
+                          Clean_Copy => New_Entry.all,
+                          Helped     => Helped);
 
-         --         New_Anc_Entry := Queue.Heap (New_Ancestor);
-         Read_And_Fix (Queue,
-                       Index      => New_Ancestor,
-                       Op_ID      => Op_ID,
-                       Old_Entry  => New_Anc_Entry,
-                       Clean_Copy => New_Entry.all,
-                       Helped     => Helped);
+            -- Security check.
+            if Leaf_Entry = null or New_Anc_Entry = null then
+               Ada.Text_IO.Put_Line ("Implicit_Sift_Down: Null pointer!");
+               raise Constraint_Error;
+            end if;
 
-         exit Phase_2 when Helped;
+            -- Exit if helped.
+            if Helped or
+              (Leaf_Entry.Status /= SWAP_WITH_ANC and
+               Leaf_Entry.Status /= SIFTING_2) or
+              New_Anc_Entry.Status /= STABLE or
+              Leaf_Entry.Op_ID /= Op_ID then
 
-         -- Security check.
-         if Leaf_Entry = null or New_Anc_Entry = null then
-            Ada.Text_IO.Put_Line ("Implicit_Sift_Down: Null pointer!");
-            raise Constraint_Error;
-         end if;
-
-         if (Leaf_Entry.Status = SWAP_WITH_ANC or
-             Leaf_Entry.Status = SIFTING_2) and
-           New_Anc_Entry.Status = STABLE and
-           Leaf_Entry.Op_ID = Op_ID
-         then
-            -- Mark new ancestor
+               -- We have been helped.
+               Free (New_Entry);
+               -- Check if we have been helped all the way.
+               Done := Leaf_Entry.Status = STABLE;
+               exit Phase_2;
+            end if;
 
             -- Prepare new ancestor entry.
-
             New_Entry.all      := New_Anc_Entry.all;
             New_Entry.Status   := SIFTING_2;
             New_Entry.Op_ID    := Leaf_Entry.Op_ID;
             New_Entry.Sift_Pos := Leaf;
-         else
-            -- We have been helped.
 
-            Free (New_Entry);
-            -- Check if we have been helped all the way.
-            Done := Leaf_Entry.Status = STABLE;
-            exit Phase_2;
-         end if;
-
-         Primitives.Membar_StoreLoad;
-         exit when CAS (Target    => Queue.Heap (New_Ancestor)'Access,
-                        Old_Value => New_Anc_Entry,
-                        New_Value => New_Entry);
-      end loop Phase_2;
+            Primitives.Membar_StoreLoad;
+            exit when CAS (Target    => Queue.Heap (New_Ancestor)'Access,
+                           Old_Value => New_Anc_Entry,
+                           New_Value => New_Entry);
+         end loop Phase_2;
+      end;
 
       -- Phase 3: Update old ancestor.
-      New_Entry := new Heap_Entry;
+      declare
+         New_Entry     : Heap_Entry_Access;
+         Anc_Entry     : Heap_Entry_Access;
+         Leaf_Entry    : Heap_Entry_Access;
+         New_Anc_Entry : Heap_Entry_Access;
+         Ancestor      : Heap_Index;
+         New_Ancestor  : Heap_Index;
+      begin
+         New_Entry := new Heap_Entry;
 
-      Phase_3 : loop
-         -- Read ancestor and leaf entries.
-         Primitives.Membar_StoreStore_LoadStore;
-         Leaf_Entry    := Queue.Heap (Leaf);
-         Ancestor      := Leaf_Entry.Sift_Pos;
-         Anc_Entry     := Queue.Heap (Ancestor);
-         New_Ancestor  := Next_Ancestor (Leaf, Ancestor);
-         New_Anc_Entry := Queue.Heap (New_Ancestor);
+         Phase_3 : loop
+            -- Read ancestor and leaf entries.
+            Primitives.Membar_StoreStore_LoadStore;
+            Leaf_Entry    := Queue.Heap (Leaf);
+            Ancestor      := Leaf_Entry.Sift_Pos;
+            Anc_Entry     := Queue.Heap (Ancestor);
+            New_Ancestor  := Next_Ancestor (Leaf, Ancestor);
+            New_Anc_Entry := Queue.Heap (New_Ancestor);
 
-         -- Security check.
-         if Leaf_Entry = null or Anc_Entry = null or New_Anc_Entry = null Then
-            Ada.Text_IO.Put_Line ("Implicit_Sift_Down: Null pointer!");
-            raise Constraint_Error;
-         end if;
+            -- Security check.
+            if Leaf_Entry = null or Anc_Entry = null or
+              New_Anc_Entry = null then
+               Ada.Text_IO.Put_Line ("Implicit_Sift_Down: Null pointer!");
+               raise Constraint_Error;
+            end if;
 
-         if Anc_Entry.Status = SIFTING_2 and
-           (New_Anc_Entry.Status = SIFTING_2 or New_Ancestor = Leaf) and
-           Leaf_Entry.Op_ID = Anc_Entry.Op_ID and
-           Leaf_Entry.Op_ID = New_Anc_Entry.Op_ID and
-           Leaf_Entry.Op_ID = Op_ID then
+            -- Exit if helped.
+            if Anc_Entry.Status /= SIFTING_2 or
+              (New_Anc_Entry.Status /= SIFTING_2 and New_Ancestor /= Leaf) or
+              Leaf_Entry.Op_ID /= Anc_Entry.Op_ID or
+              Leaf_Entry.Op_ID /= New_Anc_Entry.Op_ID or
+              Leaf_Entry.Op_ID /= Op_ID then
+
+               -- We have been helped.
+               Free (New_Entry);
+               -- Check if we have been helped all the way.
+               Done := Leaf_Entry.Status = STABLE;
+               exit Phase_3;
+            end if;
+
             -- There might be work to do.
 
             if Leaf_Entry.Status = SIFTING_2 then
@@ -1212,44 +1228,54 @@ package body Non_Blocking_Priority_Queue is
                exit Phase_3;
             end if;
 
-         else
-            -- We have been helped.
-            Free (New_Entry);
-            -- Check if we have been helped all the way.
-            Done := Leaf_Entry.Status = STABLE;
-            exit Phase_3;
-         end if;
-
-         Primitives.Membar_StoreLoad;
-         exit when CAS (Target    => Queue.Heap (Ancestor)'Access,
-                        Old_Value => Anc_Entry,
-                        New_Value => New_Entry);
-      end loop Phase_3;
+            Primitives.Membar_StoreLoad;
+            exit when CAS (Target    => Queue.Heap (Ancestor)'Access,
+                           Old_Value => Anc_Entry,
+                           New_Value => New_Entry);
+         end loop Phase_3;
+      end;
 
       -- Phase 4: Update leaf for new ancestor.
-      New_Entry := new Heap_Entry;
+      declare
+         New_Entry     : Heap_Entry_Access;
+         Anc_Entry     : Heap_Entry_Access;
+         Leaf_Entry    : Heap_Entry_Access;
+         New_Anc_Entry : Heap_Entry_Access;
+         Ancestor      : Heap_Index;
+         New_Ancestor  : Heap_Index;
+      begin
+         New_Entry := new Heap_Entry;
 
-      Phase_4 : loop
-         -- Read ancestor and leaf entries.
-         Primitives.Membar_StoreStore_LoadStore;
-         Leaf_Entry    := Queue.Heap (Leaf);
-         Ancestor      := Leaf_Entry.Sift_Pos;
-         Anc_Entry     := Queue.Heap (Ancestor);
-         New_Ancestor  := Next_Ancestor (Leaf, Ancestor);
-         New_Anc_Entry := Queue.Heap (New_Ancestor);
+         Phase_4 : loop
+            -- Read ancestor and leaf entries.
+            Primitives.Membar_StoreStore_LoadStore;
+            Leaf_Entry    := Queue.Heap (Leaf);
+            Ancestor      := Leaf_Entry.Sift_Pos;
+            Anc_Entry     := Queue.Heap (Ancestor);
+            New_Ancestor  := Next_Ancestor (Leaf, Ancestor);
+            New_Anc_Entry := Queue.Heap (New_Ancestor);
 
-         -- Security check.
-         if Leaf_Entry = null or Anc_Entry = null or New_Anc_Entry = null Then
-            Ada.Text_IO.Put_Line ("Implicit_Sift_Down: Null pointer!");
-            raise Constraint_Error;
-         end if;
+            -- Security check.
+            if Leaf_Entry = null or Anc_Entry = null or
+              New_Anc_Entry = null then
+               Ada.Text_IO.Put_Line ("Implicit_Sift_Down: Null pointer!");
+               raise Constraint_Error;
+            end if;
 
-         if (Anc_Entry.Status = Stable or Anc_Entry.Op_ID > Op_ID) and
-           (New_Anc_Entry.Status = SIFTING_2 or New_Ancestor = Leaf) and
-           Leaf_Entry.Op_ID = New_Anc_Entry.Op_ID and
-           Leaf_Entry.Op_ID = Op_ID and
-           (Leaf_Entry.Status = SIFTING_2 or
-            Leaf_Entry.Status = SWAP_WITH_ANC) then
+            -- Exit if helped.
+            if (Anc_Entry.Status /= Stable and Anc_Entry.Op_ID <= Op_ID) or
+              (New_Anc_Entry.Status /= SIFTING_2 and New_Ancestor /= Leaf) or
+              Leaf_Entry.Op_ID /= New_Anc_Entry.Op_ID or
+              Leaf_Entry.Op_ID /= Op_ID or
+              (Leaf_Entry.Status /= SIFTING_2 and
+               Leaf_Entry.Status /= SWAP_WITH_ANC) then
+
+               -- We have been helped.
+               Free (New_Entry);
+               -- Check if we have been helped all the way.
+               Done := Leaf_Entry.Status = STABLE;
+               exit Phase_4;
+            end if;
 
             if Leaf /= New_Ancestor then
                -- Update sift position for the leaf.
@@ -1266,23 +1292,16 @@ package body Non_Blocking_Priority_Queue is
 
                Done := True;
             end if;
-         else
-            -- We have been helped.
-            Free (New_Entry);
-            -- Check if we have been helped all the way.
-            Done := Leaf_Entry.Status = STABLE;
-            exit Phase_4;
-         end if;
 
-         Primitives.Membar_StoreLoad;
-         exit when CAS (Target    => Queue.Heap (Leaf)'Access,
-                        Old_Value => Leaf_Entry,
-                        New_Value => New_Entry);
-      end loop Phase_4;
+            Primitives.Membar_StoreLoad;
+            exit when CAS (Target    => Queue.Heap (Leaf)'Access,
+                           Old_Value => Leaf_Entry,
+                           New_Value => New_Entry);
+         end loop Phase_4;
 
-      -- Check if we have been helped all the way.
-      Done := Leaf_Entry.Status = STABLE;
-
+         -- Check if we have been helped all the way.
+         Done := Leaf_Entry.Status = STABLE;
+      end;
    end Implicit_Sift_Down;
 
    ----------------------------------------------------------------------------
