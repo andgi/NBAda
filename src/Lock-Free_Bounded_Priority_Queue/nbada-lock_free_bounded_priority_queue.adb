@@ -4,7 +4,7 @@
 -- Description     : Non-blocking priority queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Jul 11 12:15:16 2002
--- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.18 2003/03/13 15:04:58 andersg Exp $
+-- $Id: nbada-lock_free_bounded_priority_queue.adb,v 1.19 2003/03/13 15:34:50 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
@@ -841,42 +841,50 @@ package body Non_Blocking_Priority_Queue is
          Right_Child_Entry  : Heap_Entry_Access;
          New_Left_Entry     : Heap_Entry_Access;
          New_Right_Entry    : Heap_Entry_Access;
-         --Child              : Heap_Index;
          Child_Entry        : Heap_Entry_Access;
          New_Entry          : Heap_Entry_Access;
-         Helped_L, Helped_R, Helped_P : Boolean;
+         Helped             : Boolean;
       begin
          New_Left_Entry  := new Heap_Entry;
          New_Right_Entry := new Heap_Entry;
 
          Phase_1 : loop
-            -- Read Parent and Child entries.
+            -- Read Parent.
             Read(Queue,
                  Index     => Parent,
                  Op_ID     => Op_ID,
                  The_Entry => Parent_Entry,
-                 Helped    => Helped_P);
+                 Helped    => Helped);
+            if Helped or else Parent_Entry.Status /= SIFTING_1 then
+               Free (New_Left_Entry);
+               Free (New_Right_Entry);
+               exit Phase_1;
+            end if;
+
+            -- Read left child.
             Read_And_Fix (Queue,
                           Index      => Left_Child,
                           Op_ID      => Op_ID,
                           Old_Entry  => Left_Child_Entry,
                           Clean_Copy => New_Left_Entry.all,
-                          Helped     => Helped_L,
+                          Helped     => Helped,
                           Ignore_SIFTING_2_Leaf => True);
+            if Helped then
+               -- We have been helped.
+               Free (New_Left_Entry);
+               Free (New_Right_Entry);
+               exit Phase_1;
+            end if;
+
+            -- Read right child.
             Read_And_Fix (Queue,
                           Index      => Right_Child,
                           Op_ID      => Op_ID,
                           Old_Entry  => Right_Child_Entry,
                           Clean_Copy => New_Right_Entry.all,
-                          Helped     => Helped_R,
+                          Helped     => Helped,
                           Ignore_SIFTING_2_Leaf => True);
-
-            -- MUST investigate the helping detection further!
-            --exit Phase_1 when Helped_L or Helped_R;
-
-            -- Exit if helped.
-            if Helped_P or else
-              (Parent_Entry.Status /= SIFTING_1) then
+            if Helped then
                -- We have been helped.
                Free (New_Left_Entry);
                Free (New_Right_Entry);
@@ -956,54 +964,38 @@ package body Non_Blocking_Priority_Queue is
 
       -- Step 2: Update Parent.
       declare
-         Parent_Entry       : Heap_Entry_Access;
---         Child              : Heap_Index;
-         Child_Entry        : Heap_Entry_Access;
-         New_Entry          : Heap_Entry_Access;
-         Helped_P, Helped_C : Boolean := True;
+         Parent_Entry : Heap_Entry_Access;
+         Child_Entry  : Heap_Entry_Access;
+         New_Entry    : Heap_Entry_Access;
+         Helped       : Boolean;
       begin
          New_Entry := new Heap_Entry;
          Phase_2 : loop
-            -- Read Parent and Child entries.
-            -- Should be done through Fix? No we're already supposed to "own"
-            -- both the parent and the child.
+            -- Read Parent.
             Read(Queue,
                  Index     => Parent,
                  Op_ID     => Op_ID,
                  The_Entry => Parent_Entry,
-                 Helped    => Helped_P);
+                 Helped    => Helped);
+            if Helped or else Parent_Entry.Status /= SIFTING_1 then
+               Free (New_Entry);
+               exit Phase_2;
+            end if;
 
-            -- Read and select child.
-            -- This needs to be checked!!
+            -- Read the selected child.
             if Child in Queue.Heap'Range then
                Read(Queue,
                     Index     => Child,
                     Op_ID     => Op_ID,
                     The_Entry => Child_Entry,
-                    Helped    => Helped_C);
+                    Helped    => Helped);
             else
                Child_Entry := null;
+               Helped      := False;
             end if;
---             declare
---                Left_Child_Entry   : Heap_Entry_Access;
---                Right_Child_Entry  : Heap_Entry_Access;
---             begin
---                Primitives.Membar;
---                if Left_Child in Queue.Heap'Range then
---                   Left_Child_Entry  := Queue.Heap (Left_Child);
---                else
---                   Left_Child_Entry := null;
---                end if;
---                if Right_Child in Queue.Heap'Range then
---                   Right_Child_Entry  := Queue.Heap (Right_Child);
---                else
---                   Right_Child_Entry := null;
---                end if;
-
---             end;
-
-            -- Exit if helped.
-            if Helped_P or else Parent_Entry.Status /= SIFTING_1 then
+            -- In this case no child is good news and means that we can
+            -- mark the parent as stable.
+            if Helped and Child_Entry /= null then
                Free (New_Entry);
                exit Phase_2;
             end if;
@@ -1015,25 +1007,20 @@ package body Non_Blocking_Priority_Queue is
               (Child_Entry.Status = SIFTING_2 or
                Child_Entry.Status = SWAP_WITH_ANC) then
 
-               if Parent_Entry.Status = SIFTING_1 and
-                 Child_Entry.Op_ID = Op_ID and
-                 Child_Entry.Status = SWAP_WITH_PARENT then
+               if Child_Entry.Status = SWAP_WITH_PARENT then
                   -- Swap parent key and make stable.
                   -- Prepare new Parent entry.
                   New_Entry.all := Parent_Entry.all;
 
                   New_Entry.Status  := STABLE;
                   New_Entry.Key     := Child_Entry.Old_Key;
-                  --New_Entry.Op_ID   := 0;
 
-               elsif Parent_Entry.Status = SIFTING_1 and
-                 Child_Entry.Status = STABLE then
+               elsif Child_Entry.Status = STABLE then
                   -- Mark parent stable.
                   -- Prepare new Parent entry.
                   New_Entry.all := Parent_Entry.all;
 
                   New_Entry.Status  := STABLE;
-                  --New_Entry.Op_ID   := 0;
 
                   Done := True;
                else
@@ -1052,7 +1039,6 @@ package body Non_Blocking_Priority_Queue is
                -- Mark parent stable.
                New_Entry.all := Parent_Entry.all;
                New_Entry.Status  := STABLE;
-               --New_Entry.Op_ID   := 0;
 
                Done := True;
             end if;
@@ -1065,7 +1051,6 @@ package body Non_Blocking_Priority_Queue is
 
       -- Step 3: Finish Child.
       declare
-         --         Child              : Heap_Index;
          Child_Entry        : Heap_Entry_Access;
          New_Entry          : Heap_Entry_Access;
          Helped             : Boolean := True;
@@ -1073,7 +1058,6 @@ package body Non_Blocking_Priority_Queue is
          New_Entry := new Heap_Entry;
          Phase_3 : loop
             -- Read Child entry.
-            -- Should be done through Fix?
             if Child in Queue.Heap'Range then
                Read(Queue,
                     Index     => Child,
@@ -1083,24 +1067,22 @@ package body Non_Blocking_Priority_Queue is
             else
                Child_Entry := null;
             end if;
+            -- Exit if the child has been helped or is nonexistant.
+            -- We should probably set Done to true here.
+            if Helped or Child_Entry = null then
+               Free (New_Entry);
+               exit Phase_3;
+            end if;
 
-            -- Check if this step needs to be done.
-            if not Helped then
-               -- This operation is still unfinished.
+            -- This operation is still unfinished.
 
-               if Child_Entry.Status = SWAP_WITH_PARENT then
-
-                  -- Prepare new Child entry.
-                  New_Entry.all := Child_Entry.all;
-                  New_Entry.Status := SIFTING_1;
-               else
-                  -- Nothing to be done.
-                  -- And according to the algorithm we can end the sift phase.
-                  Free (New_Entry);
-                  exit Phase_3;
-               end if;
+            if Child_Entry.Status = SWAP_WITH_PARENT then
+               -- Prepare new Child entry.
+               New_Entry.all := Child_Entry.all;
+               New_Entry.Status := SIFTING_1;
             else
-               -- We have been helped!
+               -- Nothing to be done. The child should be stable
+               -- and according to the algorithm we can end the sift phase.
                Free (New_Entry);
                exit Phase_3;
             end if;
