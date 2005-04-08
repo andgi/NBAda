@@ -28,7 +28,7 @@
 -- Description     : Synchronization primitives.
 -- Author          : Anders Gidenstam
 -- Created On      : Fri Jul  5 14:53:50 2002
--- $Id: nbada-primitives.adb,v 1.6 2004/11/02 15:53:47 anders Exp $
+-- $Id: nbada-primitives.adb,v 1.7 2005/04/08 14:06:37 anders Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
@@ -51,14 +51,22 @@ package body Primitives is
    ----------------------------------------------------------------------------
    function Atomic_Read_32 (Target : access Element) return Element is
    begin
-      return Target.all;
+      Membar;
+      declare
+         Tmp : constant Element := Target.all;
+      begin
+         Membar;
+         return Tmp;
+      end;
    end Atomic_Read_32;
 
    ----------------------------------------------------------------------------
    procedure Atomic_Write_32 (Target : access Element;
                               Value  : in     Element) is
    begin
+      Membar;
       Target.all := Value;
+      Membar;
    end Atomic_Write_32;
 
    ----------------------------------------------------------------------------
@@ -72,11 +80,13 @@ package body Primitives is
    begin
       System.Machine_Code.Asm
         (Template =>
-           "#BEGIN Compare_And_Swap_32" & LF & HT &
+           "#BEGIN Compare_And_Swap_32"  & LF & HT &
+           "mfence"                      & LF & HT &
            "movl %2, %%eax"              & LF & HT &
            "lock"                        & LF & HT &
            "cmpxchg %3, (%1)"            & LF & HT &   -- Compare & swap
            "movl %%eax, %0"              & LF & HT &
+           "mfence"                      & LF & HT &
            "#END Compare_And_Swap_32",
          Outputs  => Element'Asm_Output ("=g", New_Value), -- %0 = New_Value
          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
@@ -101,10 +111,12 @@ package body Primitives is
       System.Machine_Code.Asm
         (Template =>
            "#BEGIN Compare_And_Swap_32" & LF & HT &
+           "mfence"                      & LF & HT &
            "movl %2, %%eax"              & LF & HT &
            "lock"                        & LF & HT &
            "cmpxchg %3, (%1)"            & LF & HT &   -- Compare & swap
            "movl %%eax, %0"              & LF & HT &
+           "mfence"                      & LF & HT &
            "#END Compare_And_Swap_32",
          Outputs  => Element'Asm_Output ("=g", Tmp),       -- %0 = Tmp
          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
@@ -128,10 +140,12 @@ package body Primitives is
       System.Machine_Code.Asm
         (Template =>
            "#BEGIN Void_Compare_And_Swap_32" & LF & HT &
-           "movl %1, %%eax"              & LF & HT &
-           "lock"                        & LF & HT &
-           "cmpxchg %2, (%0)"            & LF & HT &   -- Compare & swap
-           "#END Void_Compare_And_Swap_32",
+           "mfence"                          & LF & HT &
+           "movl %1, %%eax"                  & LF & HT &
+           "lock"                            & LF & HT &
+           "cmpxchg %2, (%0)"                & LF & HT &   -- Compare & swap
+           "mfence"                          & LF & HT &
+          "#END Void_Compare_And_Swap_32",
          Inputs   => (Element_Access'Asm_Input ("r",       -- %0 = Target
                                                 Element_Access (Target)),
                       Element'Asm_Input ("g", Old_Value),  -- %1 = Old_Value
@@ -192,8 +206,10 @@ package body Primitives is
       System.Machine_Code.Asm
         (Template =>
            "#BEGIN Fetch_And_Add_32"      & LF &
+           "mfence"                       & LF & HT &
            "lock"                         & LF & HT &
            "xaddl %1, (%0)"               & LF & HT &   -- Fetch & add
+           "mfence"                       & LF & HT &
            "#END Fetch_And_Add_32",
          Inputs   => (Unsigned_32_Access'Asm_Input         -- %0 = Target
                       ("r", Unsigned_32_Access (Target)),
@@ -214,9 +230,11 @@ package body Primitives is
       System.Machine_Code.Asm
         (Template =>
            "#BEGIN Fetch_And_Add_32"      & LF &
+           "mfence"                       & LF & HT &
            "lock"                         & LF & HT &
            "xaddl %2, (%1)"               & LF & HT &   -- Fetch & add
            "movl %2, %0"                  & LF & HT &
+           "mfence"                       & LF & HT &
            "#END Fetch_And_Add_32",
          Outputs  => Unsigned_32'Asm_Output ("=r", Tmp),   -- %0 = Tmp
          Inputs   => (Unsigned_32_Access'Asm_Input         -- %1 = Target
@@ -229,11 +247,13 @@ package body Primitives is
 
    ----------------------------------------------------------------------------
    procedure Membar is
+      use Ada.Characters.Latin_1;
    begin
-      --  Currently I do not know if there are any IA32
-      --  multiprocessors that have weak(er) memory consistency and
-      --  need memory barriers.
-      null;
+      System.Machine_Code.Asm
+        (Template =>
+           "#BEGIN Membar" & LF &
+           "mfence"        & LF & HT &
+           "#END Membar");
    end Membar;
 
 end Primitives;
