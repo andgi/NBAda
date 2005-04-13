@@ -4,7 +4,7 @@
 -- Description     : Lock-free reference counting.
 -- Author          : Anders Gidenstam and Håkan Sundell
 -- Created On      : Fri Nov 19 13:54:45 2004
--- $Id: nbada-lock_free_memory_reclamation.ads,v 1.2 2005/04/13 16:51:37 anders Exp $
+-- $Id: nbada-lock_free_memory_reclamation.ads,v 1.3 2005/04/13 22:00:30 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
@@ -24,10 +24,12 @@ package Lockfree_Reference_Counting is
    procedure Dispose  (Node       : access Reference_Counted_Node;
                        Concurrent : in     Boolean) is abstract;
    procedure Clean_Up (Node : access Reference_Counted_Node) is abstract;
+   function Is_Deleted (Node : access Reference_Counted_Node)
+                       return Boolean;
 
    type Shared_Reference is limited private;
 
-   type Node_Access is access Reference_Counted_Node'Class;
+   type Node_Access is access all Reference_Counted_Node'Class;
    --  Select an appropriate (preferably non-blocking) storage pool
    --  by the "for My_Node_Access'Storage_Pool use ..." construct.
    --  Note: There should not be any shared variables of type Node_Access.
@@ -69,6 +71,6 @@ private
       end record;
 
    type Shared_Reference is new Node_Access;
-   pragma Atomic (Shared_Reference);
+   --pragma Atomic (Shared_Reference);
 
 end Lockfree_Reference_Counting;

@@ -4,7 +4,7 @@
 -- Description     : Lock-free reference counting.
 -- Author          : Anders Gidenstam and Håkan Sundell
 -- Created On      : Fri Nov 19 14:07:58 2004
--- $Id: nbada-lock_free_memory_reclamation.adb,v 1.2 2005/04/13 16:51:19 anders Exp $
+-- $Id: nbada-lock_free_memory_reclamation.adb,v 1.3 2005/04/13 22:00:39 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -21,7 +21,7 @@ package body Lockfree_Reference_Counting is
    subtype Processes  is Process_Ids.Process_ID_Type;
    type    HP_Index   is new Integer range 1 .. Max_Number_Of_Dereferences;
    type    Node_Index is new Natural range 0 .. Threshold_1;
-   subtype Valid_Node_Index is Node_Index range 1 .. Node_Index'Last;
+   subtype Valid_Node_Index is Node_Index range 1 .. Node_Index (Threshold_1);
 
    subtype Atomic_Node_Access is Shared_Reference;
 
@@ -80,6 +80,13 @@ package body Lockfree_Reference_Counting is
    ----------------------------------------------------------------------------
    --  Operations.
    ----------------------------------------------------------------------------
+
+   ----------------------------------------------------------------------------
+   function Is_Deleted (Node : access Reference_Counted_Node)
+                       return Boolean is
+   begin
+      return Node.MM_Del;
+   end Is_Deleted;
 
    ----------------------------------------------------------------------------
    function  Deref   (Link : access Shared_Reference) return Node_Access is
