@@ -10,6 +10,7 @@ with Lockfree_Reference_Counting;
 with Process_Identification;
 
 with Ada.Text_IO;
+with Ada.Exceptions;
 
 procedure Queue_Test is
 
@@ -154,9 +155,115 @@ procedure Queue_Test is
 
 
    ----------------------------------------------------------------------------
-   --task type Producer;
-   --task type Consumer;
+   task type Producer;
+   task type Consumer;
+
+   ----------------------------------------------------------------------------
+   task body Producer is
+   begin
+      PID.Register;
+      declare
+         ID  : constant PID.Process_ID_Type := PID.Process_ID;
+      begin
+         for I in 1 .. 1_000 loop
+            Ada.Text_IO.Put_Line ("Enqueue(" & Integer'Image (I) & ")");
+            Enqueue (I);
+         end loop;
+
+      exception
+         when E: others =>
+            Ada.Text_IO.New_Line (Ada.Text_IO.Standard_Error);
+            Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error,
+                                  "Producer (" &
+                                  PID.Process_ID_Type'Image (ID) &
+                                  "): raised " &
+                                  Ada.Exceptions.Exception_Name (E) &
+                                  " : " &
+                                  Ada.Exceptions.Exception_Message (E));
+            Ada.Text_IO.New_Line (Ada.Text_IO.Standard_Error);
+      end;
+   end Producer;
+
+   ----------------------------------------------------------------------------
+   task body Consumer is
+   begin
+      PID.Register;
+
+      declare
+         ID  : constant PID.Process_ID_Type := PID.Process_ID;
+         I : Integer := 1;
+      begin
+         loop
+
+            begin
+               if Dequeue /= I then
+                  Ada.Text_IO.Put_Line ("Queue FIFO property violated!");
+               else
+                  I := I + 1;
+               end if;
+
+            exception
+               when Queue_Test.Queue_Empty =>
+                  delay 0.1;
+            end;
+         end loop;
+
+      exception
+         when E: others =>
+            Ada.Text_IO.New_Line (Ada.Text_IO.Standard_Error);
+            Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error,
+                                  "Consumer (" &
+                                  PID.Process_ID_Type'Image (ID) &
+                                  "): raised " &
+                                  Ada.Exceptions.Exception_Name (E) &
+                                  " : " &
+                                  Ada.Exceptions.Exception_Message (E));
+            Ada.Text_IO.New_Line (Ada.Text_IO.Standard_Error);
+      end;
+   end Consumer;
 
 begin
-   null;
+   PID.Register;
+
+   Ada.Text_IO.Put ("Initializing: ");
+   Init;
+   Ada.Text_IO.Put_Line (" Queue ");
+
+--     for I in 1 ..10 loop
+--        Ada.Text_IO.Put_Line ("Enqueue(" & Integer'Image (I) & ")");
+--        Enqueue (I);
+--     end loop;
+--     for I in 1 ..10 loop
+--         Ada.Text_IO.Put_Line ("Dequeue() = " & Integer'Image (Dequeue));
+--     end loop;
+
+   Ada.Text_IO.Put_Line ("Testing with producer/consumer tasks.");
+   declare
+      P1, P2 : Producer;
+--      C : Consumer;
+   begin
+      null;
+   end;
+   Ada.Text_IO.Put_Line ("Emptying queue.");
+
+   declare
+      Count : Integer := 0;
+   begin
+      loop
+         Ada.Text_IO.Put_Line ("Dequeue() = " & Integer'Image (Dequeue));
+         Count := Count + 1;
+      end loop;
+   exception
+      when E: others =>
+         Ada.Text_IO.New_Line (Ada.Text_IO.Standard_Error);
+         Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error,
+                               "raised " &
+                               Ada.Exceptions.Exception_Name (E) &
+                               " : " &
+                               Ada.Exceptions.Exception_Message (E));
+         Ada.Text_IO.New_Line (Ada.Text_IO.Standard_Error);
+
+         Ada.Text_IO.Put_Line ("Final dequeue count: " &
+                               Integer'Image (Count));
+   end;
 end Queue_Test;
