@@ -4,7 +4,7 @@
 -- Description     : Lock-free reference counting.
 -- Author          : Anders Gidenstam and Håkan Sundell
 -- Created On      : Fri Nov 19 14:07:58 2004
--- $Id: nbada-lock_free_memory_reclamation.adb,v 1.3 2005/04/13 22:00:39 anders Exp $
+-- $Id: nbada-lock_free_memory_reclamation.adb,v 1.4 2005/04/14 09:44:38 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -39,7 +39,7 @@ package body Lockfree_Reference_Counting is
    procedure Fetch_And_Add (Target    : access Primitives.Unsigned_32;
                             Increment : in     Primitives.Unsigned_32)
      renames Primitives.Fetch_And_Add;
-   function Compare_And_Swap is
+   function Compare_And_Swap_32 is
       new Primitives.Boolean_Compare_And_Swap_32 (Shared_Reference);
    procedure Free is
       new Ada.Unchecked_Deallocation (Reference_Counted_Node'Class,
@@ -173,7 +173,9 @@ package body Lockfree_Reference_Counting is
                               return Boolean is
       use type Reference_Count;
    begin
-      if Compare_And_Swap (Link, Old_Value, New_Value) then
+      if Compare_And_Swap_32 (Target    => Link,
+                              Old_Value => Shared_Reference (Old_Value),
+                              New_Value => Shared_Reference (New_Value)) then
          if New_Value /= null then
             Fetch_And_Add (New_Value.MM_RC'Access, 1);
             New_Value.MM_Trace := False;
