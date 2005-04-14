@@ -28,7 +28,7 @@
 -- Description     : Synchronization primitives.
 -- Author          : Anders Gidenstam
 -- Created On      : Fri Jul  5 14:53:50 2002
--- $Id: nbada-primitives.adb,v 1.7 2005/04/08 14:06:37 anders Exp $
+-- $Id: nbada-primitives.adb,v 1.8 2005/04/14 09:42:25 anders Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
@@ -81,12 +81,12 @@ package body Primitives is
       System.Machine_Code.Asm
         (Template =>
            "#BEGIN Compare_And_Swap_32"  & LF & HT &
-           "mfence"                      & LF & HT &
+--           "mfence"                      & LF & HT &
            "movl %2, %%eax"              & LF & HT &
            "lock"                        & LF & HT &
            "cmpxchg %3, (%1)"            & LF & HT &   -- Compare & swap
            "movl %%eax, %0"              & LF & HT &
-           "mfence"                      & LF & HT &
+--           "mfence"                      & LF & HT &
            "#END Compare_And_Swap_32",
          Outputs  => Element'Asm_Output ("=g", New_Value), -- %0 = New_Value
          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
@@ -110,13 +110,13 @@ package body Primitives is
    begin
       System.Machine_Code.Asm
         (Template =>
-           "#BEGIN Compare_And_Swap_32" & LF & HT &
-           "mfence"                      & LF & HT &
+           "#BEGIN Compare_And_Swap_32"  & LF & HT &
+--           "mfence"                      & LF & HT &
            "movl %2, %%eax"              & LF & HT &
            "lock"                        & LF & HT &
            "cmpxchg %3, (%1)"            & LF & HT &   -- Compare & swap
            "movl %%eax, %0"              & LF & HT &
-           "mfence"                      & LF & HT &
+--           "mfence"                      & LF & HT &
            "#END Compare_And_Swap_32",
          Outputs  => Element'Asm_Output ("=g", Tmp),       -- %0 = Tmp
          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
@@ -140,11 +140,11 @@ package body Primitives is
       System.Machine_Code.Asm
         (Template =>
            "#BEGIN Void_Compare_And_Swap_32" & LF & HT &
-           "mfence"                          & LF & HT &
+--           "mfence"                          & LF & HT &
            "movl %1, %%eax"                  & LF & HT &
            "lock"                            & LF & HT &
            "cmpxchg %2, (%0)"                & LF & HT &   -- Compare & swap
-           "mfence"                          & LF & HT &
+--           "mfence"                          & LF & HT &
           "#END Void_Compare_And_Swap_32",
          Inputs   => (Element_Access'Asm_Input ("r",       -- %0 = Target
                                                 Element_Access (Target)),
@@ -206,10 +206,10 @@ package body Primitives is
       System.Machine_Code.Asm
         (Template =>
            "#BEGIN Fetch_And_Add_32"      & LF &
-           "mfence"                       & LF & HT &
+--           "mfence"                       & LF & HT &
            "lock"                         & LF & HT &
            "xaddl %1, (%0)"               & LF & HT &   -- Fetch & add
-           "mfence"                       & LF & HT &
+--           "mfence"                       & LF & HT &
            "#END Fetch_And_Add_32",
          Inputs   => (Unsigned_32_Access'Asm_Input         -- %0 = Target
                       ("r", Unsigned_32_Access (Target)),
@@ -230,11 +230,11 @@ package body Primitives is
       System.Machine_Code.Asm
         (Template =>
            "#BEGIN Fetch_And_Add_32"      & LF &
-           "mfence"                       & LF & HT &
+--           "mfence"                       & LF & HT &
            "lock"                         & LF & HT &
            "xaddl %2, (%1)"               & LF & HT &   -- Fetch & add
            "movl %2, %0"                  & LF & HT &
-           "mfence"                       & LF & HT &
+--           "mfence"                       & LF & HT &
            "#END Fetch_And_Add_32",
          Outputs  => Unsigned_32'Asm_Output ("=r", Tmp),   -- %0 = Tmp
          Inputs   => (Unsigned_32_Access'Asm_Input         -- %1 = Target
@@ -252,7 +252,7 @@ package body Primitives is
       System.Machine_Code.Asm
         (Template =>
            "#BEGIN Membar" & LF &
-           "mfence"        & LF & HT &
+--           "mfence"        & LF & HT &
            "#END Membar");
    end Membar;
 
