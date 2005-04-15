@@ -4,7 +4,7 @@
 -- Description     : Lock-free reference counting.
 -- Author          : Anders Gidenstam and Håkan Sundell
 -- Created On      : Fri Nov 19 14:07:58 2004
--- $Id: nbada-lock_free_memory_reclamation.adb,v 1.4 2005/04/14 09:44:38 anders Exp $
+-- $Id: nbada-lock_free_memory_reclamation.adb,v 1.5 2005/04/15 15:03:24 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -72,9 +72,14 @@ package body Lockfree_Reference_Counting is
    pragma Atomic_Components (DL_Done);
 
    --  Persistent process local variables.
-   D_List   : array (Processes) of Node_Index := (others => 0);
-   D_Count  : array (Processes) of Node_Count := (others => 0);
-   DL_Nexts : array (Processes, Valid_Node_Index) of Node_Index;
+   D_List   : array (Processes) of Node_Index :=
+     (others => 0);
+   pragma Atomic_Components (D_List);
+   D_Count  : array (Processes) of Node_Count :=
+     (others => 0);
+   pragma Atomic_Components (D_Count);
+   DL_Nexts : array (Processes, Valid_Node_Index) of Node_Index :=
+     (others => (others => 0));
    pragma Atomic_Components (DL_Nexts);
 
    ----------------------------------------------------------------------------
@@ -140,6 +145,7 @@ package body Lockfree_Reference_Counting is
       Node.MM_Trace := False;
 
       --  Find a free index in DL_Nodes.
+      --  This is probably not the best search strategy.
       for I in DL_Nodes'Range (2) loop
          if DL_Nodes (ID, I) = null then
             Index := I;
@@ -265,12 +271,18 @@ package body Lockfree_Reference_Counting is
                Dispose (Node, Concurrent => True);
                DL_Done  (ID, Index) := True;
                DL_Nodes (ID, Index) := Node;
-            end if;
-         end if;
 
-         DL_Nexts (ID, Index) := New_D_List;
-         New_D_List   := Index;
-         New_D_Count  := New_D_Count + 1;
+               --  Keep Node in D_List.
+               DL_Nexts (ID, Index) := New_D_List;
+               New_D_List   := Index;
+               New_D_Count  := New_D_Count + 1;
+            end if;
+         else
+            --  Keep Node in D_List.
+            DL_Nexts (ID, Index) := New_D_List;
+            New_D_List   := Index;
+            New_D_Count  := New_D_Count + 1;
+         end if;
       end loop;
 
       D_List  (ID) := New_D_List;
