@@ -8,6 +8,7 @@
 
 with Lockfree_Reference_Counting;
 with Process_Identification;
+with Primitives;
 
 with Ada.Text_IO;
 with Ada.Exceptions;
@@ -15,7 +16,7 @@ with Ada.Exceptions;
 procedure Queue_Test is
 
    package PID is
-      new Process_Identification (Max_Number_Of_Processes => 50);
+      new Process_Identification (Max_Number_Of_Processes => 10);
 
    package LFRC is
       new Lockfree_Reference_Counting (Max_Number_Of_Dereferences   => 4,
@@ -102,6 +103,7 @@ procedure Queue_Test is
          Node := Queue_Node_Access (Deref (Head'Access));
          Next := Queue_Node_Access (Deref (Node.Next'Access));
          if Next = null then
+            Release (Node_Access (Node));
             raise Queue_Empty;
          end if;
          exit when Compare_And_Swap (Link      => Head'Access,
@@ -158,6 +160,9 @@ procedure Queue_Test is
    task type Producer;
    task type Consumer;
 
+   Enqueue_Count : aliased Primitives.Unsigned_32 := 0;
+   Dequeue_Count : aliased Primitives.Unsigned_32 := 0;
+
    ----------------------------------------------------------------------------
    task body Producer is
    begin
@@ -166,8 +171,9 @@ procedure Queue_Test is
          ID  : constant PID.Process_ID_Type := PID.Process_ID;
       begin
          for I in 1 .. 1_000 loop
-            Ada.Text_IO.Put_Line ("Enqueue(" & Integer'Image (I) & ")");
+            --Ada.Text_IO.Put_Line ("Enqueue(" & Integer'Image (I) & ")");
             Enqueue (I);
+            Primitives.Fetch_And_Add (Enqueue_Count'Access, 1);
          end loop;
 
       exception
@@ -197,10 +203,12 @@ procedure Queue_Test is
 
             begin
                if Dequeue /= I then
-                  Ada.Text_IO.Put_Line ("Queue FIFO property violated!");
+                  null;
+                  --Ada.Text_IO.Put_Line ("Queue FIFO property violated!");
                else
                   I := I + 1;
                end if;
+               Primitives.Fetch_And_Add (Dequeue_Count'Access, 1);
 
             exception
                when Queue_Test.Queue_Empty =>
@@ -239,8 +247,9 @@ begin
 
    Ada.Text_IO.Put_Line ("Testing with producer/consumer tasks.");
    declare
-      P1, P2 : Producer;
---      C : Consumer;
+      P1 : Producer;
+      --P1, P2, P3, P4: Producer;
+      C  : Consumer;
    begin
       null;
    end;
@@ -251,7 +260,7 @@ begin
    begin
       loop
          Ada.Text_IO.Put_Line ("Dequeue() = " & Integer'Image (Dequeue));
-         Count := Count + 1;
+         Primitives.Fetch_And_Add (Dequeue_Count'Access, 1);
       end loop;
    exception
       when E: others =>
@@ -263,7 +272,9 @@ begin
                                Ada.Exceptions.Exception_Message (E));
          Ada.Text_IO.New_Line (Ada.Text_IO.Standard_Error);
 
+         Ada.Text_IO.Put_Line ("Final enqueue count: " &
+                               Primitives.Unsigned_32'Image (Enqueue_Count));
          Ada.Text_IO.Put_Line ("Final dequeue count: " &
-                               Integer'Image (Count));
+                               Primitives.Unsigned_32'Image (Dequeue_Count));
    end;
 end Queue_Test;
