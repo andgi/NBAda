@@ -160,17 +160,19 @@ procedure Queue_Test is
    task type Producer;
    task type Consumer;
 
-   Enqueue_Count : aliased Primitives.Unsigned_32 := 0;
-   Dequeue_Count : aliased Primitives.Unsigned_32 := 0;
+   Enqueue_Count        : aliased Primitives.Unsigned_32 := 0;
+   Dequeue_Count        : aliased Primitives.Unsigned_32 := 0;
+   No_Producers_Running : aliased Primitives.Unsigned_32 := 0;
 
    ----------------------------------------------------------------------------
    task body Producer is
    begin
       PID.Register;
+      Primitives.Fetch_And_Add (No_Producers_Running'Access, 1);
       declare
          ID  : constant PID.Process_ID_Type := PID.Process_ID;
       begin
-         for I in 1 .. 1_000 loop
+         for I in 1 .. 10_000 loop
             --Ada.Text_IO.Put_Line ("Enqueue(" & Integer'Image (I) & ")");
             Enqueue (I);
             Primitives.Fetch_And_Add (Enqueue_Count'Access, 1);
@@ -187,6 +189,11 @@ procedure Queue_Test is
                                   " : " &
                                   Ada.Exceptions.Exception_Message (E));
             Ada.Text_IO.New_Line (Ada.Text_IO.Standard_Error);
+      end;
+      declare
+         use type Primitives.Unsigned_32;
+      begin
+         Primitives.Fetch_And_Add (No_Producers_Running'Access, -1);
       end;
    end Producer;
 
@@ -213,6 +220,11 @@ procedure Queue_Test is
             exception
                when Queue_Test.Queue_Empty =>
                   delay 0.1;
+                  declare
+                     use type Primitives.Unsigned_32;
+                  begin
+                     exit when No_Producers_Running = 0;
+                  end;
             end;
          end loop;
 
@@ -247,16 +259,13 @@ begin
 
    Ada.Text_IO.Put_Line ("Testing with producer/consumer tasks.");
    declare
-      P1 : Producer;
-      --P1, P2, P3, P4: Producer;
-      C  : Consumer;
+      P1, P2, P3, P4, P5, P6, P7, P8 : Producer;
+      C1, C2, C3, C4 : Consumer;
    begin
       null;
    end;
    Ada.Text_IO.Put_Line ("Emptying queue.");
 
-   declare
-      Count : Integer := 0;
    begin
       loop
          Ada.Text_IO.Put_Line ("Dequeue() = " & Integer'Image (Dequeue));
