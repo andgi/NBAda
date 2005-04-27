@@ -1,34 +1,34 @@
 -------------------------------------------------------------------------------
--- Primitives - A binding to the synchronization primitives of the hardware.
--- Copyright (C) 2004 - 2005  Anders Gidenstam
+--  Primitives - A binding to the synchronization primitives of the hardware.
+--  Copyright (C) 2004 - 2005  Anders Gidenstam
 --
--- This program is free software; you can redistribute it and/or modify
--- it under the terms of the GNU General Public License as published by
--- the Free Software Foundation; either version 2 of the License, or
--- (at your option) any later version.
+--  This program is free software; you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation; either version 2 of the License, or
+--  (at your option) any later version.
 --
--- This program is distributed in the hope that it will be useful,
--- but WITHOUT ANY WARRANTY; without even the implied warranty of
--- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
--- GNU General Public License for more details.
+--  This program is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--  GNU General Public License for more details.
 --
--- You should have received a copy of the GNU General Public License
--- along with this program; if not, write to the Free Software
--- Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
--- As a special exception, if other files instantiate generics from this
--- unit, or you link this unit with other files to produce an executable,
--- this unit does not by itself cause the resulting executable to be
--- covered by the GNU General Public License. This exception does not
--- however invalidate any other reasons why the executable file might be
--- covered by the GNU Public License.
+--  As a special exception, if other files instantiate generics from this
+--  unit, or you link this unit with other files to produce an executable,
+--  this unit does not by itself cause the resulting executable to be
+--  covered by the GNU General Public License. This exception does not
+--  however invalidate any other reasons why the executable file might be
+--  covered by the GNU Public License.
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
--- Filename        : primitives.adb
--- Description     : Synchronization primitives.
--- Author          : Anders Gidenstam
--- Created On      : Tue Apr 26 23:49:50 2005
--- $Id: nbada-primitives.adb,v 1.3 2005/04/27 11:20:05 anders Exp $
+--  Filename        : primitives.adb
+--  Description     : Synchronization primitives.
+--  Author          : Anders Gidenstam
+--  Created On      : Tue Apr 26 23:49:50 2005
+--  $Id: nbada-primitives.adb,v 1.4 2005/04/27 13:21:24 anders Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
@@ -181,22 +181,6 @@ package body Primitives is
       A1 : Assertion (Assert => Element'Object_Size = 64);
    begin
       raise Not_Implemented;
---       System.Machine_Code.Asm
---         (Template =>
---            "!#BEGIN Compare_And_Swap_64" & LF & HT &
---            "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
---            "mov %3, %%l0"                & LF & HT &   -- l0 <- %3
---            "casx [%1], %2, %%l0"         & LF & HT &   -- Compare & swap
---            "mov %%l0, %0"                & LF & HT &   -- %0 <- l0
---            "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
---            "!#END Compare_And_Swap_64",
---          Outputs  => Element'Asm_Output ("=r", New_Value), -- %0 = New_Value
---          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
---                                                 Element_Access (Target)),
---                       Element'Asm_Input ("r", Old_Value),  -- %2 = Old_Value
---                       Element'Asm_Input ("r", New_Value)), -- %3 = New_Value
---          Clobber  => "l0",
---          Volatile => True);
    end Compare_And_Swap_64;
 
    ----------------------------------------------------------------------------
@@ -208,26 +192,9 @@ package body Primitives is
       type Element_Access is access all Element;
 
       A1 : Assertion (Assert => Element'Object_Size = 64);
-      Tmp : Element;
+      --  Tmp : Element;
    begin
       raise Not_Implemented;
---       System.Machine_Code.Asm
---         (Template =>
---            "!#BEGIN Boolean_Compare_And_Swap_64" & LF & HT &
---            "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
---            "mov %3, %%l0"                & LF & HT &   -- l0 <- %3
---            "casx [%1], %2, %%l0"         & LF & HT &   -- Compare & swap
---            "mov %%l0, %0"                & LF & HT &   -- %0 <- l0
---            "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
---            "!#END Boolean_Compare_And_Swap_64",
---          Outputs  => Element'Asm_Output ("=r", Tmp),       -- %0 = Tmp
---          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
---                                                 Element_Access (Target)),
---                       Element'Asm_Input ("r", Old_Value),  -- %2 = Old_Value
---                       Element'Asm_Input ("r", New_Value)), -- %3 = New_Value
---          Clobber  => "l0",
---          Volatile => True);
---       return Tmp = Old_Value;
    end Boolean_Compare_And_Swap_64;
 
    ----------------------------------------------------------------------------
@@ -303,11 +270,6 @@ package body Primitives is
       use Ada.Characters.Latin_1;
    begin
       null;
---       System.Machine_Code.Asm
---         (Template =>
---            "!#BEGIN Membar"      & LF & HT &
---            "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
---            "!#END Membar");
    end Membar;
 
 end Primitives;

@@ -1,34 +1,34 @@
 -------------------------------------------------------------------------------
--- Compare and Swap test.
--- Copyright (C) 2004  Anders Gidenstam
+--  Compare and Swap test.
+--  Copyright (C) 2004  Anders Gidenstam
 --
--- This program is free software; you can redistribute it and/or modify
--- it under the terms of the GNU General Public License as published by
--- the Free Software Foundation; either version 2 of the License, or
--- (at your option) any later version.
+--  This program is free software; you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation; either version 2 of the License, or
+--  (at your option) any later version.
 --
--- This program is distributed in the hope that it will be useful,
--- but WITHOUT ANY WARRANTY; without even the implied warranty of
--- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
--- GNU General Public License for more details.
+--  This program is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--  GNU General Public License for more details.
 --
--- You should have received a copy of the GNU General Public License
--- along with this program; if not, write to the Free Software
--- Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
--- As a special exception, if other files instantiate generics from this
--- unit, or you link this unit with other files to produce an executable,
--- this unit does not by itself cause the resulting executable to be
--- covered by the GNU General Public License. This exception does not
--- however invalidate any other reasons why the executable file might be
--- covered by the GNU Public License.
+--  As a special exception, if other files instantiate generics from this
+--  unit, or you link this unit with other files to produce an executable,
+--  this unit does not by itself cause the resulting executable to be
+--  covered by the GNU General Public License. This exception does not
+--  however invalidate any other reasons why the executable file might be
+--  covered by the GNU Public License.
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
--- Filename        : cas_test.adb
--- Description     : Test of synchronization primitives package.
--- Author          : Anders Gidenstam
--- Created On      : Fri Jul  5 16:09:25 2002
--- $Id: cas_test.adb,v 1.4 2004/09/21 20:24:54 anders Exp $
+--  Filename        : cas_test.adb
+--  Description     : Test of synchronization primitives package.
+--  Author          : Anders Gidenstam
+--  Created On      : Fri Jul  5 16:09:25 2002
+--  $Id: cas_test.adb,v 1.5 2005/04/27 13:14:28 anders Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Text_IO;
@@ -45,7 +45,7 @@ procedure CAS_Test is
      Primitives.Boolean_Compare_And_Swap_32 (Element => Integer);
 
    type My_Float is new Long_Float;
-   --pragma Atomic (My_Float);
+   --  pragma Atomic (My_Float);
    procedure CAS is new
      Primitives.Compare_And_Swap_64 (Element => My_Float);
 
@@ -81,7 +81,7 @@ begin
    end if;
 
    Ada.Text_IO.Put_Line ("----------------------");
-   -- Test 2.
+   --  Test 2.
    C := 8;
    Ada.Text_IO.Put_Line ("A: " & Integer'Image (A));
    Ada.Text_IO.Put_Line ("C: " & Integer'Image (C));
@@ -96,7 +96,7 @@ begin
    end if;
 
    Ada.Text_IO.Put_Line ("----------------------");
-   -- Test 3.
+   --  Test 3.
    C := 5;
    Ada.Text_IO.Put_Line ("A: " & Integer'Image (A));
    Ada.Text_IO.Put_Line ("B: " & Integer'Image (B));
@@ -112,7 +112,7 @@ begin
    end if;
 
    Ada.Text_IO.Put_Line ("----------------------");
-   -- Test 4.
+   --  Test 4.
    Ada.Text_IO.Put_Line ("A: " & Integer'Image (A));
    Ada.Text_IO.Put_Line ("B: " & Integer'Image (B));
    Ada.Text_IO.Put_Line ("C: " & Integer'Image (C));
@@ -127,7 +127,7 @@ begin
    end if;
 
    Ada.Text_IO.Put_Line ("----------------------");
-   -- Test 5.
+   --  Test 5.
    declare
       LA : aliased My_Float := -2.0;
       LB : My_Float := 2.0;

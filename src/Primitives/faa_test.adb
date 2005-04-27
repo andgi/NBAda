@@ -1,34 +1,34 @@
 -------------------------------------------------------------------------------
--- Fetch and Add test.
--- Copyright (C) 2004  Anders Gidenstam
+--  Fetch and Add test.
+--  Copyright (C) 2004  Anders Gidenstam
 --
--- This program is free software; you can redistribute it and/or modify
--- it under the terms of the GNU General Public License as published by
--- the Free Software Foundation; either version 2 of the License, or
--- (at your option) any later version.
+--  This program is free software; you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation; either version 2 of the License, or
+--  (at your option) any later version.
 --
--- This program is distributed in the hope that it will be useful,
--- but WITHOUT ANY WARRANTY; without even the implied warranty of
--- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
--- GNU General Public License for more details.
+--  This program is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--  GNU General Public License for more details.
 --
--- You should have received a copy of the GNU General Public License
--- along with this program; if not, write to the Free Software
--- Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
--- As a special exception, if other files instantiate generics from this
--- unit, or you link this unit with other files to produce an executable,
--- this unit does not by itself cause the resulting executable to be
--- covered by the GNU General Public License. This exception does not
--- however invalidate any other reasons why the executable file might be
--- covered by the GNU Public License.
+--  As a special exception, if other files instantiate generics from this
+--  unit, or you link this unit with other files to produce an executable,
+--  this unit does not by itself cause the resulting executable to be
+--  covered by the GNU General Public License. This exception does not
+--  however invalidate any other reasons why the executable file might be
+--  covered by the GNU Public License.
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
--- Filename        : faa_test.adb
--- Description     : Test of synchronization primitives package.
--- Author          : Anders Gidenstam
--- Created On      : Tue Jul  9 14:07:11 2002
--- $Id: faa_test.adb,v 1.2 2004/09/21 20:22:18 anders Exp $
+--  Filename        : faa_test.adb
+--  Description     : Test of synchronization primitives package.
+--  Author          : Anders Gidenstam
+--  Created On      : Tue Jul  9 14:07:11 2002
+--  $Id: faa_test.adb,v 1.3 2005/04/27 13:14:28 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -52,8 +52,8 @@ procedure FAA_Test is
       Ada.Text_IO.Put_Line ("Count: " &
                             Primitives.Unsigned_32'Image (Count.all));
    exception
-      when E: others =>
-         Ada.Text_IO.Put_Line (Ada.Exceptions.Exception_Information(E));
+      when E : others =>
+         Ada.Text_IO.Put_Line (Ada.Exceptions.Exception_Information (E));
    end Counter;
 
    type Counter_Access is access Counter;
@@ -79,7 +79,7 @@ begin
                          "10_000_000 each. Expected final outcome: " &
                          "100_000_000.");
 
-   -- Start tasks;
+   --  Start tasks;
    for I in Counters'Range loop
       Counters (I) := new Counter (Count'Access);
    end loop;
