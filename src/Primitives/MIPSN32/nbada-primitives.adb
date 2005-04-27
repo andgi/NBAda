@@ -28,7 +28,7 @@
 -- Description     : Synchronization primitives.
 -- Author          : Anders Gidenstam
 -- Created On      : Tue Apr 26 23:49:50 2005
--- $Id: nbada-primitives.adb,v 1.2 2005/04/26 23:11:02 anders Exp $
+-- $Id: nbada-primitives.adb,v 1.3 2005/04/27 11:20:05 anders Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
@@ -39,7 +39,6 @@ package body Primitives is
    ----------------------------------------------------------------------------
    --  Synchronization primitives for MIPS.
    --
-   --  Requires the flags '-mips2' to gnatmake.
    ----------------------------------------------------------------------------
 
    ----------------------------------------------------------------------------
@@ -81,17 +80,18 @@ package body Primitives is
    begin
       System.Machine_Code.Asm
         (Template =>
-	   "/* BEGIN Compare_And_Swap_32 */" & LF & HT &
-	   ".option O1"                      & LF &
-	   "$CAS1:"                          & LF & HT &
-	   "ll    $8, 0(%1)"                 & LF & HT &
-	   "bne   $8, %2, $CAS2"             & LF & HT &
+--         "/* BEGIN Compare_And_Swap_32 */" & LF & HT &
+           ".option O1"                      & LF &
+           "$CAS1:"                          & LF & HT &
+           "ll    $8, 0(%1)"                 & LF & HT &
+           "bne   $8, %2, $CAS2"             & LF & HT &
            "move  $9, %3"                    & LF & HT &
            "sc    $9, 0(%1)"                 & LF & HT &
-	   "beqz  $9, $CAS1"                 & LF &
-	   "$CAS2:"                          & LF & HT &
-	   "move  %0, $8"                    & LF & HT &
-           "/* END Compare_And_Swap_32 */",
+           "beqz  $9, $CAS1"                 & LF &
+           "$CAS2:"                          & LF & HT &
+           "move  %0, $8"                    & LF & HT &
+           "",
+--           "/* END Compare_And_Swap_32 */",
          Outputs  => Element'Asm_Output ("=r", New_Value), -- %0 = New_Value
          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
                                                 Element_Access (Target)),
@@ -114,17 +114,18 @@ package body Primitives is
    begin
       System.Machine_Code.Asm
         (Template =>
-           "/* BEGIN Boolean_Compare_And_Swap_32 */" & LF & HT &
-	   ".option O1"                      & LF &
-	   "$BCAS1:"                         & LF & HT &
-	   "ll    $8, 0(%1)"                 & LF & HT &
-	   "bne   $8, %2, $BCAS2"            & LF & HT &
+--           "/* BEGIN Boolean_Compare_And_Swap_32 */" & LF & HT &
+           ".option O1"                      & LF &
+           "$BCAS1:"                         & LF & HT &
+           "ll    $8, 0(%1)"                 & LF & HT &
+           "bne   $8, %2, $BCAS2"            & LF & HT &
            "move  $9, %3"                    & LF & HT &
            "sc    $9, 0(%1)"                 & LF & HT &
-	   "beqz  $9, $BCAS1"                & LF &
-	   "$BCAS2:"                         & LF & HT &
-	   "move  %0, $8"                    & LF & HT &
-           "/* END Boolean_Compare_And_Swap_32 */",
+           "beqz  $9, $BCAS1"                & LF &
+           "$BCAS2:"                         & LF & HT &
+           "move  %0, $8"                    & LF & HT &
+           "",
+--           "/* END Boolean_Compare_And_Swap_32 */",
          Outputs  => Element'Asm_Output ("=r", Tmp),       -- %0 = Tmp
          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
                                                 Element_Access (Target)),
@@ -146,16 +147,17 @@ package body Primitives is
    begin
       System.Machine_Code.Asm
         (Template =>
-           "/* BEGIN Void_Compare_And_Swap_32 */" & LF & HT &
-	   ".option O1"                      & LF &
-	   "$VCAS1:"                         & LF & HT &
-	   "ll    $8, 0(%0)"                 & LF & HT &
-	   "bne   $8, %1, $VCAS2"            & LF & HT &
+--           "/* BEGIN Void_Compare_And_Swap_32 */" & LF & HT &
+           ".option O1"                      & LF &
+           "$VCAS1:"                         & LF & HT &
+           "ll    $8, 0(%0)"                 & LF & HT &
+           "bne   $8, %1, $VCAS2"            & LF & HT &
            "move  $8, %2"                    & LF & HT &
            "sc    $8, 0(%0)"                 & LF & HT &
-	   "beqz  $8, $VCAS1"                & LF &
-	   "$VCAS2:"                         & LF & HT &
-           "/* END Void_Compare_And_Swap_32 */",
+           "beqz  $8, $VCAS1"                & LF &
+           "$VCAS2:"                         & LF & HT &
+           "",
+--           "/* END Void_Compare_And_Swap_32 */",
          Inputs   => (Element_Access'Asm_Input ("r",       -- %0 = Target
                                                 Element_Access (Target)),
                       Element'Asm_Input ("r", Old_Value),  -- %1 = Old_Value
@@ -248,14 +250,15 @@ package body Primitives is
    begin
       System.Machine_Code.Asm
         (Template =>
-           "/* BEGIN Fetch_And_Add_32 */"    & LF & HT &
-	   ".option O1"                      & LF &
-	   "$FAA1:"                          & LF & HT &
-	   "ll    $8, 0(%0)"                 & LF & HT &
+--           "/* BEGIN Fetch_And_Add_32 */"    & LF & HT &
+           ".option O1"                      & LF &
+           "$FAA1:"                          & LF & HT &
+           "ll    $8, 0(%0)"                 & LF & HT &
            "addu  $8, $8, %1"                & LF & HT &
            "sc    $8, 0(%0)"                 & LF & HT &
-	   "beqz  $8, $FAA1"                 & LF & HT &
-           "/* END Fetch_And_Add_32 */",
+           "beqz  $8, $FAA1"                 & LF & HT &
+           "",
+--           "/* END Fetch_And_Add_32 */",
          Inputs   => (Unsigned_32_Access'Asm_Input         -- %0 = Target
                       ("r", Unsigned_32_Access (Target)),
                       Unsigned_32'Asm_Input ("r",          -- %1 = Increment
@@ -275,14 +278,16 @@ package body Primitives is
    begin
       System.Machine_Code.Asm
         (Template =>
-           "/* BEGIN Fetch_And_Add_32 */"    & LF & HT &
-	   ".option O1"                      & LF&
-	   "$FAA2:"                          & LF & HT &
-	   "ll    %0, 0(%1)"                 & LF & HT &
-           "addu  $8, %0, %2"                & LF & HT &
+--           "/* BEGIN Fetch_And_Add_32 */"    & LF & HT &
+           ".option O1"                      & LF&
+           "$FAA2:"                          & LF & HT &
+           "ll    $8, 0(%1)"                 & LF & HT &
+           "addu  $8, $8, %2"                & LF & HT &
+           "move  %0, $8"                    & LF & HT &
            "sc    $8, 0(%1)"                 & LF & HT &
-	   "beqz  $8, $FAA2"                 & LF & HT &
-           "/* END Fetch_And_Add_32 */",
+           "beqz  $8, $FAA2"                 & LF & HT &
+           "",
+--           "/* END Fetch_And_Add_32 */",
          Outputs  => Unsigned_32'Asm_Output ("=r", Tmp),   -- %0 = Tmp
          Inputs   => (Unsigned_32_Access'Asm_Input         -- %1 = Target
                       ("r", Unsigned_32_Access (Target)),
