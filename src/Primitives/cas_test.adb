@@ -28,7 +28,7 @@
 --  Description     : Test of synchronization primitives package.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Jul  5 16:09:25 2002
---  $Id: cas_test.adb,v 1.5 2005/04/27 13:14:28 anders Exp $
+--  $Id: cas_test.adb,v 1.6 2005/04/28 21:56:26 anders Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Text_IO;
@@ -45,9 +45,13 @@ procedure CAS_Test is
      Primitives.Boolean_Compare_And_Swap_32 (Element => Integer);
 
    type My_Float is new Long_Float;
-   --  pragma Atomic (My_Float);
+   pragma Atomic (My_Float);
    procedure CAS is new
      Primitives.Compare_And_Swap_64 (Element => My_Float);
+   function CAS is new
+     Primitives.Boolean_Compare_And_Swap_64 (Element => My_Float);
+   procedure VCAS is new
+     Primitives.Void_Compare_And_Swap_64 (Element => My_Float);
 
 
    type Int_Access is access all Integer;
@@ -134,8 +138,83 @@ begin
    begin
       Ada.Text_IO.Put_Line ("My_Float'Object_Size: " &
                             Natural'Image (My_Float'Object_Size));
-      CAS (LA'Access, -2.0, LB);
       Ada.Text_IO.Put_Line ("LA: " & My_Float'Image (LA));
+      Ada.Text_IO.Put_Line ("LB: " & My_Float'Image (LB));
+
+      Ada.Text_IO.Put_Line ("CAS (LA, -2.0, LB)");
+      CAS (LA'Access, -2.0, LB);
+      if LB = -2.0 and LA = 2.0 then
+         Ada.Text_IO.Put_Line ("Compare_And_Swap_64: Passed test 5.");
+      else
+         Ada.Text_IO.Put_Line ("Compare_And_Swap_64 is faulty!");
+         Ada.Text_IO.Put_Line ("LA: " & My_Float'Image (LA));
+         Ada.Text_IO.Put_Line ("LB: " & My_Float'Image (LB));
+      end if;
+
+   exception
+      when others =>
+         Ada.Text_IO.Put_Line ("Compare_And_Swap_64 is faulty!");
+         Ada.Text_IO.Put_Line ("LA: " & My_Float'Image (LA));
+         Ada.Text_IO.Put_Line ("LB: " & My_Float'Image (LB));
+   end;
+
+   Ada.Text_IO.Put_Line ("----------------------");
+   --  Test 6.
+   declare
+      LA : aliased My_Float := -2.0;
+      LB : My_Float := -2.0;
+      LC : My_Float := 2.0;
+   begin
+      Ada.Text_IO.Put_Line ("LA: " & My_Float'Image (LA));
+      Ada.Text_IO.Put_Line ("LB: " & My_Float'Image (LB));
+      Ada.Text_IO.Put_Line ("LC: " & My_Float'Image (LC));
+
+      Ada.Text_IO.Put_Line ("CAS (LA, LB, LC)");
+      if CAS (LA'Access, LB, LC) and then LA = LC then
+         Ada.Text_IO.Put_Line ("Boolean_Compare_And_Swap_64: Passed test 6.");
+      else
+         Ada.Text_IO.Put_Line ("Boolean_Compare_And_Swap_64 is faulty!");
+         Ada.Text_IO.Put_Line ("LA: " & My_Float'Image (LA));
+         Ada.Text_IO.Put_Line ("LB: " & My_Float'Image (LB));
+         Ada.Text_IO.Put_Line ("LC: " & My_Float'Image (LC));
+      end if;
+
+   exception
+      when others =>
+         Ada.Text_IO.Put_Line ("Boolean_Compare_And_Swap_64 is faulty!");
+         Ada.Text_IO.Put_Line ("LA: " & My_Float'Image (LA));
+         Ada.Text_IO.Put_Line ("LB: " & My_Float'Image (LB));
+         Ada.Text_IO.Put_Line ("LC: " & My_Float'Image (LC));
+   end;
+
+   Ada.Text_IO.Put_Line ("----------------------");
+   --  Test 7.
+   declare
+      LA : aliased My_Float := -2.0;
+      LB : My_Float := LA;
+      LC : My_Float := 2.0;
+   begin
+      Ada.Text_IO.Put_Line ("LA: " & My_Float'Image (LA));
+      Ada.Text_IO.Put_Line ("LB: " & My_Float'Image (LB));
+      Ada.Text_IO.Put_Line ("LC: " & My_Float'Image (LC));
+
+      Ada.Text_IO.Put_Line ("VCAS (LA, LB, LC)");
+      VCAS (LA'Access, LB, LB);
+      if LA = 2.0 then
+         Ada.Text_IO.Put_Line ("Void_Compare_And_Swap_64: Passed test 6.");
+      else
+         Ada.Text_IO.Put_Line ("Void_Compare_And_Swap_64 is faulty!");
+         Ada.Text_IO.Put_Line ("LA: " & My_Float'Image (LA));
+         Ada.Text_IO.Put_Line ("LB: " & My_Float'Image (LB));
+         Ada.Text_IO.Put_Line ("LC: " & My_Float'Image (LC));
+      end if;
+
+   exception
+      when others =>
+         Ada.Text_IO.Put_Line ("Void_Compare_And_Swap_64 is faulty!");
+         Ada.Text_IO.Put_Line ("LA: " & My_Float'Image (LA));
+         Ada.Text_IO.Put_Line ("LB: " & My_Float'Image (LB));
+         Ada.Text_IO.Put_Line ("LC: " & My_Float'Image (LC));
    end;
 
 end CAS_Test;
