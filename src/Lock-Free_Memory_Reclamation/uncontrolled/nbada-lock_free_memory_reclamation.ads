@@ -4,7 +4,7 @@
 -- Description     : Lock-free reference counting.
 -- Author          : Anders Gidenstam and Håkan Sundell
 -- Created On      : Fri Nov 19 13:54:45 2004
--- $Id: nbada-lock_free_memory_reclamation.ads,v 1.3 2005/04/13 22:00:30 anders Exp $
+-- $Id: nbada-lock_free_memory_reclamation.ads,v 1.4 2005/05/07 22:35:04 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
@@ -18,6 +18,8 @@ generic
      new Process_Identification (<>);
    --  Process identification.
 package Lockfree_Reference_Counting is
+
+   pragma Elaborate_Body;
 
    type Reference_Counted_Node is abstract tagged limited private;
    --  Inherit from this base type to create your own managed types.
@@ -48,6 +50,12 @@ package Lockfree_Reference_Counting is
 
    procedure Store   (Link : access Shared_Reference;
                       Node : in Node_Access);
+
+   generic
+      type User_Node is new Reference_Counted_Node with private;
+      type User_Node_Access is access User_Node;
+   function Create return Node_Access;
+   --  Creates a new User_Node and returns a safe reference to it.
 
 private
 

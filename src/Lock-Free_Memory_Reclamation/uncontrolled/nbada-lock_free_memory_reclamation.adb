@@ -4,7 +4,7 @@
 -- Description     : Lock-free reference counting.
 -- Author          : Anders Gidenstam and Håkan Sundell
 -- Created On      : Fri Nov 19 14:07:58 2004
--- $Id: nbada-lock_free_memory_reclamation.adb,v 1.5 2005/04/15 15:03:24 anders Exp $
+-- $Id: nbada-lock_free_memory_reclamation.adb,v 1.6 2005/05/07 22:35:04 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -12,6 +12,7 @@ with Hash_Tables;
 
 with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
+with Ada.Exceptions;
 
 package body Lockfree_Reference_Counting is
 
@@ -110,7 +111,10 @@ package body Lockfree_Reference_Counting is
       end loop;
       --  Dereference node iff there is a free hazard pointer.
       if not Found then
-         raise Constraint_Error;
+         Ada.Exceptions.Raise_Exception
+           (Constraint_Error'Identity,
+            "lockfree_reference_counting.adb: " &
+            "Maximum number of local dereferences exceeded!");
       else
          loop
             Node := Node_Access (Link.all);
@@ -151,12 +155,13 @@ package body Lockfree_Reference_Counting is
             Index := I;
          end if;
       end loop;
+
       DL_Done  (ID, Index) := False;
       DL_Nodes (ID, Index) := Atomic_Node_Access (Node);
       DL_Nexts (ID, Index) := D_List (ID);
-
       D_List  (ID) := Index;
       D_Count (ID) := D_Count (ID) + 1;
+
       loop
          if D_Count (ID) = Threshold_1 then
             Clean_Up_Local (ID);
@@ -182,15 +187,20 @@ package body Lockfree_Reference_Counting is
       if Compare_And_Swap_32 (Target    => Link,
                               Old_Value => Shared_Reference (Old_Value),
                               New_Value => Shared_Reference (New_Value)) then
+
          if New_Value /= null then
             Fetch_And_Add (New_Value.MM_RC'Access, 1);
             New_Value.MM_Trace := False;
          end if;
+
          if Old_Value /= null then
             Fetch_And_Add (Old_Value.MM_RC'Access, -1);
          end if;
+
          return True;
+
       end if;
+
       return False;
    end Compare_And_Swap;
 
@@ -211,6 +221,34 @@ package body Lockfree_Reference_Counting is
    end Store;
 
    ----------------------------------------------------------------------------
+   function Create return Node_Access is
+      ID    : constant Processes   := Process_Ids.Process_ID;
+      Node  : constant Node_Access := Node_Access'(New User_Node);
+      Index : HP_Index;
+      Found : Boolean := False;
+   begin
+      --  Find a free hazard pointer.
+      for I in Hazard_Pointer'Range (2) loop
+         if Hazard_Pointer (ID, I) = null then
+            Index := I;
+            Found := True;
+            exit;
+         end if;
+      end loop;
+
+      if not Found then
+         Ada.Exceptions.Raise_Exception
+           (Constraint_Error'Identity,
+            "lockfree_reference_counting.adb: " &
+            "Maximum number of local dereferences exceeded!");
+      else
+         Hazard_Pointer (ID, Index) := Atomic_Node_Access (Node);
+      end if;
+
+      return Node;
+   end Create;
+
+   ----------------------------------------------------------------------------
    --  Internal operations.
    ----------------------------------------------------------------------------
 
@@ -219,9 +257,15 @@ package body Lockfree_Reference_Counting is
       use type Reference_Count;
       use HP_Sets;
 
-      P_Set : HP_Sets.Hash_Table
+      type HP_Set_Access is access HP_Sets.Hash_Table;
+      procedure Free is new Ada.Unchecked_Deallocation (HP_Sets.Hash_Table,
+                                                        HP_Set_Access);
+      P_Set : HP_Set_Access :=
+        new HP_Sets.Hash_Table
         (Size => 2 * Natural (Process_Ids.Max_Number_Of_Processes *
-                              Max_Number_Of_Dereferences));
+                              Max_Number_Of_Dereferences) + 1);
+      --  The P_Set is allocated from the heap as it can easily become
+      --  too large to fit on the task stack.
       Index       : Node_Index;
       Node        : Atomic_Node_Access;
       New_D_List  : Node_Index := 0;
@@ -233,7 +277,7 @@ package body Lockfree_Reference_Counting is
          Node := DL_Nodes (ID, Index);
          if Node.MM_RC = 0 then
             Node.MM_Trace := True;
-            if Node.Mm_RC /= 0 then
+            if Node.MM_RC /= 0 then
                Node.MM_Trace := False;
             end if;
          end if;
@@ -248,7 +292,7 @@ package body Lockfree_Reference_Counting is
                declare
                   N : constant Node_Access := Node_Access (Node);
                begin
-                  Insert (N, P_Set);
+                  Insert (N, P_Set.all);
                end;
             end if;
          end loop;
@@ -261,7 +305,7 @@ package body Lockfree_Reference_Counting is
          D_List (ID) := DL_Nexts (ID, Index);
 
          if Node.MM_RC = 0 and Node.MM_Trace and
-           not Member (Node_Access (Node), P_Set)
+           not Member (Node_Access (Node), P_Set.all)
          then
             DL_Nodes (ID, Index) := null;
             if DL_Claims (ID, Index) = 0 then
@@ -287,6 +331,8 @@ package body Lockfree_Reference_Counting is
 
       D_List  (ID) := New_D_List;
       D_Count (ID) := New_D_Count;
+
+      Free (P_Set);
    end Scan;
 
    ----------------------------------------------------------------------------
