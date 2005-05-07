@@ -54,7 +54,7 @@ package body Example_Queue is
    end Clean_Up;
 
    procedure Init (Queue : in out Queue_Type) is
-      Node : Node_Access := Create_Queue_Node;
+      Node : constant Node_Access := Create_Queue_Node;
    begin
       Store (Queue.Head'Access, Node);
       Store (Queue.Tail'Access, Node);
