@@ -4,7 +4,7 @@
 -- Description     : Lock-free reference counting.
 -- Author          : Anders Gidenstam and Håkan Sundell
 -- Created On      : Fri Nov 19 13:54:45 2004
--- $Id: nbada-lock_free_memory_reclamation.ads,v 1.4 2005/05/07 22:35:04 anders Exp $
+-- $Id: nbada-lock_free_memory_reclamation.ads,v 1.5 2005/05/07 23:11:54 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
@@ -30,6 +30,8 @@ package Lockfree_Reference_Counting is
                        return Boolean;
 
    type Shared_Reference is limited private;
+   --  All shared variables of type Shared_Reference MUST be declared
+   --  atomic by 'pragma Atomic (Variable_Name);' .
 
    type Node_Access is access all Reference_Counted_Node'Class;
    --  Select an appropriate (preferably non-blocking) storage pool
