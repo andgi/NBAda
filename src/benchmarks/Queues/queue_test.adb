@@ -4,6 +4,7 @@
 -- Description     : Example application for lock-free reference counting.
 -- Author          : Anders Gidenstam
 -- Created On      : Wed Apr 13 22:09:40 2005
+-- $Id: queue_test.adb,v 1.5 2005/05/07 19:13:57 anders Exp $
 -------------------------------------------------------------------------------
 
 with Lockfree_Reference_Counting;
@@ -13,169 +14,85 @@ with Primitives;
 with Ada.Text_IO;
 with Ada.Exceptions;
 
+with Ada.Real_Time;
+
+with System.Task_Info;
+
+with Example_Queue;
+
 procedure Queue_Test is
 
    package PID is
-      new Process_Identification (Max_Number_Of_Processes => 10);
+      new Process_Identification (Max_Number_Of_Processes => 37);
 
-   package LFRC is
-      new Lockfree_Reference_Counting (Max_Number_Of_Dereferences   => 4,
-                                       Max_Number_Of_Links_Per_Node => 1,
-                                       Process_Ids                  => PID);
-   use LFRC;
-
-   type Queue_Node_Reference is new LFRC.Shared_Reference;
-
-   type Queue_Node is new LFRC.Reference_Counted_Node with
+   type Value_Type is
       record
-         Next  : aliased Queue_Node_Reference;
-         Value : Integer;
+         Creator : PID.Process_ID_Type;
+         Index   : Integer;
       end record;
-   type Queue_Node_Access is access all Queue_Node;
-
-   procedure Dispose  (Node       : access Queue_Node;
-                       Concurrent : in     Boolean);
-   procedure Clean_Up (Node : access Queue_Node);
-
-   Head : aliased Queue_Node_Reference;
-   Tail : aliased Queue_Node_Reference;
-
-   Queue_Empty : exception;
-
-   procedure Init;
-   function  Dequeue return Integer;
-   procedure Enqueue (Value : in     Integer);
+   package Queues is new Example_Queue (Value_Type  => Value_Type,
+                                        Process_Ids => PID);
+   use Queues;
 
    ----------------------------------------------------------------------------
-   procedure Dispose  (Node       : access Queue_Node;
-                       Concurrent : in     Boolean) is
-      Next : Node_Access;
-   begin
-      if not Concurrent then
-         Store (Node.Next'Access, null);
-      else
-         loop
-            Next := Deref (Node.Next'Access);
-            exit when Compare_And_Swap (Link      => Node.Next'Access,
-                                        Old_Value => Next,
-                                        New_Value => null);
-            Release (Next);
-         end loop;
-         Release (Next);
-      end if;
-   end Dispose;
-
-   procedure Clean_Up (Node : access Queue_Node) is
-      Node1, Node2 : Queue_Node_Access;
-   begin
-      loop
-         Node1 := Queue_Node_Access (Deref (Node.Next'Access));
-         if Node1 /= null and then Is_Deleted (Node1) then
-            Node2 := Queue_Node_Access (Deref (Node1.Next'Access));
-            if Compare_And_Swap (Link      => Node.Next'Access,
-                                 Old_Value => Node_Access (Node1),
-                                 New_Value => Node_Access (Node2))
-            then
-              null;
-            end if;
-            Release (Node_Access (Node1));
-            Release (Node_Access (Node2));
-         else
-            Release (Node_Access (Node1));
-            exit;
-         end if;
-      end loop;
-   end Clean_Up;
-
-   procedure Init is
-      Node : Node_Access := new Queue_Node;
-   begin
-      Store (Head'Access, Node);
-      Store (Tail'Access, Node);
-   end Init;
-
-   function  Dequeue return Integer is
-      Node : Queue_Node_Access;
-      Next : Queue_Node_Access;
-      Res  : Integer;
-   begin
-      loop
-         Node := Queue_Node_Access (Deref (Head'Access));
-         Next := Queue_Node_Access (Deref (Node.Next'Access));
-         if Next = null then
-            Release (Node_Access (Node));
-            raise Queue_Empty;
-         end if;
-         exit when Compare_And_Swap (Link      => Head'Access,
-                                     Old_Value => Node_Access (Node),
-                                     New_Value => Node_Access (Next));
-         Release (Node_Access (Node));
-         Release (Node_Access (Next));
-      end loop;
-      Delete (Node_Access (Node));
-      Res := Next.Value;
-      Release (Node_Access (Next));
-      return Res;
-   end Dequeue;
-
-   procedure Enqueue (Value : in     Integer) is
-      Node : Queue_Node_Access := new Queue_Node;
-      Old, Prev, Prev2 : Queue_Node_Access;
-   begin
-      Node.Value := Value;
-      Old  := Queue_Node_Access (Deref (Tail'Access));
-      Prev := Old;
-      loop
-         loop
-            Prev2 := Queue_Node_Access (Deref (Prev.Next'Access));
-            exit when Prev2 = null;
-
-            if Old /= Prev then
-               Release (Node_Access (Prev));
-            end if;
-
-            Prev := Prev2;
-         end loop;
-
-         exit when Compare_And_Swap (Link      => Prev.Next'Access,
-                                     Old_Value => null,
-                                     New_Value => Node_Access (Node));
-      end loop;
-      declare
-         Dummy : Boolean;
-      begin
-         Dummy := Compare_And_Swap (Link      => Tail'Access,
-                                    Old_Value => Node_Access (Old),
-                                    New_Value => Node_Access (Node));
-      end;
-      if Old /= Prev then
-         Release (Node_Access (Prev));
-      end if;
-      Release (Node_Access (Old));
-      Release (Node_Access (Node));
-   end Enqueue;
-
-
+   --  Test application.
    ----------------------------------------------------------------------------
-   task type Producer;
-   task type Consumer;
 
+   No_Of_Elements : constant := 10_000;
+   QUEUE_FIFO_PROPERTY_VIOLATION : exception;
+
+   Task_Count : aliased Primitives.Unsigned_32 := 0;
+   function Pinned_Task return System.Task_Info.Task_Info_Type is
+   begin
+      return new System.Task_Info.Thread_Attributes'
+        (Scope       => System.Task_Info.PTHREAD_SCOPE_SYSTEM,
+         Inheritance => System.Task_Info.PTHREAD_EXPLICIT_SCHED,
+         Policy      => System.Task_Info.SCHED_RR,
+         Priority    => System.Task_Info.No_Specified_Priority,
+         Runon_CPU   =>
+           System.Task_Info.ANY_CPU
+           --Integer (Primitives.Fetch_And_Add (Task_Count'Access, 1))
+         );
+   end Pinned_Task;
+
+   task type Producer is
+      pragma Task_Info (Pinned_Task);
+   end Producer;
+
+   task type Consumer is
+      pragma Task_Info (Pinned_Task);
+   end Consumer;
+
+   Queue                : aliased Queues.Queue_Type;
+
+   Start                : aliased Primitives.Unsigned_32 := 0;
    Enqueue_Count        : aliased Primitives.Unsigned_32 := 0;
    Dequeue_Count        : aliased Primitives.Unsigned_32 := 0;
    No_Producers_Running : aliased Primitives.Unsigned_32 := 0;
+   No_Consumers_Running : aliased Primitives.Unsigned_32 := 0;
 
    ----------------------------------------------------------------------------
    task body Producer is
+      No_Enqueues : Primitives.Unsigned_32 := 0;
    begin
       PID.Register;
       Primitives.Fetch_And_Add (No_Producers_Running'Access, 1);
+
       declare
-         ID  : constant PID.Process_ID_Type := PID.Process_ID;
+         use type Primitives.Unsigned_32;
       begin
-         for I in 1 .. 10_000 loop
+         while (Start = 0) loop
+            null;
+         end loop;
+      end;
+
+      declare
+         ID          : constant PID.Process_ID_Type := PID.Process_ID;
+      begin
+         for I in 1 .. No_Of_Elements loop
             --Ada.Text_IO.Put_Line ("Enqueue(" & Integer'Image (I) & ")");
-            Enqueue (I);
-            Primitives.Fetch_And_Add (Enqueue_Count'Access, 1);
+            Enqueue (Queue, Value_Type'(ID, I));
+            No_Enqueues := Primitives.Unsigned_32'Succ (No_Enqueues);
          end loop;
 
       exception
@@ -193,38 +110,59 @@ procedure Queue_Test is
       declare
          use type Primitives.Unsigned_32;
       begin
+         Primitives.Fetch_And_Add (Enqueue_Count'Access, No_Enqueues);
          Primitives.Fetch_And_Add (No_Producers_Running'Access, -1);
       end;
+      Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error,
+                            "Producer (?): exited.");
    end Producer;
 
    ----------------------------------------------------------------------------
    task body Consumer is
+      No_Dequeues : Primitives.Unsigned_32 := 0;
    begin
       PID.Register;
+      Primitives.Fetch_And_Add (No_Consumers_Running'Access, 1);
 
       declare
-         ID  : constant PID.Process_ID_Type := PID.Process_ID;
-         I : Integer := 1;
+         ID   : constant PID.Process_ID_Type := PID.Process_ID;
+         Last : array (PID.Process_ID_Type) of Integer := (others => 0);
+         V    : Value_Type;
+         Done : Boolean := False;
       begin
+
+         declare
+            use type Primitives.Unsigned_32;
+         begin
+            while (Start = 0) loop
+               null;
+            end loop;
+         end;
+
          loop
 
             begin
-               if Dequeue /= I then
-                  null;
-                  --Ada.Text_IO.Put_Line ("Queue FIFO property violated!");
-               else
-                  I := I + 1;
+               V           := Dequeue (Queue'Access);
+               No_Dequeues := Primitives.Unsigned_32'Succ (No_Dequeues);
+
+               Done := False;
+
+               if V.Index <= Last (V.Creator) then
+                  raise QUEUE_FIFO_PROPERTY_VIOLATION;
                end if;
-               Primitives.Fetch_And_Add (Dequeue_Count'Access, 1);
+               Last (V.Creator) := V.Index;
 
             exception
-               when Queue_Test.Queue_Empty =>
-                  delay 0.1;
+               when Queues.Queue_Empty =>
+                  Ada.Text_IO.Put (".");
                   declare
                      use type Primitives.Unsigned_32;
                   begin
-                     exit when No_Producers_Running = 0;
+                     exit when Done and No_Producers_Running = 0;
                   end;
+                  delay 0.0;
+
+                  Done := True;
             end;
          end loop;
 
@@ -240,35 +178,60 @@ procedure Queue_Test is
                                   Ada.Exceptions.Exception_Message (E));
             Ada.Text_IO.New_Line (Ada.Text_IO.Standard_Error);
       end;
+
+      declare
+         use type Primitives.Unsigned_32;
+      begin
+         Primitives.Fetch_And_Add (Dequeue_Count'Access, No_Dequeues);
+         Primitives.Fetch_And_Add (No_Consumers_Running'Access, -1);
+      end;
+
+      Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error,
+                            "Consumer (?): exited.");
    end Consumer;
 
+   use type Ada.Real_Time.Time;
+   T1, T2 : Ada.Real_Time.Time;
 begin
    PID.Register;
 
    Ada.Text_IO.Put ("Initializing: ");
-   Init;
+   Init (Queue);
    Ada.Text_IO.Put_Line (" Queue ");
-
---     for I in 1 ..10 loop
---        Ada.Text_IO.Put_Line ("Enqueue(" & Integer'Image (I) & ")");
---        Enqueue (I);
---     end loop;
---     for I in 1 ..10 loop
---         Ada.Text_IO.Put_Line ("Dequeue() = " & Integer'Image (Dequeue));
---     end loop;
 
    Ada.Text_IO.Put_Line ("Testing with producer/consumer tasks.");
    declare
-      P1, P2, P3, P4, P5, P6, P7, P8 : Producer;
-      C1, C2, C3, C4 : Consumer;
+      use type Primitives.Unsigned_32;
+      P1, P2, P3, P4 : Producer;
+      C1 : Consumer;--, C2, C3, C4 : Consumer;
+--      P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14 : Producer;
+--      C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14 : Consumer;
    begin
-      null;
+      delay 5.0;
+      T1 := Ada.Real_Time.Clock;
+      Primitives.Fetch_And_Add (Start'Access, 1);
    end;
-   Ada.Text_IO.Put_Line ("Emptying queue.");
+   T2 := Ada.Real_Time.Clock;
 
+   delay 1.0;
+   Ada.Text_IO.Put_Line ("Enqueue count: " &
+                         Primitives.Unsigned_32'Image (Enqueue_Count));
+   Ada.Text_IO.Put_Line ("Dequeue count: " &
+                         Primitives.Unsigned_32'Image (Dequeue_Count));
+   Ada.Text_IO.Put_Line ("Elapsed time:" &
+                         Duration'Image (Ada.Real_Time.To_Duration (T2 - T1)));
+
+   Ada.Text_IO.Put_Line ("Emptying queue.");
+   delay 5.0;
+
+   declare
+      V : Value_Type;
    begin
       loop
-         Ada.Text_IO.Put_Line ("Dequeue() = " & Integer'Image (Dequeue));
+         V := Dequeue (Queue'Access);
+         Ada.Text_IO.Put_Line ("Dequeue() = (" &
+                               PID.Process_ID_Type'Image (V.Creator) & ", " &
+                               Integer'Image (V.Index) & ")");
          Primitives.Fetch_And_Add (Dequeue_Count'Access, 1);
       end loop;
    exception
