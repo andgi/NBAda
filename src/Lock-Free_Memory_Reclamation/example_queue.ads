@@ -54,6 +54,7 @@ private
    type Queue_Node is new LFRC.Reference_Counted_Node with
       record
          Next  : aliased Queue_Node_Reference;
+         pragma Atomic (Next);
          Value : Value_Type;
       end record;
    type Queue_Node_Access is access all Queue_Node;
@@ -63,10 +64,12 @@ private
    procedure Clean_Up (Node : access Queue_Node);
 
 
-   type Queue_Type is
+   type Queue_Type is limited
       record
          Head : aliased Queue_Node_Reference;
+         pragma Atomic (Head);
          Tail : aliased Queue_Node_Reference;
+         pragma Atomic (Tail);
       end record;
 
 end Example_Queue;
