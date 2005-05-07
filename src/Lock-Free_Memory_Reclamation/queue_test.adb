@@ -4,7 +4,7 @@
 -- Description     : Example application for lock-free reference counting.
 -- Author          : Anders Gidenstam
 -- Created On      : Wed Apr 13 22:09:40 2005
--- $Id: queue_test.adb,v 1.6 2005/05/07 22:35:41 anders Exp $
+-- $Id: queue_test.adb,v 1.7 2005/05/07 23:19:50 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
@@ -64,17 +64,17 @@ procedure Queue_Test is
    function Pinned_Task return System.Task_Info.Task_Info_Type is
    begin
       --  GNAT/IRIX
---        return new System.Task_Info.Thread_Attributes'
---          (Scope       => System.Task_Info.PTHREAD_SCOPE_SYSTEM,
---           Inheritance => System.Task_Info.PTHREAD_EXPLICIT_SCHED,
---           Policy      => System.Task_Info.SCHED_RR,
---           Priority    => System.Task_Info.No_Specified_Priority,
---           Runon_CPU   =>
---             System.Task_Info.ANY_CPU
---             --Integer (Primitives.Fetch_And_Add (Task_Count'Access, 1))
---           );
+      return new System.Task_Info.Thread_Attributes'
+        (Scope       => System.Task_Info.PTHREAD_SCOPE_SYSTEM,
+         Inheritance => System.Task_Info.PTHREAD_EXPLICIT_SCHED,
+         Policy      => System.Task_Info.SCHED_RR,
+         Priority    => System.Task_Info.No_Specified_Priority,
+         Runon_CPU   =>
+           System.Task_Info.ANY_CPU
+         --Integer (Primitives.Fetch_And_Add (Task_Count'Access, 1))
+         );
       --  GNAT/Linux
-      return System.Task_Info.System_Scope;
+--      return System.Task_Info.System_Scope;
    end Pinned_Task;
 
    ----------------------------------------------------------------------------
@@ -87,7 +87,7 @@ procedure Queue_Test is
       declare
          use type Primitives.Unsigned_32;
       begin
-         while (Start = 0) loop
+         while Start = 0 loop
             null;
          end loop;
       end;
@@ -139,7 +139,7 @@ procedure Queue_Test is
          declare
             use type Primitives.Unsigned_32;
          begin
-            while (Start = 0) loop
+            while Start = 0 loop
                null;
             end loop;
          end;
@@ -208,7 +208,7 @@ begin
    declare
       use type Primitives.Unsigned_32;
       P1, P2 : Producer;--, P3, P4 : Producer;
---      C1 : Consumer;--, C2, C3, C4 : Consumer;
+      C1 : Consumer;--, C2, C3, C4 : Consumer;
 --      P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14 : Producer;
 --      C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14 : Consumer;
    begin
@@ -216,11 +216,11 @@ begin
       T1 := Ada.Real_Time.Clock;
       Primitives.Fetch_And_Add (Start'Access, 1);
    end;
-   declare
-      C1 : Consumer;
-   begin
-      null;
-   end;
+--     declare
+--        C1 : Consumer;
+--     begin
+--        null;
+--     end;
    T2 := Ada.Real_Time.Clock;
 
    delay 1.0;
