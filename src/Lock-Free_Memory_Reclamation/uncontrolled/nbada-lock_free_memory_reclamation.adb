@@ -4,7 +4,7 @@
 -- Description     : Lock-free reference counting.
 -- Author          : Anders Gidenstam and Håkan Sundell
 -- Created On      : Fri Nov 19 14:07:58 2004
--- $Id: nbada-lock_free_memory_reclamation.adb,v 1.6 2005/05/07 22:35:04 anders Exp $
+-- $Id: nbada-lock_free_memory_reclamation.adb,v 1.7 2005/05/07 23:11:38 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -13,6 +13,8 @@ with Hash_Tables;
 with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
+
+with Ada.Text_IO;
 
 package body Lockfree_Reference_Counting is
 
@@ -163,13 +165,21 @@ package body Lockfree_Reference_Counting is
       D_Count (ID) := D_Count (ID) + 1;
 
       loop
-         if D_Count (ID) = Threshold_1 then
+         if D_Count (ID) = Threshold_1 or D_Count (ID) = Threshold_2 then
+--              Ada.Text_IO.Put_Line ("Clean_Up_Local started.");
             Clean_Up_Local (ID);
          end if;
          if D_Count (ID) >= Threshold_2 then
+--              Ada.Text_IO.Put_Line ("Scan started: " &
+--                                    Integer'Image (D_Count (ID)) &
+--                                    " garbage nodes.");
             Scan (ID);
+--              Ada.Text_IO.Put_Line ("Scan ended: " &
+--                                    Integer'Image (D_Count (ID)) &
+--                                    " garbage nodes.");
          end if;
          if D_Count (ID) = Threshold_1 then
+--              Ada.Text_IO.Put_Line ("Clean_Up_All started.");
             Clean_Up_All (ID);
          else
             exit;
