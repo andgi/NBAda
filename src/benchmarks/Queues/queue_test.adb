@@ -4,10 +4,9 @@
 -- Description     : Example application for lock-free reference counting.
 -- Author          : Anders Gidenstam
 -- Created On      : Wed Apr 13 22:09:40 2005
--- $Id: queue_test.adb,v 1.5 2005/05/07 19:13:57 anders Exp $
+-- $Id: queue_test.adb,v 1.6 2005/05/07 22:35:41 anders Exp $
 -------------------------------------------------------------------------------
 
-with Lockfree_Reference_Counting;
 with Process_Identification;
 with Primitives;
 
@@ -23,7 +22,7 @@ with Example_Queue;
 procedure Queue_Test is
 
    package PID is
-      new Process_Identification (Max_Number_Of_Processes => 37);
+      new Process_Identification (Max_Number_Of_Processes => 17);
 
    type Value_Type is
       record
@@ -38,29 +37,19 @@ procedure Queue_Test is
    --  Test application.
    ----------------------------------------------------------------------------
 
-   No_Of_Elements : constant := 10_000;
+   No_Of_Elements : constant := 2_000;
    QUEUE_FIFO_PROPERTY_VIOLATION : exception;
 
-   Task_Count : aliased Primitives.Unsigned_32 := 0;
-   function Pinned_Task return System.Task_Info.Task_Info_Type is
-   begin
-      return new System.Task_Info.Thread_Attributes'
-        (Scope       => System.Task_Info.PTHREAD_SCOPE_SYSTEM,
-         Inheritance => System.Task_Info.PTHREAD_EXPLICIT_SCHED,
-         Policy      => System.Task_Info.SCHED_RR,
-         Priority    => System.Task_Info.No_Specified_Priority,
-         Runon_CPU   =>
-           System.Task_Info.ANY_CPU
-           --Integer (Primitives.Fetch_And_Add (Task_Count'Access, 1))
-         );
-   end Pinned_Task;
+   function Pinned_Task return System.Task_Info.Task_Info_Type;
 
    task type Producer is
       pragma Task_Info (Pinned_Task);
+      pragma Storage_Size (1 * 1024 * 1024);
    end Producer;
 
    task type Consumer is
       pragma Task_Info (Pinned_Task);
+      pragma Storage_Size (1 * 1024 * 1024);
    end Consumer;
 
    Queue                : aliased Queues.Queue_Type;
@@ -70,6 +59,23 @@ procedure Queue_Test is
    Dequeue_Count        : aliased Primitives.Unsigned_32 := 0;
    No_Producers_Running : aliased Primitives.Unsigned_32 := 0;
    No_Consumers_Running : aliased Primitives.Unsigned_32 := 0;
+
+   Task_Count : aliased Primitives.Unsigned_32 := 0;
+   function Pinned_Task return System.Task_Info.Task_Info_Type is
+   begin
+      --  GNAT/IRIX
+--        return new System.Task_Info.Thread_Attributes'
+--          (Scope       => System.Task_Info.PTHREAD_SCOPE_SYSTEM,
+--           Inheritance => System.Task_Info.PTHREAD_EXPLICIT_SCHED,
+--           Policy      => System.Task_Info.SCHED_RR,
+--           Priority    => System.Task_Info.No_Specified_Priority,
+--           Runon_CPU   =>
+--             System.Task_Info.ANY_CPU
+--             --Integer (Primitives.Fetch_And_Add (Task_Count'Access, 1))
+--           );
+      --  GNAT/Linux
+      return System.Task_Info.System_Scope;
+   end Pinned_Task;
 
    ----------------------------------------------------------------------------
    task body Producer is
@@ -90,13 +96,12 @@ procedure Queue_Test is
          ID          : constant PID.Process_ID_Type := PID.Process_ID;
       begin
          for I in 1 .. No_Of_Elements loop
-            --Ada.Text_IO.Put_Line ("Enqueue(" & Integer'Image (I) & ")");
             Enqueue (Queue, Value_Type'(ID, I));
             No_Enqueues := Primitives.Unsigned_32'Succ (No_Enqueues);
          end loop;
 
       exception
-         when E: others =>
+         when E : others =>
             Ada.Text_IO.New_Line (Ada.Text_IO.Standard_Error);
             Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error,
                                   "Producer (" &
@@ -167,7 +172,7 @@ procedure Queue_Test is
          end loop;
 
       exception
-         when E: others =>
+         when E : others =>
             Ada.Text_IO.New_Line (Ada.Text_IO.Standard_Error);
             Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error,
                                   "Consumer (" &
@@ -202,14 +207,19 @@ begin
    Ada.Text_IO.Put_Line ("Testing with producer/consumer tasks.");
    declare
       use type Primitives.Unsigned_32;
-      P1, P2, P3, P4 : Producer;
-      C1 : Consumer;--, C2, C3, C4 : Consumer;
+      P1, P2 : Producer;--, P3, P4 : Producer;
+--      C1 : Consumer;--, C2, C3, C4 : Consumer;
 --      P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14 : Producer;
 --      C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14 : Consumer;
    begin
       delay 5.0;
       T1 := Ada.Real_Time.Clock;
       Primitives.Fetch_And_Add (Start'Access, 1);
+   end;
+   declare
+      C1 : Consumer;
+   begin
+      null;
    end;
    T2 := Ada.Real_Time.Clock;
 
@@ -235,7 +245,7 @@ begin
          Primitives.Fetch_And_Add (Dequeue_Count'Access, 1);
       end loop;
    exception
-      when E: others =>
+      when E : others =>
          Ada.Text_IO.New_Line (Ada.Text_IO.Standard_Error);
          Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error,
                                "raised " &

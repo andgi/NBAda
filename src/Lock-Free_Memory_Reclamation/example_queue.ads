@@ -10,6 +10,8 @@
 with Lockfree_Reference_Counting;
 with Process_Identification;
 
+pragma Elaborate_All (Lockfree_Reference_Counting);
+
 generic
    type Value_Type is private;
    --  Value type.
@@ -34,10 +36,18 @@ private
 
    package LFRC is new Lockfree_Reference_Counting
      (Max_Number_Of_Dereferences   => 4,
+      --  Remember to account for the dereferences in the
+      --  callbacks Clean_Up and Dispose (which are invoked by Delete).
+      --  Here: Engueue  <= 3
+      --        Dequeue  <= 3
+      --        Dispose  <= 1
+      --        Clean_up <= 2
+      --  Delete is called from Dequeue on a dereferenced node so the
+      --  maximum number of simultaneous dereferences is 4.
+      --  (2 in Dequeue and 2 in Clean_Up.)
       Max_Number_Of_Links_Per_Node => 1,
       Process_Ids                  => Process_Ids);
    use LFRC;
-
 
    type Queue_Node_Reference is new LFRC.Shared_Reference;
 

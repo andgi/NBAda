@@ -28,12 +28,14 @@
 -- Description     : Process IDs.
 -- Author          : Anders Gidenstam
 -- Created On      : Fri Nov 19 15:56:51 2004
--- $Id: nbada-process_identification.ads,v 1.2 2004/11/25 15:49:25 anders Exp $
+-- $Id: nbada-process_identification.ads,v 1.3 2005/05/07 22:36:17 anders Exp $
 -------------------------------------------------------------------------------
 
 generic
    Max_Number_Of_Processes : Natural;
 package Process_Identification is
+
+   pragma Elaborate_Body;
 
    type Process_ID_Type is new Natural range 1 .. Max_Number_Of_Processes;
 

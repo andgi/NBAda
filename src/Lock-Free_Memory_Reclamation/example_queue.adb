@@ -9,6 +9,9 @@
 
 package body Example_Queue is
 
+   function Create_Queue_Node is new LFRC.Create (Queue_Node,
+                                                  Queue_Node_Access);
+
    ----------------------------------------------------------------------------
    procedure Dispose  (Node       : access Queue_Node;
                        Concurrent : in     Boolean) is
@@ -41,8 +44,8 @@ package body Example_Queue is
             then
               null;
             end if;
-            Release (Node_Access (Node1));
             Release (Node_Access (Node2));
+            Release (Node_Access (Node1));
          else
             Release (Node_Access (Node1));
             exit;
@@ -51,10 +54,11 @@ package body Example_Queue is
    end Clean_Up;
 
    procedure Init (Queue : in out Queue_Type) is
-      Node : Node_Access := new Queue_Node;
+      Node : Node_Access := Create_Queue_Node;
    begin
       Store (Queue.Head'Access, Node);
       Store (Queue.Tail'Access, Node);
+      Release (Node);
    end Init;
 
    function  Dequeue (Queue : access Queue_Type) return Value_Type is
@@ -83,7 +87,7 @@ package body Example_Queue is
 
    procedure Enqueue (Queue : in out Queue_Type;
                       Value : in     Value_Type) is
-      Node : Queue_Node_Access := new Queue_Node;
+      Node : Queue_Node_Access := Queue_Node_Access (Create_Queue_Node);
       Old, Prev, Prev2 : Queue_Node_Access;
    begin
       Node.Value := Value;
@@ -105,6 +109,7 @@ package body Example_Queue is
                                      Old_Value => null,
                                      New_Value => Node_Access (Node));
       end loop;
+
       declare
          Dummy : Boolean;
       begin
@@ -112,9 +117,11 @@ package body Example_Queue is
                                     Old_Value => Node_Access (Old),
                                     New_Value => Node_Access (Node));
       end;
+
       if Old /= Prev then
          Release (Node_Access (Prev));
       end if;
+
       Release (Node_Access (Old));
       Release (Node_Access (Node));
    end Enqueue;

@@ -29,7 +29,7 @@
 --  Description     : A simple closed hash table.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 21:51:42 2004
---  $Id: hash_tables.ads,v 1.2 2005/02/25 16:26:04 anders Exp $
+--  $Id: hash_tables.ads,v 1.3 2005/05/07 22:37:28 anders Exp $
 -------------------------------------------------------------------------------
 
 generic
@@ -40,7 +40,7 @@ generic
 
 package Hash_Tables is
 
-   pragma Elaborate_Body (Hash_Tables);
+   pragma Elaborate_Body;
 
    type Hash_Table (Size : Positive) is private;
 
