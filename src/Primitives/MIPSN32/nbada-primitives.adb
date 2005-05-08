@@ -28,7 +28,7 @@
 --  Description     : Synchronization primitives.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Apr 26 23:49:50 2005
---  $Id: nbada-primitives.adb,v 1.5 2005/04/28 21:49:49 anders Exp $
+--  $Id: nbada-primitives.adb,v 1.6 2005/05/08 00:31:19 anders Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
@@ -270,7 +270,7 @@ package body Primitives is
       System.Machine_Code.Asm
         (Template =>
            "# BEGIN Fetch_And_Add_32"        & LF & HT &
-           ".set nomove"                     & LF &
+           ".set nomove"                     & LF & HT &
            "$FAA1:"                          & LF & HT &
            "ll    $12, 0(%0)"                & LF & HT &
            "add   $12, $12, %1"              & LF & HT &
@@ -299,20 +299,20 @@ package body Primitives is
            "# BEGIN Fetch_And_Add_32"        & LF & HT &
            ".set nomove"                     & LF &
            "$FAA2:"                          & LF & HT &
-           "ll    $12, 0(%1)"                & LF & HT &
-           "add   $12, $12, %2"              & LF & HT &
-           "move  %0, $12"                   & LF & HT &
+           "ll    $13, 0(%1)"                & LF & HT &
+           "add   $12, $13, %2"              & LF & HT &
            "sc    $12, 0(%1)"                & LF & HT &
            "beqz  $12, $FAA2"                & LF & HT &
+           "move  %0,  $13"                  & LF & HT &
            "# END Fetch_And_Add_32",
          Outputs  => Unsigned_32'Asm_Output ("=r", Tmp),   -- %0 = Tmp
          Inputs   => (Unsigned_32_Access'Asm_Input         -- %1 = Target
                       ("r", Unsigned_32_Access (Target)),
                       Unsigned_32'Asm_Input ("r",          -- %2 = Increment
                                              Increment)),
-         Clobber  => "$12",
+         Clobber  => "$12,$13",
          Volatile => True);
-      return Tmp - Increment;  --  <-- Don't ask about that.
+      return Tmp;
    end Fetch_And_Add;
 
    ----------------------------------------------------------------------------
