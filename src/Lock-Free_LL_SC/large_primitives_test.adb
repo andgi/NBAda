@@ -29,7 +29,7 @@
 --  Description     : Test of large word LL/SC/VL and hazard pointers.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 24 15:00:10 2005
---  $Id: large_primitives_test.adb,v 1.2 2005/02/25 16:18:45 anders Exp $
+--  $Id: large_primitives_test.adb,v 1.3 2005/06/09 14:53:17 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
@@ -104,7 +104,7 @@ procedure Large_Primitives_Test is
 
          end loop;
       exception
-         when E: others =>
+         when E : others =>
             Ada.Text_IO.New_Line (Ada.Text_IO.Standard_Error);
             Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error,
                                   PID.Process_ID_Type'Image (ID) &
@@ -122,16 +122,16 @@ procedure Large_Primitives_Test is
       declare
          ID  : constant PID.Process_ID_Type := PID.Process_ID;
          Tmp : My_String;
-         --B   : Boolean;
+--         B   : Boolean;
       begin
          for I in 1 .. 100_000 loop
             Tmp := Load_Linked (A'Access);
             Primitives.Fetch_And_Add (Loaded'Access, 1);
 
-            --B := Store_Conditional (A'Access, "CepaDepa  ");
+--            B := Store_Conditional (A'Access, "CepaDepa  ");
          end loop;
       exception
-         when E: others =>
+         when E : others =>
             Ada.Text_IO.New_Line (Ada.Text_IO.Standard_Error);
             Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error,
                                   PID.Process_ID_Type'Image (ID) &

@@ -33,11 +33,11 @@
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 24 10:25:44 2005
---  $Id: large_primitives.adb,v 1.4 2005/02/25 16:30:27 anders Exp $
+--  $Id: large_primitives.adb,v 1.5 2005/06/09 14:53:17 anders Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Conversion;
---with Lock_Free_Fixed_Size_Storage_Pools;
+--  with Lock_Free_Fixed_Size_Storage_Pools;
 
 with Primitives;
 with Ada.Text_IO;
@@ -55,7 +55,7 @@ package body Large_Primitives is
 
    type Link is
       record
-         Target : HP.Node_access;
+         Target : HP.Node_Access;
          Source : Shared_Reference_Access;
       end record;
 
