@@ -2,7 +2,7 @@
 Ada binding to some hardware synchronization primitives
 -------------------------------------------------------
 
-Copyright (C) 2004  Anders Gidenstam
+Copyright (C) 2004 - 2005  Anders Gidenstam.  All rights reserved.
 
 anders-www@gidenstam.org
 
@@ -22,8 +22,19 @@ Supported platforms
 
   Presently the binding supports 32-bit versions of the
   'Compare & Swap' and 'Fetch & Add' synchronization primitives on
+
    - SPARC v8+ and v9 based Sun workstations
+
    - Intel IA32 compatible processors (486(?) or Pentium and newer).
+
+   - MIPS 3 and higher based SGI workstations running Irix with the N32 ABI.
+
+  Presently the binding supports 64-bit versions of the
+  'Compare & Swap' primitives on
+
+   - 64bit MIPS based SGI workstations running Irix with the N32 ABI.
+     NOTE: Presently only Compare_And_Swap_64 work, the Boolean_ and Void_
+           variants do not work.
 
   As the binding uses GNAT syntax for the inline assembler, other compilers
   than GNAT is unlikely to work.
@@ -39,3 +50,10 @@ Test programs
   On SPARC:
   > gnatmake -I./SPARCv9 cas_test -cargs -Wa,-xarch=v8plus
   > gnatmake -I./SPARCv9 faa_test -cargs -Wa,-xarch=v8plus
+
+  On MIPS Irix:
+  > gnatmake -I./MIPSN32 cas_test
+  > gnatmake -I./MIPSN32 faa_test
+
+
+
