@@ -8,7 +8,7 @@ www:    http://www.gidenstam.org
 
 Introduction
 
-  Hazard pointers is a lock-free memory managment scheme that provides
+  Hazard pointers is a lock-free memory management scheme that provides
   safe reclamation of dynamically allocated memory in a concurrent
   (lock-free) environment. This is a very tricky business since concurrent
   threads might have pointers to a shared node in private variables or
@@ -16,10 +16,10 @@ Introduction
 
   Hazard pointers, introduced by Maged Michael in
   ["Hazard Pointers: Safe Memory Reclamation for Lock-Free Objects",
-  IEEE Transactions on Parallell and Distributed Systems,
+  IEEE Transactions on Parallel and Distributed Systems,
   15(6), 491--504, June 2004] solves this problem for lock-free algorithms
   that do not require the ability to safely dereference pointers inside
-  dynamically allocated nodes. Suprisingly many lock-free algorithms and
+  dynamically allocated nodes. Surprisingly many lock-free algorithms and
   data structures can be implemented using this scheme.
 
   Here I have included an example application, namely a library implementing
