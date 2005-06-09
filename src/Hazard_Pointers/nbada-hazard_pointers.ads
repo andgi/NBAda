@@ -34,7 +34,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:10:15 2004
---  $Id: nbada-hazard_pointers.ads,v 1.3 2005/02/25 16:26:04 anders Exp $
+--  $Id: nbada-hazard_pointers.ads,v 1.4 2005/06/09 14:39:09 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
@@ -51,6 +51,8 @@ package Hazard_Pointers is
    --  Inherit from this base type to create your own managed types.
 
    type Shared_Reference is limited private;
+   --  All shared variables of type Shared_Reference MUST be declared
+   --  atomic by 'pragma Atomic (Variable_Name);' .
 
    type Node_Access is access all Managed_Node'Class;
    --  Select an appropriate (preferably non-blocking) storage pool
@@ -95,7 +97,7 @@ private
       end record;
 
    type Shared_Reference is new Node_Access;
-   --pragma Atomic (Shared_Reference);
-   --pragma Volatile (Shared_Reference);
+--   pragma Atomic (Shared_Reference);
+--   pragma Volatile (Shared_Reference);
 
 end Hazard_Pointers;

@@ -34,7 +34,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:35:09 2004
---  $Id: nbada-hazard_pointers.adb,v 1.5 2005/02/28 14:23:54 anders Exp $
+--  $Id: nbada-hazard_pointers.adb,v 1.6 2005/06/09 14:39:58 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -229,7 +229,7 @@ package body Hazard_Pointers is
       function To_Unsigned is new Ada.Unchecked_Conversion (Node_Access,
                                                             Unsigned);
    begin
-      return Natural ((To_Unsigned (Ref)/4) mod Unsigned (Size));
+      return Natural ((To_Unsigned (Ref) / 4) mod Unsigned (Size));
    end Hash_Ref;
 
 end Hazard_Pointers;

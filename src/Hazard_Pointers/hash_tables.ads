@@ -29,7 +29,7 @@
 --  Description     : A simple closed hash table.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 21:51:42 2004
---  $Id: hash_tables.ads,v 1.3 2005/05/07 22:37:28 anders Exp $
+--  $Id: hash_tables.ads,v 1.4 2005/06/09 14:40:50 anders Exp $
 -------------------------------------------------------------------------------
 
 generic
@@ -45,27 +45,27 @@ package Hash_Tables is
    type Hash_Table (Size : Positive) is private;
 
    procedure Clear (Table :    out Hash_Table);
-   -- Clear a hash table.
+   --  Clear a hash table.
 
    procedure Insert (Key   : in     Element_Type;
                      Table : in out Hash_Table);
-   -- Insert an element.
+   --  Insert an element.
 
    procedure Delete (Key   : in     Element_Type;
                      Table : in out Hash_Table);
-   -- Delete an element.
+   --  Delete an element.
 
    function Member (Key   : in Element_Type;
                     Table : in Hash_Table) return Boolean;
-   -- Find an element.
+   --  Find an element.
 
    procedure Find (Key   : in out Element_Type;
                    Table : in     Hash_Table);
-   -- Find an element.
+   --  Find an element.
 
    function Find (Key   : in Element_Type;
                   Table : in Hash_Table) return Element_Type;
-   -- Find an element.
+   --  Find an element.
 
    Item_Not_Found : exception;
 
