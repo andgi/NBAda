@@ -20,7 +20,7 @@ Introduction
   15(6), 491--504, June 2004] solves this problem for lock-free algorithms
   that do not require the ability to safely dereference pointers inside
   dynamically allocated nodes. Suprisingly many lock-free algorithms and
-  data structures can be implemented with this scheme.
+  data structures can be implemented using this scheme.
 
   Here I have included an example application, namely a library implementing
   lock-free Load-Linked and Store-Conditional primitives for arbitrarily
