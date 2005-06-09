@@ -34,7 +34,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:10:15 2004
---  $Id: nbada-hazard_pointers.ads,v 1.4 2005/06/09 14:39:09 anders Exp $
+--  $Id: nbada-hazard_pointers.ads,v 1.5 2005/06/09 15:42:44 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
@@ -57,7 +57,7 @@ package Hazard_Pointers is
    type Node_Access is access all Managed_Node'Class;
    --  Select an appropriate (preferably non-blocking) storage pool
    --  by the "for My_Node_Access'Storage_Pool use ..." construct.
-   --  Note: There should not be any shared variables of type Node_Access.
+   --  Note: There SHOULD NOT be any shared variables of type Node_Access.
 
    ----------------------------------------------------------------------------
    --  Operations on shared references.
@@ -71,8 +71,9 @@ package Hazard_Pointers is
 
    procedure Delete      (Local  : in Node_Access);
    --  Note: Delete may only be called when the caller can guarantee
-   --        that there are NO and will not be any more shared references to
-   --        the element.
+   --        that there are NO and WILL NOT BE any more shared references to
+   --        the node. The memory management scheme makes sure the
+   --        node is not freed until all local references have been released.
 
 
    function  Compare_And_Swap (Shared    : access Shared_Reference;
