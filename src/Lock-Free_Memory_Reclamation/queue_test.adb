@@ -4,7 +4,7 @@
 -- Description     : Example application for lock-free reference counting.
 -- Author          : Anders Gidenstam
 -- Created On      : Wed Apr 13 22:09:40 2005
--- $Id: queue_test.adb,v 1.7 2005/05/07 23:19:50 anders Exp $
+-- $Id: queue_test.adb,v 1.8 2005/06/09 13:02:19 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
@@ -22,7 +22,7 @@ with Example_Queue;
 procedure Queue_Test is
 
    package PID is
-      new Process_Identification (Max_Number_Of_Processes => 17);
+      new Process_Identification (Max_Number_Of_Processes => 32);
 
    type Value_Type is
       record
@@ -37,8 +37,12 @@ procedure Queue_Test is
    --  Test application.
    ----------------------------------------------------------------------------
 
-   No_Of_Elements : constant := 2_000;
+   No_Of_Elements : constant := 10_000;
    QUEUE_FIFO_PROPERTY_VIOLATION : exception;
+
+   Output_File : Ada.Text_IO.File_Type renames
+     Ada.Text_IO.Standard_Output;
+--     Ada.Text_IO.Standard_Error;
 
    function Pinned_Task return System.Task_Info.Task_Info_Type;
 
@@ -70,8 +74,8 @@ procedure Queue_Test is
          Policy      => System.Task_Info.SCHED_RR,
          Priority    => System.Task_Info.No_Specified_Priority,
          Runon_CPU   =>
-           System.Task_Info.ANY_CPU
-         --Integer (Primitives.Fetch_And_Add (Task_Count'Access, 1))
+           --System.Task_Info.ANY_CPU
+           Integer (Primitives.Fetch_And_Add (Task_Count'Access, 1))
          );
       --  GNAT/Linux
 --      return System.Task_Info.System_Scope;
@@ -102,15 +106,15 @@ procedure Queue_Test is
 
       exception
          when E : others =>
-            Ada.Text_IO.New_Line (Ada.Text_IO.Standard_Error);
-            Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error,
+            Ada.Text_IO.New_Line (Output_File);
+            Ada.Text_IO.Put_Line (Output_File,
                                   "Producer (" &
                                   PID.Process_ID_Type'Image (ID) &
                                   "): raised " &
                                   Ada.Exceptions.Exception_Name (E) &
                                   " : " &
                                   Ada.Exceptions.Exception_Message (E));
-            Ada.Text_IO.New_Line (Ada.Text_IO.Standard_Error);
+            Ada.Text_IO.New_Line (Output_File);
       end;
       declare
          use type Primitives.Unsigned_32;
@@ -118,8 +122,18 @@ procedure Queue_Test is
          Primitives.Fetch_And_Add (Enqueue_Count'Access, No_Enqueues);
          Primitives.Fetch_And_Add (No_Producers_Running'Access, -1);
       end;
-      Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error,
+      Ada.Text_IO.Put_Line (Output_File,
                             "Producer (?): exited.");
+
+   exception
+      when E : others =>
+         Ada.Text_IO.New_Line (Output_File);
+         Ada.Text_IO.Put_Line (Output_File,
+                               "Producer (?): raised " &
+                               Ada.Exceptions.Exception_Name (E) &
+                               " : " &
+                               Ada.Exceptions.Exception_Message (E));
+         Ada.Text_IO.New_Line (Output_File);
    end Producer;
 
    ----------------------------------------------------------------------------
@@ -173,15 +187,15 @@ procedure Queue_Test is
 
       exception
          when E : others =>
-            Ada.Text_IO.New_Line (Ada.Text_IO.Standard_Error);
-            Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error,
+            Ada.Text_IO.New_Line (Output_File);
+            Ada.Text_IO.Put_Line (Output_File,
                                   "Consumer (" &
                                   PID.Process_ID_Type'Image (ID) &
                                   "): raised " &
                                   Ada.Exceptions.Exception_Name (E) &
                                   " : " &
                                   Ada.Exceptions.Exception_Message (E));
-            Ada.Text_IO.New_Line (Ada.Text_IO.Standard_Error);
+            Ada.Text_IO.New_Line (Output_File);
       end;
 
       declare
@@ -191,8 +205,17 @@ procedure Queue_Test is
          Primitives.Fetch_And_Add (No_Consumers_Running'Access, -1);
       end;
 
-      Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error,
+      Ada.Text_IO.Put_Line (Output_File,
                             "Consumer (?): exited.");
+   exception
+      when E : others =>
+            Ada.Text_IO.New_Line (Output_File);
+            Ada.Text_IO.Put_Line (Output_File,
+                                  "Consumer (?): raised " &
+                                  Ada.Exceptions.Exception_Name (E) &
+                                  " : " &
+                                  Ada.Exceptions.Exception_Message (E));
+            Ada.Text_IO.New_Line (Output_File);
    end Consumer;
 
    use type Ada.Real_Time.Time;
@@ -207,10 +230,12 @@ begin
    Ada.Text_IO.Put_Line ("Testing with producer/consumer tasks.");
    declare
       use type Primitives.Unsigned_32;
-      P1, P2 : Producer;--, P3, P4 : Producer;
-      C1 : Consumer;--, C2, C3, C4 : Consumer;
---      P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14 : Producer;
---      C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14 : Consumer;
+--      P1, P2, P3, P4 : Producer;
+--      C1, C2, C3, C4 : Consumer;
+      P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
+        : Producer;
+      C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
+        : Consumer;
    begin
       delay 5.0;
       T1 := Ada.Real_Time.Clock;
@@ -239,20 +264,21 @@ begin
    begin
       loop
          V := Dequeue (Queue'Access);
-         Ada.Text_IO.Put_Line ("Dequeue() = (" &
+         Ada.Text_IO.Put_Line (Output_File,
+                               "Dequeue() = (" &
                                PID.Process_ID_Type'Image (V.Creator) & ", " &
                                Integer'Image (V.Index) & ")");
          Primitives.Fetch_And_Add (Dequeue_Count'Access, 1);
       end loop;
    exception
       when E : others =>
-         Ada.Text_IO.New_Line (Ada.Text_IO.Standard_Error);
-         Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error,
+         Ada.Text_IO.New_Line (Output_File);
+         Ada.Text_IO.Put_Line (Output_File,
                                "raised " &
                                Ada.Exceptions.Exception_Name (E) &
                                " : " &
                                Ada.Exceptions.Exception_Message (E));
-         Ada.Text_IO.New_Line (Ada.Text_IO.Standard_Error);
+         Ada.Text_IO.New_Line (Output_File);
 
          Ada.Text_IO.Put_Line ("Final enqueue count: " &
                                Primitives.Unsigned_32'Image (Enqueue_Count));

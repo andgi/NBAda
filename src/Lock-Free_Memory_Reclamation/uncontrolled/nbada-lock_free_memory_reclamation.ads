@@ -4,7 +4,7 @@
 -- Description     : Lock-free reference counting.
 -- Author          : Anders Gidenstam and Håkan Sundell
 -- Created On      : Fri Nov 19 13:54:45 2004
--- $Id: nbada-lock_free_memory_reclamation.ads,v 1.5 2005/05/07 23:11:54 anders Exp $
+-- $Id: nbada-lock_free_memory_reclamation.ads,v 1.6 2005/06/09 13:00:47 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
@@ -61,12 +61,15 @@ package Lockfree_Reference_Counting is
 
 private
 
-   --  Clean up and scan thresholds.
+   --  Clean-up threshold.
    Threshold_1 : Natural :=
+     --  The derived bound in the paper.
      Process_Ids.Max_Number_Of_Processes ** 2 *
      (Max_Number_Of_Dereferences + Max_Number_Of_Links_Per_Node +
       Max_Number_Of_Links_Per_Node + 1);
-   Threshold_2 : Natural := Threshold_1 / 2;
+
+   --  Scan threshold.
+   Threshold_2 : Natural := Threshold_1;
 
    subtype Reference_Count is Primitives.Unsigned_32;
 
