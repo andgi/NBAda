@@ -1,0 +1,46 @@
+Ada implementation of Maged Michael's Hazard Pointers
+-----------------------------------------------------
+
+Copyright (C) 2004 - 2005  Anders Gidenstam.  All rights reserved.
+
+e-mail: anders-www@gidenstam.org
+www:    http://www.gidenstam.org
+
+Introduction
+
+  Hazard pointers is a lock-free memory managment scheme that provides
+  safe reclamation of dynamically allocated memory in a concurrent
+  (lock-free) environment. This is a very tricky business since concurrent
+  threads might have pointers to a shared node in private variables or
+  CPU registers.
+
+  Hazard pointers, introduced by Maged Michael in
+  ["Hazard Pointers: Safe Memory Reclamation for Lock-Free Objects",
+  IEEE Transactions on Parallell and Distributed Systems,
+  15(6), 491--504, June 2004] solves this problem for lock-free algorithms
+  that do not require the ability to safely dereference pointers inside
+  dynamically allocated nodes. Suprisingly many lock-free algorithms and
+  data structures can be implemented with this scheme.
+
+  Here I have included an example application, namely a library implementing
+  lock-free Load-Linked and Store-Conditional primitives for arbitrarily
+  large objects. This implementation is based on the paper
+  [Maged Michael, "Practical Lock-Free and Wait-Free LL/SC/VL
+   Implementations Using 64-Bit CAS", The 18th International Conference on
+   Distributed Computing, October 2004].
+  Curiously, despite its name, the algorithm works perfectly well also using
+  32-bit Compare and Swap.
+
+Test program
+
+  The very minimal test program can be compiled with the following commands:
+
+  On IA32: (i.e. Intel x86 architecture)
+  > gnatmake -I../Primitives -I../Primitives/IA32 large_primitives_test
+
+  On SPARC:
+  > gnatmake -I../Primitives -I../Primitives/SPARCv9 large_primitives_test -cargs -Wa,-xarch=v8plus
+
+  On MIPS Irix:
+  > gnatmake -I../Primitives -I../Primitives/MIPSN32 large_primitives_test
+
