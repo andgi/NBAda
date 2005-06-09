@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Primitives - A binding to the synchronization primitives of the hardware.
---  Copyright (C) 2004  Anders Gidenstam
+--  Copyright (C) 2004 - 2005  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,10 +28,8 @@
 --  Description     : Synchronization primitives.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Jul  5 12:27:13 2002
---  $Id: nbada-primitives.ads,v 1.11 2005/04/27 13:14:28 anders Exp $
+--  $Id: nbada-primitives.ads,v 1.12 2005/06/09 13:28:48 anders Exp $
 -------------------------------------------------------------------------------
-
-with Interfaces;
 
 package Primitives is
 
