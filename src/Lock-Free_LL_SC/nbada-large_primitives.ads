@@ -33,7 +33,7 @@
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 23 17:59:44 2005
---  $Id: nbada-large_primitives.ads,v 1.3 2005/02/25 16:13:55 anders Exp $
+--  $Id: nbada-large_primitives.ads,v 1.4 2005/06/10 14:40:29 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
@@ -79,7 +79,7 @@ package Large_Primitives is
          record
             Value : Element;
          end record;
-      type Object_Value_Access is access all Object_Value;
+      procedure Free (Node : access Object_Value);
 
       type Shared_Element is new HP.Shared_Reference;
 
