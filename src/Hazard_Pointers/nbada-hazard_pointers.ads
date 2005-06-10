@@ -34,7 +34,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:10:15 2004
---  $Id: nbada-hazard_pointers.ads,v 1.5 2005/06/09 15:42:44 anders Exp $
+--  $Id: nbada-hazard_pointers.ads,v 1.6 2005/06/10 14:38:58 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
@@ -49,6 +49,15 @@ package Hazard_Pointers is
 
    type Managed_Node is abstract tagged limited private;
    --  Inherit from this base type to create your own managed types.
+   procedure Free (Object : access Managed_Node) is abstract;
+   --  Note: Due to some peculiarities of the Ada storage pool
+   --        management managed nodes need to have a dispatching primitive
+   --        operation that calls the instance of Unchecked_Deallocation
+   --        appropriate for the specific node type at hand. Without
+   --        this the wrong instance of Unchecked_Deallocation might get
+   --        called - often with disastrous consequences.
+   --        This workaround is not very nice but I have not found any
+   --        better way.
 
    type Shared_Reference is limited private;
    --  All shared variables of type Shared_Reference MUST be declared

@@ -34,13 +34,12 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:35:09 2004
---  $Id: nbada-hazard_pointers.adb,v 1.6 2005/06/09 14:39:58 anders Exp $
+--  $Id: nbada-hazard_pointers.adb,v 1.7 2005/06/10 14:38:58 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
 with Hash_Tables;
 
-with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
 
 with Ada.Text_IO;
@@ -61,8 +60,6 @@ package body Hazard_Pointers is
                       Size : in Natural) return Natural;
    function Compare_And_Swap is
       new Primitives.Boolean_Compare_And_Swap_32 (Shared_Reference);
-   procedure Free is new Ada.Unchecked_Deallocation (Managed_Node'Class,
-                                                     Node_Access);
 
    package HP_Sets is new Hash_Tables (Node_Access, "=", Hash_Ref);
 
