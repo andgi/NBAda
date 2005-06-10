@@ -33,11 +33,12 @@
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 24 10:25:44 2005
---  $Id: nbada-large_primitives.adb,v 1.5 2005/06/09 14:53:17 anders Exp $
+--  $Id: nbada-large_primitives.adb,v 1.6 2005/06/10 14:54:49 anders Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Conversion;
---  with Lock_Free_Fixed_Size_Storage_Pools;
+with Lock_Free_Fixed_Size_Storage_Pools;
+with Ada.Unchecked_Deallocation;
 
 with Primitives;
 with Ada.Text_IO;
@@ -81,6 +82,7 @@ package body Large_Primitives is
       --  Types and static variables.
       -------------------------------------------------------------------------
       type Shared_Element_Access is access all Shared_Element;
+      type Object_Value_Access is access all Object_Value;
 
       function To_Shared_Reference_Access is
          new Ada.Unchecked_Conversion (Shared_Element_Access,
@@ -95,14 +97,19 @@ package body Large_Primitives is
       -------------------------------------------------------------------------
       --  Storage pool for the nodes.
       -------------------------------------------------------------------------
---        Node_Pool :
---          Lock_Free_Fixed_Size_Storage_Pools.Lock_Free_Storage_Pool
---          (Pool_Size  => 4_096,
---           Block_Size => Object_Value'Max_Size_In_Storage_Elements);
+
+      Pool_Size : constant Natural :=
+        2 * (Max_Number_Of_Links + 1) * Natural (Processes'Last) ** 2;
+      --  This should be a conservative and safe number.
+
+      Node_Pool :
+        Lock_Free_Fixed_Size_Storage_Pools.Lock_Free_Storage_Pool
+        (Pool_Size  =>
+           Lock_Free_Fixed_Size_Storage_Pools.Block_Count (Pool_Size),
+         Block_Size => Object_Value'Max_Size_In_Storage_Elements);
 
       type Object_Value_Access2 is access Object_Value;
---      for Object_Value_Access2'Storage_Pool use Node_Pool;
-
+      for Object_Value_Access2'Storage_Pool use Node_Pool;
 
       -------------------------------------------------------------------------
       function Load_Linked (Target : access Shared_Element) return Element is
@@ -213,6 +220,24 @@ package body Large_Primitives is
       -------------------------------------------------------------------------
       --  Private operations.
       -------------------------------------------------------------------------
+
+      -------------------------------------------------------------------------
+      procedure Free (Node : access Object_Value) is
+         procedure Reclaim is new
+           Ada.Unchecked_Deallocation (Object_Value,
+                                       Object_Value_Access2);
+         function To_Object_Value_Access2 is new
+           Ada.Unchecked_Conversion (Object_Value_Access,
+                                     Object_Value_Access2);
+
+         X : Object_Value_Access2 :=
+           To_Object_Value_Access2 (Object_Value_Access (Node));
+         --  This is dangerous in the general case but here we know
+         --  for sure that we have allocated all the nodes of the
+         --  Object_Value type from the Object_Value_Access2 pool.
+      begin
+         Reclaim (X);
+      end Free;
 
       -------------------------------------------------------------------------
       function  Get_Block  (ID : in Processes) return Object_Value_Access is
