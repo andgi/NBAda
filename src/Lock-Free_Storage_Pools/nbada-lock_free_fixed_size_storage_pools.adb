@@ -28,7 +28,7 @@
 --  Description     : A lock-free fixed size storage pool implementation.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Apr  3 17:50:52 2003
---  $Id: nbada-lock_free_fixed_size_storage_pools.adb,v 1.3 2005/06/10 14:31:09 anders Exp $
+--  $Id: nbada-lock_free_fixed_size_storage_pools.adb,v 1.4 2005/06/13 14:24:27 anders Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
@@ -59,14 +59,6 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
    package Pool_Blocks is
       new System.Address_To_Access_Conversions (Pool_Block);
 
-
-   ----------------------------------------------------------------------------
-   --  Home made assert construction. Provides some degree of compile time
-   --  checking.
-   subtype Always_True is Boolean range True .. True;
-   type Assertion (Assert : Always_True) is
-     null record;
-
    ----------------------------------------------------------------------------
    procedure Allocate
      (Pool                     : in out Lock_Free_Storage_Pool;
@@ -79,6 +71,7 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
       Block : Pool_Block_Access;
    begin
       if Size_In_Storage_Elements > Pool.Block_Size then
+         --  The requested block is too large.
          raise Storage_Error;
       end if;
 
@@ -87,6 +80,7 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
             Block_Ref : constant Pool_Block_Ref := Pool.Free_List;
          begin
             if Is_Null (Block_Ref) then
+               --  This storage pool is empty.
                raise Storage_Exhausted;
             end if;
 
@@ -99,7 +93,7 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
          end;
       end loop;
 
-      --  Safety test.
+      --  Safety check.
       declare
          Head : constant Pool_Block_Access :=
            To_Block_Access (Pool.Free_List, Pool);
@@ -110,7 +104,7 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
       Storage_Address :=
         Pool_Blocks.To_Address (Pool_Blocks.Object_Pointer (Block));
 
-      --  Safety test.
+      --  Safety check.
       declare
          use type System.Address;
       begin
@@ -133,7 +127,7 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
 
       Block : Pool_Block_Access;
    begin
-      --  Safety test.
+      --  Safety check.
       if
         Storage_Address < Pool.Storage (Pool.Storage'First)'Address or
         Storage_Address > Pool.Storage (Pool.Storage'Last)'Address
@@ -144,6 +138,7 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
       Block :=
         Pool_Block_Access (Pool_Blocks.To_Pointer (Storage_Address));
 
+      --  Safety check.
       if Block.all'Address /= Storage_Address then
          raise Implementation_Error;
       end if;
@@ -162,7 +157,7 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
          end;
       end loop;
 
-      --  Safety test.
+      --  Safety check.
       declare
          Head : constant Pool_Block_Access :=
            To_Block_Access (Pool.Free_List, Pool);
@@ -203,17 +198,35 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
    procedure Initialize (Pool : in out Lock_Free_Storage_Pool) is
       use System.Storage_Elements;
    begin
+      --  Reset free list.
+      Pool.Free_List := Null_Ref;
+
+      --  Compute real block size.
       Pool.Real_Block_Size :=
         Storage_Count'Max (Pool.Block_Size,
                            Pool_Block'Max_Size_In_Storage_Elements);
+      --  Pad to correct alignment if necessary.
+      if Pool.Real_Block_Size mod Pool_Block'Alignment /= 0 then
+         Pool.Real_Block_Size :=
+           (Pool.Real_Block_Size / Pool_Block'Alignment + 1) *
+           Pool_Block'Alignment;
+      end if;
+      --  Safety check.
+      if Pool.Real_Block_Size mod Pool_Block'Alignment /= 0 then
+         raise Implementation_Error;
+      end if;
 
+      --  Preallocate storage for the pool.
       Pool.Storage := new Storage_Array
         (0 .. Storage_Count (Pool.Pool_Size) * Pool.Real_Block_Size);
-
-      Pool.Free_List := Null_Ref;
+      --  Safety check.
+      if Pool.Storage (0)'Address mod Pool_Block'Alignment /= 0 then
+         raise Implementation_Error;
+      end if;
 
       Primitives.Membar;
 
+      --  Insert the new storage in the free list.
       for I in 0 .. Storage_Count (Pool.Pool_Size - 1) loop
          declare
             Block_Ref : constant Pool_Block_Ref := (Block_Index (I), 0);
@@ -221,6 +234,7 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
               To_Block_Access (Block_Ref, Pool);
             use type System.Address;
          begin
+            --  Sefety check.
             if Block.all'Address /=
                Pool.Storage (I * Pool.Real_Block_Size)'Address or
                Block.all'Address mod Pool_Block'Alignment /= 0
@@ -228,6 +242,7 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
                raise Implementation_Error;
             end if;
 
+            --  Add block to free list.
             loop
                Block.Next := Pool.Free_List;
 
@@ -238,6 +253,7 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
          end;
       end loop;
 
+      --  Safety check.
       if Validate (Pool) /= Pool.Pool_Size then
          raise Implementation_Error;
       end if;
@@ -267,8 +283,11 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
               (Pool_Blocks.To_Pointer
                (Pool.Storage (Storage_Count (X.Index) *
                               Pool.Real_Block_Size)'Address));
+            --  Compute storage index where this block starts.  The
+            --  selection of Real_Block_Size at initializtion time
+            --  guarantees that the Pool_Block is properly aligned.
          begin
-            --  Safety test.
+            --  Safety check.
             declare
                use type System.Address;
             begin
@@ -302,7 +321,7 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
                       Pool.Real_Block_Size),
          Ver);
    begin
-      --  Safety test.
+      --  Safety check.
       if
         To_Integer (X.all'Address) - To_Integer (Pool.Storage (0)'Address) >
         Integer_Address (Pool.Storage'Length)
