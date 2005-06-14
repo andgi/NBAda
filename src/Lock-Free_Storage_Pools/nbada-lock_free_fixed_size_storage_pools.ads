@@ -28,7 +28,7 @@
 --  Description     : A lock-free fixed size storage pool implementation.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Apr  3 17:06:17 2003
---  $Id: nbada-lock_free_fixed_size_storage_pools.ads,v 1.3 2005/06/10 14:31:09 anders Exp $
+--  $Id: nbada-lock_free_fixed_size_storage_pools.ads,v 1.4 2005/06/14 12:57:07 anders Exp $
 -------------------------------------------------------------------------------
 
 with System.Storage_Elements;
@@ -95,16 +95,19 @@ private
       end record;
    pragma Atomic (Pool_Block);
 
-   type Storage_Array_Access is access System.Storage_Elements.Storage_Array;
+   type Atomic_Storage_Array is new System.Storage_Elements.Storage_Array;
+   pragma Atomic_Components (Atomic_Storage_Array);
+
+   type Storage_Array_Access is access Atomic_Storage_Array;
 
    type Lock_Free_Storage_Pool
      (Pool_Size  : Block_Count;
       Block_Size : System.Storage_Elements.Storage_Count) is
      new System.Storage_Pools.Root_Storage_Pool with
       record
+         Real_Block_Size : System.Storage_Elements.Storage_Count;
          Storage         : Storage_Array_Access;
          pragma Atomic (Storage);
-         Real_Block_Size : System.Storage_Elements.Storage_Count;
          Free_List       : aliased Pool_Block_Ref;
          pragma Atomic (Free_List);
       end record;
