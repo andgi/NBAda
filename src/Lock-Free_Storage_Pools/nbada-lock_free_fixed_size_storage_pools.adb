@@ -28,12 +28,14 @@
 --  Description     : A lock-free fixed size storage pool implementation.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Apr  3 17:50:52 2003
---  $Id: nbada-lock_free_fixed_size_storage_pools.adb,v 1.4 2005/06/13 14:24:27 anders Exp $
+--  $Id: nbada-lock_free_fixed_size_storage_pools.adb,v 1.5 2005/06/14 12:59:20 anders Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
 with System.Address_To_Access_Conversions;
 with Primitives;
+
+--with Ada.Text_IO;
 
 package body Lock_Free_Fixed_Size_Storage_Pools is
 
@@ -50,7 +52,7 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
    function Is_Null (X : Pool_Block_Ref) return Boolean;
 
    procedure Free is
-      new Ada.Unchecked_Deallocation (System.Storage_Elements.Storage_Array,
+      new Ada.Unchecked_Deallocation (Atomic_Storage_Array,
                                       Storage_Array_Access);
    function CAS is new
      Primitives.Boolean_Compare_And_Swap_32 (Pool_Block_Ref);
@@ -70,6 +72,7 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
 
       Block : Pool_Block_Access;
    begin
+--      Ada.Text_IO.Put ('A');
       if Size_In_Storage_Elements > Pool.Block_Size then
          --  The requested block is too large.
          raise Storage_Error;
@@ -127,6 +130,7 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
 
       Block : Pool_Block_Access;
    begin
+--      Ada.Text_IO.Put ('D');
       --  Safety check.
       if
         Storage_Address < Pool.Storage (Pool.Storage'First)'Address or
@@ -217,7 +221,7 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
       end if;
 
       --  Preallocate storage for the pool.
-      Pool.Storage := new Storage_Array
+      Pool.Storage := new Atomic_Storage_Array
         (0 .. Storage_Count (Pool.Pool_Size) * Pool.Real_Block_Size);
       --  Safety check.
       if Pool.Storage (0)'Address mod Pool_Block'Alignment /= 0 then
