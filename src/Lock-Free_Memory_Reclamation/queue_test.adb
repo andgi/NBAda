@@ -4,7 +4,7 @@
 -- Description     : Example application for lock-free reference counting.
 -- Author          : Anders Gidenstam
 -- Created On      : Wed Apr 13 22:09:40 2005
--- $Id: queue_test.adb,v 1.8 2005/06/09 13:02:19 anders Exp $
+-- $Id: queue_test.adb,v 1.9 2005/06/20 17:07:54 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
@@ -68,17 +68,17 @@ procedure Queue_Test is
    function Pinned_Task return System.Task_Info.Task_Info_Type is
    begin
       --  GNAT/IRIX
-      return new System.Task_Info.Thread_Attributes'
-        (Scope       => System.Task_Info.PTHREAD_SCOPE_SYSTEM,
-         Inheritance => System.Task_Info.PTHREAD_EXPLICIT_SCHED,
-         Policy      => System.Task_Info.SCHED_RR,
-         Priority    => System.Task_Info.No_Specified_Priority,
-         Runon_CPU   =>
-           --System.Task_Info.ANY_CPU
-           Integer (Primitives.Fetch_And_Add (Task_Count'Access, 1))
-         );
+--        return new System.Task_Info.Thread_Attributes'
+--          (Scope       => System.Task_Info.PTHREAD_SCOPE_SYSTEM,
+--           Inheritance => System.Task_Info.PTHREAD_EXPLICIT_SCHED,
+--           Policy      => System.Task_Info.SCHED_RR,
+--           Priority    => System.Task_Info.No_Specified_Priority,
+--           Runon_CPU   =>
+--             --System.Task_Info.ANY_CPU
+--             Integer (Primitives.Fetch_And_Add (Task_Count'Access, 1))
+--           );
       --  GNAT/Linux
---      return System.Task_Info.System_Scope;
+      return System.Task_Info.System_Scope;
    end Pinned_Task;
 
    ----------------------------------------------------------------------------
