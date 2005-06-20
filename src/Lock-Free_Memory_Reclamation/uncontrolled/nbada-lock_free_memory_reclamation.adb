@@ -4,7 +4,7 @@
 -- Description     : Lock-free reference counting.
 -- Author          : Anders Gidenstam and Håkan Sundell
 -- Created On      : Fri Nov 19 14:07:58 2004
--- $Id: nbada-lock_free_memory_reclamation.adb,v 1.8 2005/06/09 13:00:47 anders Exp $
+-- $Id: nbada-lock_free_memory_reclamation.adb,v 1.9 2005/06/20 16:50:55 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -14,7 +14,6 @@ with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
 
-
 package body Lockfree_Reference_Counting is
 
    ----------------------------------------------------------------------------
@@ -22,8 +21,9 @@ package body Lockfree_Reference_Counting is
    ----------------------------------------------------------------------------
    subtype Processes  is Process_Ids.Process_ID_Type;
    type    HP_Index   is new Integer range 1 .. Max_Number_Of_Dereferences;
-   type    Node_Index is new Natural range 0 .. Threshold_1;
-   subtype Valid_Node_Index is Node_Index range 1 .. Node_Index (Threshold_1);
+   type    Node_Index is new Natural range 0 .. Max_Delete_List_Size;
+   subtype Valid_Node_Index is
+     Node_Index range 1 .. Node_Index (Max_Delete_List_Size);
 
    subtype Atomic_Node_Access is Shared_Reference;
 
@@ -43,9 +43,6 @@ package body Lockfree_Reference_Counting is
      renames Primitives.Fetch_And_Add;
    function Compare_And_Swap_32 is
       new Primitives.Boolean_Compare_And_Swap_32 (Shared_Reference);
-   procedure Free is
-      new Ada.Unchecked_Deallocation (Reference_Counted_Node'Class,
-                                      Node_Access);
 
    package HP_Sets is new Hash_Tables (Node_Access, "=", Hash_Ref);
 
@@ -164,17 +161,17 @@ package body Lockfree_Reference_Counting is
       D_Count (ID) := D_Count (ID) + 1;
 
       loop
-         if D_Count (ID) = Threshold_1 then
+         if D_Count (ID) >= Clean_Up_Threshold then
             Clean_Up_Local (ID);
          end if;
-         if D_Count (ID) >= Threshold_2 then
+         if D_Count (ID) >= Scan_Threshold then
             Scan (ID);
          end if;
-         if D_Count (ID) = Threshold_1 then
+         if D_Count (ID) >= Clean_Up_Threshold then
             Clean_Up_All (ID);
-         else
-            exit;
          end if;
+
+         exit when D_Count (ID) < Max_Delete_List_Size;
       end loop;
    end Delete;
 
@@ -223,8 +220,9 @@ package body Lockfree_Reference_Counting is
 
    ----------------------------------------------------------------------------
    function Create return Node_Access is
-      ID    : constant Processes   := Process_Ids.Process_ID;
-      Node  : constant Node_Access := Node_Access'(New User_Node);
+      ID    : constant Processes        := Process_Ids.Process_ID;
+      UNode : constant User_Node_Access := new User_Node;
+      Node  : constant Node_Access      := UNode.all'Unchecked_Access;
       Index : HP_Index;
       Found : Boolean := False;
    begin

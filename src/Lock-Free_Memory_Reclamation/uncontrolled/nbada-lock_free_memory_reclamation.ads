@@ -4,7 +4,7 @@
 -- Description     : Lock-free reference counting.
 -- Author          : Anders Gidenstam and Håkan Sundell
 -- Created On      : Fri Nov 19 13:54:45 2004
--- $Id: nbada-lock_free_memory_reclamation.ads,v 1.6 2005/06/09 13:00:47 anders Exp $
+-- $Id: nbada-lock_free_memory_reclamation.ads,v 1.7 2005/06/20 16:50:55 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
@@ -17,6 +17,16 @@ generic
    with package Process_Ids is
      new Process_Identification (<>);
    --  Process identification.
+   Max_Delete_List_Size         : Natural :=
+       Process_Ids.Max_Number_Of_Processes ** 2 *
+       (Max_Number_Of_Dereferences + Max_Number_Of_Links_Per_Node +
+        Max_Number_Of_Links_Per_Node + 1);
+       --  NOTE: Do not change unless you really know what you are doing!
+       --  The bound is derived in the paper.
+   Clean_Up_Threshold           : Natural := Max_Delete_List_Size;
+   --  The threshold on the delete list size for Clean_Up to be done.
+   Scan_Threshold               : Natural := Clean_Up_Threshold;
+   --  The threshold on the delete list size for Scan is to be done.
 package Lockfree_Reference_Counting is
 
    pragma Elaborate_Body;
@@ -25,9 +35,28 @@ package Lockfree_Reference_Counting is
    --  Inherit from this base type to create your own managed types.
    procedure Dispose  (Node       : access Reference_Counted_Node;
                        Concurrent : in     Boolean) is abstract;
+   --  Dispose should set all shared references inside the node to null.
+
    procedure Clean_Up (Node : access Reference_Counted_Node) is abstract;
+   --  Clean_Up should make sure that none of the shared references
+   --  inside the node points to a node that was deleted at the point
+   --  in time when Clean_Up was called.
+
    function Is_Deleted (Node : access Reference_Counted_Node)
                        return Boolean;
+   --  Returns true if Delete (see below) has been called on the node.
+
+   procedure Free (Object : access Reference_Counted_Node) is abstract;
+   --  Note: Due to some peculiarities of the Ada storage pool
+   --        management managed nodes need to have a dispatching primitive
+   --        operation that calls the instance of Unchecked_Deallocation
+   --        appropriate for the specific node type at hand. Without
+   --        this the wrong instance of Unchecked_Deallocation might get
+   --        called - often with disastrous consequences as it tries return
+   --        the memory to the wrong storage pool.
+   --        This workaround is not very nice but I have not found any
+   --        better way.
+
 
    type Shared_Reference is limited private;
    --  All shared variables of type Shared_Reference MUST be declared
@@ -36,7 +65,7 @@ package Lockfree_Reference_Counting is
    type Node_Access is access all Reference_Counted_Node'Class;
    --  Select an appropriate (preferably non-blocking) storage pool
    --  by the "for My_Node_Access'Storage_Pool use ..." construct.
-   --  Note: There should not be any shared variables of type Node_Access.
+   --  Note: There SHOULD NOT be any shared variables of type Node_Access.
 
    --  Operations.
    function  Deref   (Link : access Shared_Reference) return Node_Access;
@@ -60,16 +89,6 @@ package Lockfree_Reference_Counting is
    --  Creates a new User_Node and returns a safe reference to it.
 
 private
-
-   --  Clean-up threshold.
-   Threshold_1 : Natural :=
-     --  The derived bound in the paper.
-     Process_Ids.Max_Number_Of_Processes ** 2 *
-     (Max_Number_Of_Dereferences + Max_Number_Of_Links_Per_Node +
-      Max_Number_Of_Links_Per_Node + 1);
-
-   --  Scan threshold.
-   Threshold_2 : Natural := Threshold_1;
 
    subtype Reference_Count is Primitives.Unsigned_32;
 
