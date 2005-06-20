@@ -28,7 +28,7 @@
 --  Description     : A lock-free fixed size storage pool implementation.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Apr  3 17:06:17 2003
---  $Id: nbada-lock_free_fixed_size_storage_pools.ads,v 1.4 2005/06/14 12:57:07 anders Exp $
+--  $Id: nbada-lock_free_fixed_size_storage_pools.ads,v 1.5 2005/06/20 16:35:26 anders Exp $
 -------------------------------------------------------------------------------
 
 with System.Storage_Elements;
@@ -69,7 +69,12 @@ package Lock_Free_Fixed_Size_Storage_Pools is
                      return Block_Count;
 
    ----------------------------------------------------------------------------
-   Storage_Exhausted : exception;
+   function Belongs_To (Pool            : Lock_Free_Storage_Pool;
+                        Storage_Address : System.Address)
+                       return Boolean;
+
+   ----------------------------------------------------------------------------
+   Storage_Exhausted    : exception;
    Implementation_Error : exception;
 
 private

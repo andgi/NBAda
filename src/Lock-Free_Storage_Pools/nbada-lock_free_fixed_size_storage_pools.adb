@@ -28,7 +28,7 @@
 --  Description     : A lock-free fixed size storage pool implementation.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Apr  3 17:50:52 2003
---  $Id: nbada-lock_free_fixed_size_storage_pools.adb,v 1.5 2005/06/14 12:59:20 anders Exp $
+--  $Id: nbada-lock_free_fixed_size_storage_pools.adb,v 1.6 2005/06/20 16:35:26 anders Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Deallocation;
@@ -197,6 +197,21 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
       end loop;
       return No_Of_Free;
    end Validate;
+
+   ----------------------------------------------------------------------------
+   function Belongs_To (Pool            : Lock_Free_Storage_Pool;
+                        Storage_Address : System.Address)
+                       return Boolean is
+      use type System.Address;
+   begin
+      return
+        Pool.Storage (Pool.Storage'First)'Address <= Storage_Address and
+        Storage_Address < Pool.Storage (Pool.Storage'Last)'Address;
+   end Belongs_To;
+
+   ----------------------------------------------------------------------------
+   --
+   ----------------------------------------------------------------------------
 
    ----------------------------------------------------------------------------
    procedure Initialize (Pool : in out Lock_Free_Storage_Pool) is
