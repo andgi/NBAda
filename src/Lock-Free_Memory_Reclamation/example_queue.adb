@@ -4,13 +4,28 @@
 --  Description     : Simple example ADT for lock-free garbage collector.
 --  Author          : Anders Gidenstam
 --  Created On      : Sat May  7 20:54:49 2005
---  $ID$
+--  $Id: example_queue.adb,v 1.4 2005/06/20 16:49:17 anders Exp $
 -------------------------------------------------------------------------------
+
+with Lock_Free_Growing_Storage_Pools;
+
+with Ada.Unchecked_Deallocation;
+with Ada.Unchecked_Conversion;
 
 package body Example_Queue is
 
+   -------------------------------------------------------------------------
+   --  Storage pool for the nodes.
+   -------------------------------------------------------------------------
+
+   Node_Pool : Lock_Free_Growing_Storage_Pools.Lock_Free_Storage_Pool
+     (Block_Size => Queue_Node'Max_Size_In_Storage_Elements);
+
+   type New_Queue_Node_Access is access Queue_Node;
+   for New_Queue_Node_Access'Storage_Pool use Node_Pool;
+
    function Create_Queue_Node is new LFRC.Create (Queue_Node,
-                                                  Queue_Node_Access);
+                                                  New_Queue_Node_Access);
 
    ----------------------------------------------------------------------------
    procedure Dispose  (Node       : access Queue_Node;
@@ -31,6 +46,7 @@ package body Example_Queue is
       end if;
    end Dispose;
 
+   ----------------------------------------------------------------------------
    procedure Clean_Up (Node : access Queue_Node) is
       Node1, Node2 : Queue_Node_Access;
    begin
@@ -53,6 +69,25 @@ package body Example_Queue is
       end loop;
    end Clean_Up;
 
+   -------------------------------------------------------------------------
+   procedure Free (Node : access Queue_Node) is
+      procedure Reclaim is new
+        Ada.Unchecked_Deallocation (Queue_Node,
+                                    New_Queue_Node_Access);
+      function To_New_Queue_Node_Access is new
+        Ada.Unchecked_Conversion (Queue_Node_Access,
+                                  New_Queue_Node_Access);
+
+      X : New_Queue_Node_Access :=
+        To_New_Queue_Node_Access (Queue_Node_Access (Node));
+      --  This is dangerous in the general case but here we know
+      --  for sure that we have allocated all the nodes of the
+      --  Object_Value type from the Object_Value_Access2 pool.
+   begin
+      Reclaim (X);
+   end Free;
+
+   ----------------------------------------------------------------------------
    procedure Init (Queue : in out Queue_Type) is
       Node : constant Node_Access := Create_Queue_Node;
    begin
@@ -61,6 +96,7 @@ package body Example_Queue is
       Release (Node);
    end Init;
 
+   ----------------------------------------------------------------------------
    function  Dequeue (Queue : access Queue_Type) return Value_Type is
       Node : Queue_Node_Access;
       Next : Queue_Node_Access;
@@ -85,6 +121,7 @@ package body Example_Queue is
       return Res;
    end Dequeue;
 
+   ----------------------------------------------------------------------------
    procedure Enqueue (Queue : in out Queue_Type;
                       Value : in     Value_Type) is
       Node : Queue_Node_Access := Queue_Node_Access (Create_Queue_Node);

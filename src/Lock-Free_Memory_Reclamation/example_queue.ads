@@ -46,6 +46,8 @@ private
       --  maximum number of simultaneous dereferences is 4.
       --  (2 in Dequeue and 2 in Clean_Up.)
       Max_Number_Of_Links_Per_Node => 1,
+      Clean_Up_Threshold           => 256,
+      --  Clean up and scan often.
       Process_Ids                  => Process_Ids);
    use LFRC;
 
@@ -62,7 +64,7 @@ private
    procedure Dispose  (Node       : access Queue_Node;
                        Concurrent : in     Boolean);
    procedure Clean_Up (Node : access Queue_Node);
-
+   procedure Free     (Node : access Queue_Node);
 
    type Queue_Type is limited
       record
