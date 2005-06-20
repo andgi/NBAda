@@ -34,7 +34,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:10:15 2004
---  $Id: nbada-hazard_pointers.ads,v 1.6 2005/06/10 14:38:58 anders Exp $
+--  $Id: nbada-hazard_pointers.ads,v 1.7 2005/06/20 23:18:52 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
@@ -47,9 +47,11 @@ generic
    --  Process identification.
 package Hazard_Pointers is
 
-   type Managed_Node is abstract tagged limited private;
+   ----------------------------------------------------------------------------
+   type Managed_Node_Base is abstract tagged limited private;
    --  Inherit from this base type to create your own managed types.
-   procedure Free (Object : access Managed_Node) is abstract;
+
+   procedure Free (Object : access Managed_Node_Base) is abstract;
    --  Note: Due to some peculiarities of the Ada storage pool
    --        management managed nodes need to have a dispatching primitive
    --        operation that calls the instance of Unchecked_Deallocation
@@ -59,55 +61,91 @@ package Hazard_Pointers is
    --        This workaround is not very nice but I have not found any
    --        better way.
 
-   type Shared_Reference is limited private;
-   --  All shared variables of type Shared_Reference MUST be declared
-   --  atomic by 'pragma Atomic (Variable_Name);' .
+   ----------------------------------------------------------------------------
+   --  type Shared_Reference_Base is limited private;
 
-   type Node_Access is access all Managed_Node'Class;
-   --  Select an appropriate (preferably non-blocking) storage pool
-   --  by the "for My_Node_Access'Storage_Pool use ..." construct.
-   --  Note: There SHOULD NOT be any shared variables of type Node_Access.
+   type Managed_Node_Access is access all Managed_Node_Base'Class;
+   --  Note: There SHOULD NOT be any shared variables of type
+   --        Node_Access.
+
+   procedure Release     (Local  : in Managed_Node_Access);
+   --  Note: Each dereferenced shared pointer MUST be released
+   --        eventually.
 
    ----------------------------------------------------------------------------
-   --  Operations on shared references.
-   ----------------------------------------------------------------------------
+   generic
+      type Managed_Node is new Managed_Node_Base with private;
+   package Operations is
 
-   function  Dereference (Shared : access Shared_Reference)
-                         return Node_Access;
-   --  Note:
-   procedure Release     (Local  : in Node_Access);
-   --  Note: Each dereferenced shared pointer MUST be released eventually.
+      type Shared_Reference is limited private;
+      --  All shared variables of type Shared_Reference MUST be
+      --  declared atomic by 'pragma Atomic (Variable_Name);' .
 
-   procedure Delete      (Local  : in Node_Access);
-   --  Note: Delete may only be called when the caller can guarantee
-   --        that there are NO and WILL NOT BE any more shared references to
-   --        the node. The memory management scheme makes sure the
-   --        node is not freed until all local references have been released.
+      type Node_Access is access all Managed_Node;
+      --  Select an appropriate (preferably non-blocking) storage pool
+      --  by the "for My_Node_Access'Storage_Pool use ..." construct.
+      --  Note: There SHOULD NOT be any shared variables of type
+      --        Node_Access.
 
 
-   function  Compare_And_Swap (Shared    : access Shared_Reference;
-                               Old_Value : in Node_Access;
-                               New_Value : in Node_Access)
-                              return Boolean;
+      ----------------------------------------------------------------------
+      --  Operations on shared references.
+      ----------------------------------------------------------------------
 
-   procedure Initialize (Shared    : access Shared_Reference;
-                         New_Value : in     Node_Access);
-   --  Note: Initialize is only safe to use when there are no
-   --        concurrent updates.
+      function  Dereference (Shared : access Shared_Reference)
+                            return Node_Access;
+      --  Note:
 
+      procedure Release     (Local  : in Node_Access);
+      --  Note: Each dereferenced shared pointer MUST be released
+      --        eventually.
+
+      procedure Delete      (Local  : in Node_Access);
+      --  Note: Delete may only be called when the caller can
+      --        guarantee that there are NO and WILL NOT BE any more shared
+      --        references to the node. The memory management scheme makes
+      --        sure the node is not freed until all local references have
+      --        been released.
+
+      function  Boolean_Compare_And_Swap (Shared    : access Shared_Reference;
+                                          Old_Value : in     Node_Access;
+                                          New_Value : in     Node_Access)
+                                         return Boolean;
+
+      procedure Value_Compare_And_Swap   (Shared    : access Shared_Reference;
+                                          Old_Value : in     Node_Access;
+                                          New_Value : in out Node_Access);
+
+      procedure Void_Compare_And_Swap    (Shared    : access Shared_Reference;
+                                          Old_Value : in     Node_Access;
+                                          New_Value : in     Node_Access);
+
+
+      procedure Initialize (Shared    : access Shared_Reference;
+                            New_Value : in     Node_Access);
+      --  Note: Initialize is only safe to use when there are no
+      --        concurrent updates.
+
+   private
+
+      type Shared_Reference is new Node_Access;
+      --   pragma Atomic (Shared_Reference);
+      --   pragma Volatile (Shared_Reference);
+
+   end Operations;
 
    procedure Print_Statistics;
 
 private
 
-   type Managed_Node is abstract tagged limited
+   type Shared_Reference_Base is new Managed_Node_Access;
+   --   pragma Atomic (Shared_Reference);
+   --   pragma Volatile (Shared_Reference);
+
+   type Managed_Node_Base is abstract tagged limited
       record
-         MM_Next : aliased Shared_Reference;
+         MM_Next : aliased Shared_Reference_Base;
          pragma Atomic (MM_Next);
       end record;
-
-   type Shared_Reference is new Node_Access;
---   pragma Atomic (Shared_Reference);
---   pragma Volatile (Shared_Reference);
 
 end Hazard_Pointers;

@@ -33,10 +33,12 @@
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 24 10:25:44 2005
---  $Id: large_primitives.adb,v 1.6 2005/06/10 14:54:49 anders Exp $
+--  $Id: large_primitives.adb,v 1.7 2005/06/20 23:18:52 anders Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Conversion;
+with System;
+
 with Lock_Free_Fixed_Size_Storage_Pools;
 with Ada.Unchecked_Deallocation;
 
@@ -52,12 +54,10 @@ package body Large_Primitives is
    subtype Processes is Process_Ids.Process_ID_Type;
    type    Exp_Index is new Integer range 1 .. Max_Number_Of_Links;
 
-   type Shared_Reference_Access is access all HP.Shared_Reference;
-
    type Link is
       record
-         Target : HP.Node_Access;
-         Source : Shared_Reference_Access;
+         Target : HP.Managed_Node_Access;
+         Source : System.Address;
       end record;
 
    ----------------------------------------------------------------------------
@@ -82,11 +82,9 @@ package body Large_Primitives is
       --  Types and static variables.
       -------------------------------------------------------------------------
       type Shared_Element_Access is access all Shared_Element;
-      type Object_Value_Access is access all Object_Value;
+      subtype Object_Value_Access is Object_Value_Operations.Node_Access;
+      use type Object_Value_Access;
 
-      function To_Shared_Reference_Access is
-         new Ada.Unchecked_Conversion (Shared_Element_Access,
-                                       Shared_Reference_Access);
       function  Get_Block  (ID : in Processes) return Object_Value_Access;
       procedure Keep_Block (ID : in Processes;
                             B  : in Object_Value_Access);
@@ -108,18 +106,19 @@ package body Large_Primitives is
            Lock_Free_Fixed_Size_Storage_Pools.Block_Count (Pool_Size),
          Block_Size => Object_Value'Max_Size_In_Storage_Elements);
 
-      type Object_Value_Access2 is access Object_Value;
-      for Object_Value_Access2'Storage_Pool use Node_Pool;
+      type New_Object_Value_Access is access Object_Value;
+      for New_Object_Value_Access'Storage_Pool use Node_Pool;
 
       -------------------------------------------------------------------------
       function Load_Linked (Target : access Shared_Element) return Element is
          ID : constant Processes := Process_Ids.Process_ID;
          use HP;
+         use Object_Value_Operations;
       begin
-         Exp (ID, Next (ID)).Source :=
-           To_Shared_Reference_Access (Shared_Element_Access (Target));
-         Release (Exp (ID, Next (ID)).Target);
-         Exp (ID, Next (ID)).Target := Dereference (Target);
+         Exp (ID, Next (ID)).Source := Target.all'Address;
+         HP.Release (Exp (ID, Next (ID)).Target);
+         Exp (ID, Next (ID)).Target :=
+           Managed_Node_Access (Dereference (Target));
 
          if Exp (ID, Next (ID)).Target.all in Object_Value then
             declare
@@ -144,25 +143,26 @@ package body Large_Primitives is
       function Store_Conditional (Target : access Shared_Element;
                                   Value  : in     Element) return Boolean is
          ID : constant Processes := Process_Ids.Process_ID;
+         use type System.Address;
          use HP;
+         use Object_Value_Operations;
          Val : Object_Value_Access := Get_Block (ID);
       begin
          Val.Value := Value;
 
          for I in Exp'Range (2) loop
-            if Exp (ID, I).Source =
-              To_Shared_Reference_Access (Shared_Element_Access (Target))
-            then
+            if Exp (ID, I).Source = Target.all'Address then
                declare
-                  Old : constant Node_Access := Exp (ID, I).Target;
+                  Old : constant Object_Value_Access :=
+                    Object_Value_Access (Exp (ID, I).Target);
                begin
                   --  Clear this link.
-                  Exp (ID, I).Source := null;
+                  Exp (ID, I).Source := System.Null_Address;
                   Exp (ID, I).Target := null;
 
-                  if Compare_And_Swap (Shared    => Target,
-                                       Old_Value => Old,
-                                       New_Value => Node_Access (Val))
+                  if Boolean_Compare_And_Swap (Shared    => Target,
+                                               Old_Value => Old,
+                                               New_Value => Node_Access (Val))
                   then
                      Delete (Old);
                      return True;
@@ -189,13 +189,14 @@ package body Large_Primitives is
       function Verify_Link (Target : access Shared_Element) return Boolean is
          ID : constant Processes := Process_Ids.Process_ID;
          use HP;
+         use Object_Value_Operations;
+         use type System.Address;
       begin
          for I in Exp'Range (2) loop
-            if Exp (ID, I).Source =
-              To_Shared_Reference_Access (Shared_Element_Access (Target))
-            then
+            if Exp (ID, I).Source =  Target.all'Address then
                declare
-                  Tmp : constant Node_Access := Dereference (Target);
+                  Tmp : constant Managed_Node_Access :=
+                    Managed_Node_Access (Dereference (Target));
                begin
                   Release (Tmp);
                   return Tmp = Exp (ID, I).Target;
@@ -210,11 +211,18 @@ package body Large_Primitives is
                             Value  : in     Element) is
          ID  : constant Processes := Process_Ids.Process_ID;
          Val : constant Object_Value_Access := Get_Block (ID);
+
+         type Shared_Reference_Access is
+           access all Object_Value_Operations.Shared_Reference;
+
+         function To_Shared_Reference is
+              new Ada.Unchecked_Conversion (Shared_Element_Access,
+                                            Shared_Reference_Access);
       begin
          Val.Value := Value;
-         HP.Initialize
-           (To_Shared_Reference_Access (Shared_Element_Access (Target)),
-            HP.Node_Access (Val));
+         Object_Value_Operations.Initialize
+           (To_Shared_Reference (Shared_Element_Access (Target)),
+            Val);
       end Initialize;
 
       -------------------------------------------------------------------------
@@ -225,13 +233,13 @@ package body Large_Primitives is
       procedure Free (Node : access Object_Value) is
          procedure Reclaim is new
            Ada.Unchecked_Deallocation (Object_Value,
-                                       Object_Value_Access2);
-         function To_Object_Value_Access2 is new
+                                       New_Object_Value_Access);
+         function To_New_Object_Value_Access is new
            Ada.Unchecked_Conversion (Object_Value_Access,
-                                     Object_Value_Access2);
+                                     New_Object_Value_Access);
 
-         X : Object_Value_Access2 :=
-           To_Object_Value_Access2 (Object_Value_Access (Node));
+         X : New_Object_Value_Access :=
+           To_New_Object_Value_Access (Object_Value_Access (Node));
          --  This is dangerous in the general case but here we know
          --  for sure that we have allocated all the nodes of the
          --  Object_Value type from the Object_Value_Access2 pool.
@@ -249,7 +257,7 @@ package body Large_Primitives is
          else
             Primitives.Fetch_And_Add (Allocated'Access, 1);
             return
-              Object_Value_Access (Object_Value_Access2'(new Object_Value));
+              Object_Value_Access (New_Object_Value_Access'(new Object_Value));
          end if;
       end Get_Block;
 

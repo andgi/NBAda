@@ -34,7 +34,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:35:09 2004
---  $Id: nbada-hazard_pointers.adb,v 1.7 2005/06/10 14:38:58 anders Exp $
+--  $Id: nbada-hazard_pointers.adb,v 1.8 2005/06/20 23:18:52 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -56,24 +56,23 @@ package body Hazard_Pointers is
    type Node_Count   is new Primitives.Unsigned_32;
 
    procedure Scan (ID : in Processes);
-   function Hash_Ref (Ref  : in Node_Access;
+   function Hash_Ref (Ref  : in Managed_Node_Access;
                       Size : in Natural) return Natural;
-   function Compare_And_Swap is
-      new Primitives.Boolean_Compare_And_Swap_32 (Shared_Reference);
 
-   package HP_Sets is new Hash_Tables (Node_Access, "=", Hash_Ref);
+   package HP_Sets is new Hash_Tables (Managed_Node_Access, "=", Hash_Ref);
 
    ----------------------------------------------------------------------------
    --  Internal data structures.
    ----------------------------------------------------------------------------
 
    --  Shared static data.
-   Hazard_Pointer : array (Processes, HP_Index) of aliased Shared_Reference;
+   Hazard_Pointer : array (Processes, HP_Index) of
+     aliased Shared_Reference_Base;
    pragma Volatile (Hazard_Pointer);
    pragma Atomic_Components (Hazard_Pointer);
 
    --  Process local static data.
-   D_List  : array (Processes) of Node_Access;
+   D_List  : array (Processes) of Managed_Node_Access;
    D_Count : array (Processes) of Node_Count := (others => 0);
 
    --  Shared statistics.
@@ -85,42 +84,12 @@ package body Hazard_Pointers is
    ----------------------------------------------------------------------------
 
    ----------------------------------------------------------------------------
-   function  Dereference (Shared : access Shared_Reference)
-                         return Node_Access is
-      ID    : constant Processes := Process_Ids.Process_ID;
-      Index : HP_Index;
-      Found : Boolean := False;
-      Node  : Node_Access;
-   begin
-      --  Find a free hazard pointer.
-      for I in Hazard_Pointer'Range (2) loop
-         if Hazard_Pointer (ID, I) = null then
-            --  Found a free hazard pointer.
-            Index := I;
-            Found := True;
-            exit;
-         end if;
-      end loop;
-      --  Dereference node iff there is a free hazard pointer.
-      if not Found then
-         raise Constraint_Error;
-      else
-         loop
-            Node := Node_Access (Shared.all);
-            Hazard_Pointer (ID, Index) := Shared_Reference (Node);
-            exit when Node_Access (Shared.all) = Node;
-         end loop;
-      end if;
-      return Node;
-   end Dereference;
-
-   ----------------------------------------------------------------------------
-   procedure Release     (Local  : in Node_Access) is
+   procedure Release     (Local  : in Managed_Node_Access) is
       ID : constant Processes := Process_Ids.Process_ID;
    begin
       --  Find and reset hazard pointer.
       for I in Hazard_Pointer'Range (2) loop
-         if Hazard_Pointer (ID, I) = Shared_Reference (Local) then
+         if Hazard_Pointer (ID, I) = Shared_Reference_Base (Local) then
             Hazard_Pointer (ID, I) := null;
             exit;
          end if;
@@ -128,43 +97,112 @@ package body Hazard_Pointers is
    end Release;
 
    ----------------------------------------------------------------------------
-   procedure Delete      (Local  : in Node_Access) is
-      ID : constant Processes := Process_Ids.Process_ID;
-   begin
-      Release (Local);
-      Local.MM_Next := Shared_Reference (D_List (ID));
-      D_List  (ID)  := Local;
-      D_Count (ID)  := D_Count (ID) + 1;
-      if D_Count (ID) >=
-        Node_Count (1.5 * Float (Node_Count (Processes'Last) *
-                                 Node_Count (Max_Number_Of_Dereferences)))
-      then
-         Scan (ID);
-      end if;
-   end Delete;
+   package body Operations is
 
-   ----------------------------------------------------------------------------
-   function  Compare_And_Swap (Shared    : access Shared_Reference;
-                               Old_Value : in Node_Access;
-                               New_Value : in Node_Access)
-                              return Boolean is
-   begin
-      return Compare_And_Swap (Shared,
-                               Shared_Reference (Old_Value),
-                               Shared_Reference (New_Value));
-   end Compare_And_Swap;
+      ----------------------------------------------------------------------
+      function Boolean_Compare_And_Swap is
+         new Primitives.Boolean_Compare_And_Swap_32 (Shared_Reference);
+      procedure Value_Compare_And_Swap is
+         new Primitives.Compare_And_Swap_32 (Shared_Reference);
+      procedure Void_Compare_And_Swap is
+         new Primitives.Void_Compare_And_Swap_32 (Shared_Reference);
 
-   ----------------------------------------------------------------------------
-   procedure Initialize (Shared    : access Shared_Reference;
-                         New_Value : in     Node_Access) is
-      Tmp : constant Node_Access := Node_Access (Shared.all);
-   begin
-      Shared.all := Shared_Reference (New_Value);
+      ----------------------------------------------------------------------
+      function  Dereference (Shared : access Shared_Reference)
+                            return Node_Access is
+         ID    : constant Processes := Process_Ids.Process_ID;
+         Index : HP_Index;
+         Found : Boolean := False;
+         Node  : Node_Access;
+      begin
+         --  Find a free hazard pointer.
+         for I in Hazard_Pointer'Range (2) loop
+            if Hazard_Pointer (ID, I) = null then
+               --  Found a free hazard pointer.
+               Index := I;
+               Found := True;
+               exit;
+            end if;
+         end loop;
+         --  Dereference node iff there is a free hazard pointer.
+         if not Found then
+            raise Constraint_Error;
+         else
+            loop
+               Node := Node_Access (Shared.all);
+               Hazard_Pointer (ID, Index) := Shared_Reference_Base (Node);
+               exit when Node_Access (Shared.all) = Node;
+            end loop;
+         end if;
+         return Node;
+      end Dereference;
 
-      if Tmp /= null then
-         Delete (Tmp);
-      end if;
-   end Initialize;
+      ----------------------------------------------------------------------
+      procedure Release     (Local  : in Node_Access) is
+      begin
+         Release (Managed_Node_Access (Local));
+      end Release;
+
+      ----------------------------------------------------------------------
+      procedure Delete      (Local  : in Node_Access) is
+         ID : constant Processes := Process_Ids.Process_ID;
+      begin
+         Release (Local);
+         Local.all.MM_Next := Shared_Reference_Base (D_List (ID));
+         D_List  (ID)      := Managed_Node_Access (Local);
+         D_Count (ID)      := D_Count (ID) + 1;
+         if D_Count (ID) >=
+           Node_Count (1.5 * Float (Node_Count (Processes'Last) *
+                                    Node_Count (Max_Number_Of_Dereferences)))
+         then
+            Scan (ID);
+         end if;
+      end Delete;
+
+      ----------------------------------------------------------------------
+      function  Boolean_Compare_And_Swap (Shared    : access Shared_Reference;
+                                          Old_Value : in     Node_Access;
+                                          New_Value : in     Node_Access)
+                                         return Boolean is
+      begin
+         return Boolean_Compare_And_Swap (Shared,
+                                          Shared_Reference (Old_Value),
+                                          Shared_Reference (New_Value));
+      end Boolean_Compare_And_Swap;
+
+      ----------------------------------------------------------------------
+      procedure Value_Compare_And_Swap   (Shared    : access Shared_Reference;
+                                          Old_Value : in     Node_Access;
+                                          New_Value : in out Node_Access) is
+      begin
+         Value_Compare_And_Swap (Shared,
+                                 Shared_Reference (Old_Value),
+                                 Shared_Reference (New_Value));
+      end Value_Compare_And_Swap;
+
+      ----------------------------------------------------------------------
+      procedure Void_Compare_And_Swap    (Shared    : access Shared_Reference;
+                                          Old_Value : in     Node_Access;
+                                          New_Value : in     Node_Access) is
+      begin
+         Void_Compare_And_Swap (Shared,
+                                Shared_Reference (Old_Value),
+                                Shared_Reference (New_Value));
+      end Void_Compare_And_Swap;
+
+      ----------------------------------------------------------------------
+      procedure Initialize (Shared    : access Shared_Reference;
+                            New_Value : in     Node_Access) is
+         Tmp : constant Node_Access := Node_Access (Shared.all);
+      begin
+         Shared.all := Shared_Reference (New_Value);
+
+         if Tmp /= null then
+            Delete (Tmp);
+         end if;
+      end Initialize;
+
+   end Operations;
 
    ----------------------------------------------------------------------------
    procedure Print_Statistics is
@@ -185,17 +223,17 @@ package body Hazard_Pointers is
       P_Set : HP_Sets.Hash_Table
         (Size => 2 * Natural (Process_Ids.Max_Number_Of_Processes *
                               Max_Number_Of_Dereferences) - 1);
-      New_D_List  : Node_Access := null;
-      New_D_Count : Node_Count  := 0;
-      Node        : Node_Access;
-      Ref         : Shared_Reference;
+      New_D_List  : Managed_Node_Access := null;
+      New_D_Count : Node_Count          := 0;
+      Node        : Managed_Node_Access;
+      Ref         : Shared_Reference_Base;
    begin
       --  Snapshot all hazard pointers.
       for P in Hazard_Pointer'Range (1) loop
          for I in Hazard_Pointer'Range (2) loop
             Ref := Hazard_Pointer (P, I);
             if Ref /= null then
-               Node := Node_Access (Ref);
+               Node := Managed_Node_Access (Ref);
                Insert (Node, P_Set);
             end if;
          end loop;
@@ -203,9 +241,9 @@ package body Hazard_Pointers is
 
       while D_List (ID) /= null loop
          Node        := D_List (ID);
-         D_List (ID) := Node_Access (Node.MM_Next);
+         D_List (ID) := Managed_Node_Access (Node.MM_Next);
          if Member (Node, P_Set) then
-            Node.MM_Next := Shared_Reference (New_D_List);
+            Node.MM_Next := Shared_Reference_Base (New_D_List);
             New_D_List   := Node;
             New_D_Count  := New_D_Count + 1;
          else
@@ -220,11 +258,12 @@ package body Hazard_Pointers is
    end Scan;
 
    ----------------------------------------------------------------------------
-   function Hash_Ref (Ref  : in Node_Access;
+   function Hash_Ref (Ref  : in Managed_Node_Access;
                       Size : in Natural) return Natural is
       type Unsigned is mod 2**32;
-      function To_Unsigned is new Ada.Unchecked_Conversion (Node_Access,
-                                                            Unsigned);
+      function To_Unsigned is
+         new Ada.Unchecked_Conversion (Managed_Node_Access,
+                                       Unsigned);
    begin
       return Natural ((To_Unsigned (Ref) / 4) mod Unsigned (Size));
    end Hash_Ref;

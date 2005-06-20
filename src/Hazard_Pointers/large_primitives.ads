@@ -33,7 +33,7 @@
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 23 17:59:44 2005
---  $Id: large_primitives.ads,v 1.4 2005/06/10 14:40:29 anders Exp $
+--  $Id: large_primitives.ads,v 1.5 2005/06/20 23:18:52 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
@@ -75,13 +75,15 @@ package Large_Primitives is
 
    private
 
-      type Object_Value is new HP.Managed_Node with
+      type Object_Value is new HP.Managed_Node_Base with
          record
             Value : Element;
          end record;
       procedure Free (Node : access Object_Value);
 
-      type Shared_Element is new HP.Shared_Reference;
+      package Object_Value_Operations is new HP.Operations (Object_Value);
+
+      type Shared_Element is new Object_Value_Operations.Shared_Reference;
 
    end Load_Linked_Store_Conditional;
 
