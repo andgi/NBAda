@@ -4,7 +4,7 @@
 -- Description     : Lock-free reference counting.
 -- Author          : Anders Gidenstam and Håkan Sundell
 -- Created On      : Fri Nov 19 13:54:45 2004
--- $Id: nbada-lock_free_memory_reclamation.ads,v 1.8 2005/06/21 00:39:52 anders Exp $
+-- $Id: nbada-lock_free_memory_reclamation.ads,v 1.9 2005/06/21 10:14:49 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
@@ -17,16 +17,17 @@ generic
    with package Process_Ids is
      new Process_Identification (<>);
    --  Process identification.
+
    Max_Delete_List_Size         : Natural :=
-       Process_Ids.Max_Number_Of_Processes ** 2 *
+     Process_Ids.Max_Number_Of_Processes ** 2 *
        (Max_Number_Of_Dereferences + Max_Number_Of_Links_Per_Node +
         Max_Number_Of_Links_Per_Node + 1);
-       --  NOTE: Do not change unless you really know what you are doing!
-       --  The bound is derived in the paper.
+   --  NOTE: Do not change unless you really know what you are doing!
+   --  The bound is derived in the paper.
    Clean_Up_Threshold           : Natural := Max_Delete_List_Size;
    --  The threshold on the delete list size for Clean_Up to be done.
    Scan_Threshold               : Natural := Clean_Up_Threshold;
-   --  The threshold on the delete list size for Scan is to be done.
+   --  The threshold on the delete list size for Scan to be done.
 package Lockfree_Reference_Counting is
 
    pragma Elaborate_Body;
@@ -60,6 +61,10 @@ package Lockfree_Reference_Counting is
 
    ----------------------------------------------------------------------------
    type Shared_Reference_Base is limited private;
+   --  For type separation between shared references to different
+   --  managed types derive your own shared reference types from
+   --  Shared_Reference_Base and instantiate the memory management
+   --  operation package below for each of them.
 
    ----------------------------------------------------------------------------
    generic
@@ -99,6 +104,8 @@ package Lockfree_Reference_Counting is
          --  Select an appropriate (preferably non-blocking) storage
          --  pool by the "for User_Node_Access'Storage_Pool use ..."
          --  construct.
+         --  NOTE: The nodes allocated in this way must have an
+         --        implementation of Free that use the same storage pool.
       function Create return Node_Access;
       --  Creates a new User_Node and returns a safe reference to it.
 

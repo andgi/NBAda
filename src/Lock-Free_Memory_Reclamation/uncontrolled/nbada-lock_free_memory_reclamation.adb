@@ -4,7 +4,7 @@
 -- Description     : Lock-free reference counting.
 -- Author          : Anders Gidenstam and Håkan Sundell
 -- Created On      : Fri Nov 19 14:07:58 2004
--- $Id: nbada-lock_free_memory_reclamation.adb,v 1.11 2005/06/21 09:24:18 anders Exp $
+-- $Id: nbada-lock_free_memory_reclamation.adb,v 1.12 2005/06/21 10:14:49 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -25,9 +25,7 @@ package body Lockfree_Reference_Counting is
    subtype Valid_Node_Index is
      Node_Index range 1 .. Node_Index (Max_Delete_List_Size);
 
-   type Shared_Reference is access all Reference_Counted_Node_Base;
-
-   subtype Atomic_Node_Access is Shared_Reference;
+   subtype Atomic_Node_Access is Shared_Reference_Base;
 
    subtype Node_Count  is Natural;
    subtype Claim_Count is Primitives.Unsigned_32;
@@ -100,6 +98,12 @@ package body Lockfree_Reference_Counting is
       function To_Node_Access (X : Shared_Reference)
                               return Node_Access;
 
+      type Shared_Reference_Base_Access is access all Shared_Reference_Base;
+      type Shared_Reference_Access is access all Shared_Reference;
+      function To_Shared_Reference_Base_Access is
+         new Ada.Unchecked_Conversion (Shared_Reference_Access,
+                                       Shared_Reference_Base_Access);
+
       function Compare_And_Swap_32 is
          new Primitives.Boolean_Compare_And_Swap_32 (Shared_Reference_Base);
 
@@ -131,7 +135,11 @@ package body Lockfree_Reference_Counting is
                exit when To_Node_Access (Link.all) = Node;
             end loop;
          end if;
-         return Node;
+         if Node /= null then
+            return Node;
+         else
+            return null;
+         end if;
       end Deref;
 
       ----------------------------------------------------------------------
@@ -198,14 +206,11 @@ package body Lockfree_Reference_Counting is
                                   New_Value : in Node_Access)
                                  return Boolean is
          use type Reference_Count;
-
-         Mutable_Link : aliased Shared_Reference_Base;
-         pragma Import (Ada, Mutable_Link);
-         for Mutable_Link'Address use Link.all'Address;
-         --  Mutable view of the link.
       begin
          if
-           Compare_And_Swap_32 (Target    => Mutable_Link'Access,
+           Compare_And_Swap_32 (Target    =>
+                                  To_Shared_Reference_Base_Access
+                                  (Link.all'Unchecked_Access),
                                 Old_Value => Shared_Reference_Base (Old_Value),
                                 New_Value => Shared_Reference_Base (New_Value))
          then
@@ -243,14 +248,8 @@ package body Lockfree_Reference_Counting is
 
          Old : constant Node_Access := To_Node_Access (Link.all);
       begin
-         declare
-            Mutable_Link : aliased Shared_Reference_Base;
-            pragma Import (Ada, Mutable_Link);
-            for Mutable_Link'Address use Link.all'Address;
-            --  Mutable view of the right type of the link.
-         begin
-            Mutable_Link := Shared_Reference_Base (Node);
-         end;
+         To_Shared_Reference_Base_Access (Link.all'Unchecked_Access).all :=
+           Shared_Reference_Base (Node);
 
          if Node /= null then
             declare
@@ -312,6 +311,20 @@ package body Lockfree_Reference_Counting is
       begin
          return Node_Access (To_Shared_Reference_Base (X));
       end To_Node_Access;
+
+      ----------------------------------------------------------------------
+--        function To_Shared_Reference_Base_Access
+--          (X : access Shared_Reference)
+--          return Shared_Reference_Base_Access is
+
+--           type Shared_Reference_Access is access all Shared_Reference;
+--           function To_Shared_Reference_Base_Access is
+--              new Ada.Unchecked_Conversion (Shared_Reference_Access,
+--                                            Shared_Reference_Base_Access);
+
+--        begin
+--           return To_Shared_Reference_Base_Access (Shared_Reference_Access (X));
+--        end To_Shared_Reference_Base_Access;
 
       ----------------------------------------------------------------------
    end Operations;
