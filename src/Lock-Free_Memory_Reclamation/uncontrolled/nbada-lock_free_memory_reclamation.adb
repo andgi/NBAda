@@ -4,7 +4,7 @@
 -- Description     : Lock-free reference counting.
 -- Author          : Anders Gidenstam and Håkan Sundell
 -- Created On      : Fri Nov 19 14:07:58 2004
--- $Id: nbada-lock_free_memory_reclamation.adb,v 1.10 2005/06/21 00:39:52 anders Exp $
+-- $Id: nbada-lock_free_memory_reclamation.adb,v 1.11 2005/06/21 09:24:18 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -97,6 +97,9 @@ package body Lockfree_Reference_Counting is
    package body Operations is
 
       ----------------------------------------------------------------------
+      function To_Node_Access (X : Shared_Reference)
+                              return Node_Access;
+
       function Compare_And_Swap_32 is
          new Primitives.Boolean_Compare_And_Swap_32 (Shared_Reference_Base);
 
@@ -123,15 +126,9 @@ package body Lockfree_Reference_Counting is
                "Maximum number of local dereferences exceeded!");
          else
             loop
-               declare
-                  function To_Node_Access is
-                     new Ada.Unchecked_Conversion (Shared_Reference,
-                                                   Node_Access);
-               begin
-                  Node := To_Node_Access (Link.all);
-                  Hazard_Pointer (ID, Index) := Atomic_Node_Access (Node);
-                  exit when To_Node_Access (Link.all) = Node;
-               end;
+               Node := To_Node_Access (Link.all);
+               Hazard_Pointer (ID, Index) := Atomic_Node_Access (Node);
+               exit when To_Node_Access (Link.all) = Node;
             end loop;
          end if;
          return Node;
@@ -153,12 +150,18 @@ package body Lockfree_Reference_Counting is
       ----------------------------------------------------------------------
       procedure Delete  (Node : in Node_Access) is
          use type Node_Count;
-         ID : constant Processes := Process_Ids.Process_ID;
+         ID        : constant Processes := Process_Ids.Process_ID;
          Index : Node_Index;
       begin
          Release (Node);
-         Node.all.MM_Del   := True;
-         Node.all.MM_Trace := False;
+         declare
+            Node_Base : constant Reference_Counted_Node_Access :=
+              Reference_Counted_Node_Access (Node);
+            --  Base type view of the node.
+         begin
+            Node_Base.MM_Del   := True;
+            Node_Base.MM_Trace := False;
+         end;
 
          --  Find a free index in DL_Nodes.
          --  This is probably not the best search strategy.
@@ -195,22 +198,36 @@ package body Lockfree_Reference_Counting is
                                   New_Value : in Node_Access)
                                  return Boolean is
          use type Reference_Count;
-         Updatable_Link : aliased Shared_Reference_Base;
-         pragma Import (Ada, Updatable_Link);
-         for Updatable_Link'Address use Link.all'Address;
+
+         Mutable_Link : aliased Shared_Reference_Base;
+         pragma Import (Ada, Mutable_Link);
+         for Mutable_Link'Address use Link.all'Address;
+         --  Mutable view of the link.
       begin
          if
-           Compare_And_Swap_32 (Target    => Updatable_Link'Access,
+           Compare_And_Swap_32 (Target    => Mutable_Link'Access,
                                 Old_Value => Shared_Reference_Base (Old_Value),
                                 New_Value => Shared_Reference_Base (New_Value))
          then
             if New_Value /= null then
-               Fetch_And_Add (New_Value.all.MM_RC'Access, 1);
-               New_Value.all.MM_Trace := False;
+               declare
+                  New_Value_Base : constant Reference_Counted_Node_Access :=
+                    Reference_Counted_Node_Access (New_Value);
+                  --  Base type view of the node.
+               begin
+                  Fetch_And_Add (New_Value_Base.MM_RC'Access, 1);
+                  New_Value_Base.MM_Trace := False;
+               end;
             end if;
 
             if Old_Value /= null then
-               Fetch_And_Add (Old_Value.all.MM_RC'Access, -1);
+               declare
+                  Old_Value_Base : constant Reference_Counted_Node_Access :=
+                    Reference_Counted_Node_Access (Old_Value);
+                  --  Base type view of the node.
+               begin
+                  Fetch_And_Add (Old_Value_Base.MM_RC'Access, -1);
+               end;
             end if;
 
             return True;
@@ -223,21 +240,37 @@ package body Lockfree_Reference_Counting is
       procedure Store   (Link : access Shared_Reference;
                          Node : in Node_Access) is
          use type Reference_Count;
-         function To_Node_Access is
-            new Ada.Unchecked_Conversion (Shared_Reference,
-                                          Node_Access);
-         Updatable_Link : aliased Shared_Reference_Base;
-         pragma Import (Ada, Updatable_Link);
-         for Updatable_Link'Address use Link.all'Address;
+
          Old : constant Node_Access := To_Node_Access (Link.all);
       begin
-         Updatable_Link := Shared_Reference_Base (Node);
+         declare
+            Mutable_Link : aliased Shared_Reference_Base;
+            pragma Import (Ada, Mutable_Link);
+            for Mutable_Link'Address use Link.all'Address;
+            --  Mutable view of the right type of the link.
+         begin
+            Mutable_Link := Shared_Reference_Base (Node);
+         end;
+
          if Node /= null then
-            Fetch_And_Add (Node.all.MM_RC'Access, 1);
-            Node.all.MM_Trace := False;
+            declare
+               Node_Base : constant Reference_Counted_Node_Access :=
+                 Reference_Counted_Node_Access (Node);
+               --  Base type view of the node.
+            begin
+               Fetch_And_Add (Node_Base.MM_RC'Access, 1);
+               Node_Base.MM_Trace := False;
+            end;
          end if;
+
          if Old /= null then
-            Fetch_And_Add (Old.all.MM_RC'Access, -1);
+            declare
+               Old_Base : constant Reference_Counted_Node_Access :=
+                 Reference_Counted_Node_Access (Old);
+               --  Base type view of the node.
+            begin
+               Fetch_And_Add (Old_Base.MM_RC'Access, -1);
+            end;
          end if;
       end Store;
 
@@ -270,6 +303,17 @@ package body Lockfree_Reference_Counting is
          return Node;
       end Create;
 
+      ----------------------------------------------------------------------
+      function To_Node_Access (X : Shared_Reference)
+                              return Node_Access is
+         function To_Shared_Reference_Base is
+            new Ada.Unchecked_Conversion (Shared_Reference,
+                                          Shared_Reference_Base);
+      begin
+         return Node_Access (To_Shared_Reference_Base (X));
+      end To_Node_Access;
+
+      ----------------------------------------------------------------------
    end Operations;
 
    ----------------------------------------------------------------------------
