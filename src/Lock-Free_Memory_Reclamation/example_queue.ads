@@ -49,22 +49,26 @@ private
       Clean_Up_Threshold           => 256,
       --  Clean up and scan often.
       Process_Ids                  => Process_Ids);
-   use LFRC;
 
-   type Queue_Node_Reference is new LFRC.Shared_Reference;
+   type Queue_Node_Reference is new LFRC.Shared_Reference_Base;
 
-   type Queue_Node is new LFRC.Reference_Counted_Node with
+   type Queue_Node is new LFRC.Reference_Counted_Node_Base with
       record
          Next  : aliased Queue_Node_Reference;
          pragma Atomic (Next);
          Value : Value_Type;
       end record;
-   type Queue_Node_Access is access all Queue_Node;
 
    procedure Dispose  (Node       : access Queue_Node;
                        Concurrent : in     Boolean);
    procedure Clean_Up (Node : access Queue_Node);
    procedure Free     (Node : access Queue_Node);
+
+   package LFRC_Ops is new LFRC.Operations (Queue_Node,
+                                            Queue_Node_Reference);
+
+   subtype Queue_Node_Access is LFRC_Ops.Node_Access;
+
 
    type Queue_Type is limited
       record

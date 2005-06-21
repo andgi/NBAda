@@ -4,7 +4,7 @@
 -- Description     : Lock-free reference counting.
 -- Author          : Anders Gidenstam and Håkan Sundell
 -- Created On      : Fri Nov 19 14:07:58 2004
--- $Id: nbada-lock_free_memory_reclamation.adb,v 1.9 2005/06/20 16:50:55 anders Exp $
+-- $Id: nbada-lock_free_memory_reclamation.adb,v 1.10 2005/06/21 00:39:52 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -25,6 +25,8 @@ package body Lockfree_Reference_Counting is
    subtype Valid_Node_Index is
      Node_Index range 1 .. Node_Index (Max_Delete_List_Size);
 
+   type Shared_Reference is access all Reference_Counted_Node_Base;
+
    subtype Atomic_Node_Access is Shared_Reference;
 
    subtype Node_Count  is Natural;
@@ -35,16 +37,15 @@ package body Lockfree_Reference_Counting is
    procedure Clean_Up_Local (ID : in Processes);
    procedure Clean_Up_All   (ID : in Processes);
 
-   function Hash_Ref (Ref  : in Node_Access;
+   function Hash_Ref (Ref  : in Reference_Counted_Node_Access;
                       Size : in Natural) return Natural;
 
    procedure Fetch_And_Add (Target    : access Primitives.Unsigned_32;
                             Increment : in     Primitives.Unsigned_32)
      renames Primitives.Fetch_And_Add;
-   function Compare_And_Swap_32 is
-      new Primitives.Boolean_Compare_And_Swap_32 (Shared_Reference);
 
-   package HP_Sets is new Hash_Tables (Node_Access, "=", Hash_Ref);
+   package HP_Sets is
+      new Hash_Tables (Reference_Counted_Node_Access, "=", Hash_Ref);
 
    ----------------------------------------------------------------------------
    --  Internal data structures.
@@ -86,166 +87,190 @@ package body Lockfree_Reference_Counting is
    ----------------------------------------------------------------------------
 
    ----------------------------------------------------------------------------
-   function Is_Deleted (Node : access Reference_Counted_Node)
+   function Is_Deleted (Node : access Reference_Counted_Node_Base)
                        return Boolean is
    begin
       return Node.MM_Del;
    end Is_Deleted;
 
    ----------------------------------------------------------------------------
-   function  Deref   (Link : access Shared_Reference) return Node_Access is
-      ID    : constant Processes := Process_Ids.Process_ID;
-      Index : HP_Index;
-      Found : Boolean := False;
-      Node  : Node_Access;
-   begin
-      --  Find a free hazard pointer.
-      for I in Hazard_Pointer'Range (2) loop
-         if Hazard_Pointer (ID, I) = null then
-            Index := I;
-            Found := True;
-            exit;
-         end if;
-      end loop;
-      --  Dereference node iff there is a free hazard pointer.
-      if not Found then
-         Ada.Exceptions.Raise_Exception
-           (Constraint_Error'Identity,
-            "lockfree_reference_counting.adb: " &
-            "Maximum number of local dereferences exceeded!");
-      else
-         loop
-            Node := Node_Access (Link.all);
-            Hazard_Pointer (ID, Index) := Atomic_Node_Access (Node);
-            exit when Node_Access (Link.all) = Node;
+   package body Operations is
+
+      ----------------------------------------------------------------------
+      function Compare_And_Swap_32 is
+         new Primitives.Boolean_Compare_And_Swap_32 (Shared_Reference_Base);
+
+      ----------------------------------------------------------------------
+      function  Deref   (Link : access Shared_Reference) return Node_Access is
+         ID    : constant Processes := Process_Ids.Process_ID;
+         Index : HP_Index;
+         Found : Boolean := False;
+         Node  : Node_Access;
+      begin
+         --  Find a free hazard pointer.
+         for I in Hazard_Pointer'Range (2) loop
+            if Hazard_Pointer (ID, I) = null then
+               Index := I;
+               Found := True;
+               exit;
+            end if;
          end loop;
-      end if;
-      return Node;
-   end Deref;
-
-   ----------------------------------------------------------------------------
-   procedure Release (Node : in Node_Access) is
-      ID : constant Processes := Process_Ids.Process_ID;
-   begin
-      --  Find and clear hazard pointer.
-      for I in Hazard_Pointer'Range (2) loop
-         if Hazard_Pointer (ID, I) = Atomic_Node_Access (Node) then
-            Hazard_Pointer (ID, I) := null;
-            exit;
+         --  Dereference node iff there is a free hazard pointer.
+         if not Found then
+            Ada.Exceptions.Raise_Exception
+              (Constraint_Error'Identity,
+               "lockfree_reference_counting.adb: " &
+               "Maximum number of local dereferences exceeded!");
+         else
+            loop
+               declare
+                  function To_Node_Access is
+                     new Ada.Unchecked_Conversion (Shared_Reference,
+                                                   Node_Access);
+               begin
+                  Node := To_Node_Access (Link.all);
+                  Hazard_Pointer (ID, Index) := Atomic_Node_Access (Node);
+                  exit when To_Node_Access (Link.all) = Node;
+               end;
+            end loop;
          end if;
-      end loop;
-   end Release;
+         return Node;
+      end Deref;
 
-   ----------------------------------------------------------------------------
-   procedure Delete  (Node : in Node_Access) is
-      use type Node_Count;
-      ID : constant Processes := Process_Ids.Process_ID;
-      Index : Node_Index;
-   begin
-      Release (Node);
-      Node.MM_Del   := True;
-      Node.MM_Trace := False;
+      ----------------------------------------------------------------------
+      procedure Release (Node : in Node_Access) is
+         ID : constant Processes := Process_Ids.Process_ID;
+      begin
+         --  Find and clear hazard pointer.
+         for I in Hazard_Pointer'Range (2) loop
+            if Hazard_Pointer (ID, I) = Atomic_Node_Access (Node) then
+               Hazard_Pointer (ID, I) := null;
+               exit;
+            end if;
+         end loop;
+      end Release;
 
-      --  Find a free index in DL_Nodes.
-      --  This is probably not the best search strategy.
-      for I in DL_Nodes'Range (2) loop
-         if DL_Nodes (ID, I) = null then
-            Index := I;
+      ----------------------------------------------------------------------
+      procedure Delete  (Node : in Node_Access) is
+         use type Node_Count;
+         ID : constant Processes := Process_Ids.Process_ID;
+         Index : Node_Index;
+      begin
+         Release (Node);
+         Node.all.MM_Del   := True;
+         Node.all.MM_Trace := False;
+
+         --  Find a free index in DL_Nodes.
+         --  This is probably not the best search strategy.
+         for I in DL_Nodes'Range (2) loop
+            if DL_Nodes (ID, I) = null then
+               Index := I;
+            end if;
+         end loop;
+
+         DL_Done  (ID, Index) := False;
+         DL_Nodes (ID, Index) := Atomic_Node_Access (Node);
+         DL_Nexts (ID, Index) := D_List (ID);
+         D_List  (ID) := Index;
+         D_Count (ID) := D_Count (ID) + 1;
+
+         loop
+            if D_Count (ID) >= Clean_Up_Threshold then
+               Clean_Up_Local (ID);
+            end if;
+            if D_Count (ID) >= Scan_Threshold then
+               Scan (ID);
+            end if;
+            if D_Count (ID) >= Clean_Up_Threshold then
+               Clean_Up_All (ID);
+            end if;
+
+            exit when D_Count (ID) < Max_Delete_List_Size;
+         end loop;
+      end Delete;
+
+      ----------------------------------------------------------------------
+      function  Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in Node_Access;
+                                  New_Value : in Node_Access)
+                                 return Boolean is
+         use type Reference_Count;
+         Updatable_Link : aliased Shared_Reference_Base;
+         pragma Import (Ada, Updatable_Link);
+         for Updatable_Link'Address use Link.all'Address;
+      begin
+         if
+           Compare_And_Swap_32 (Target    => Updatable_Link'Access,
+                                Old_Value => Shared_Reference_Base (Old_Value),
+                                New_Value => Shared_Reference_Base (New_Value))
+         then
+            if New_Value /= null then
+               Fetch_And_Add (New_Value.all.MM_RC'Access, 1);
+               New_Value.all.MM_Trace := False;
+            end if;
+
+            if Old_Value /= null then
+               Fetch_And_Add (Old_Value.all.MM_RC'Access, -1);
+            end if;
+
+            return True;
          end if;
-      end loop;
 
-      DL_Done  (ID, Index) := False;
-      DL_Nodes (ID, Index) := Atomic_Node_Access (Node);
-      DL_Nexts (ID, Index) := D_List (ID);
-      D_List  (ID) := Index;
-      D_Count (ID) := D_Count (ID) + 1;
+         return False;
+      end Compare_And_Swap;
 
-      loop
-         if D_Count (ID) >= Clean_Up_Threshold then
-            Clean_Up_Local (ID);
+      ----------------------------------------------------------------------
+      procedure Store   (Link : access Shared_Reference;
+                         Node : in Node_Access) is
+         use type Reference_Count;
+         function To_Node_Access is
+            new Ada.Unchecked_Conversion (Shared_Reference,
+                                          Node_Access);
+         Updatable_Link : aliased Shared_Reference_Base;
+         pragma Import (Ada, Updatable_Link);
+         for Updatable_Link'Address use Link.all'Address;
+         Old : constant Node_Access := To_Node_Access (Link.all);
+      begin
+         Updatable_Link := Shared_Reference_Base (Node);
+         if Node /= null then
+            Fetch_And_Add (Node.all.MM_RC'Access, 1);
+            Node.all.MM_Trace := False;
          end if;
-         if D_Count (ID) >= Scan_Threshold then
-            Scan (ID);
+         if Old /= null then
+            Fetch_And_Add (Old.all.MM_RC'Access, -1);
          end if;
-         if D_Count (ID) >= Clean_Up_Threshold then
-            Clean_Up_All (ID);
+      end Store;
+
+      ----------------------------------------------------------------------
+      function Create return Node_Access is
+         ID    : constant Processes        := Process_Ids.Process_ID;
+         UNode : constant User_Node_Access := new Reference_Counted_Node;
+         Node  : constant Node_Access      := UNode.all'Unchecked_Access;
+         Index : HP_Index;
+         Found : Boolean := False;
+      begin
+         --  Find a free hazard pointer.
+         for I in Hazard_Pointer'Range (2) loop
+            if Hazard_Pointer (ID, I) = null then
+               Index := I;
+               Found := True;
+               exit;
+            end if;
+         end loop;
+
+         if not Found then
+            Ada.Exceptions.Raise_Exception
+              (Constraint_Error'Identity,
+               "lockfree_reference_counting.adb: " &
+               "Maximum number of local dereferences exceeded!");
+         else
+            Hazard_Pointer (ID, Index) := Atomic_Node_Access (Node);
          end if;
 
-         exit when D_Count (ID) < Max_Delete_List_Size;
-      end loop;
-   end Delete;
+         return Node;
+      end Create;
 
-   ----------------------------------------------------------------------------
-   function  Compare_And_Swap (Link      : access Shared_Reference;
-                               Old_Value : in Node_Access;
-                               New_Value : in Node_Access)
-                              return Boolean is
-      use type Reference_Count;
-   begin
-      if Compare_And_Swap_32 (Target    => Link,
-                              Old_Value => Shared_Reference (Old_Value),
-                              New_Value => Shared_Reference (New_Value)) then
-
-         if New_Value /= null then
-            Fetch_And_Add (New_Value.MM_RC'Access, 1);
-            New_Value.MM_Trace := False;
-         end if;
-
-         if Old_Value /= null then
-            Fetch_And_Add (Old_Value.MM_RC'Access, -1);
-         end if;
-
-         return True;
-
-      end if;
-
-      return False;
-   end Compare_And_Swap;
-
-   ----------------------------------------------------------------------------
-   procedure Store   (Link : access Shared_Reference;
-                      Node : in Node_Access) is
-      use type Reference_Count;
-      Old : constant Node_Access := Node_Access (Link.all);
-   begin
-      Link.all := Shared_Reference (Node);
-      if Node /= null then
-         Fetch_And_Add (Node.MM_RC'Access, 1);
-         Node.MM_Trace := False;
-      end if;
-      if Old /= null then
-         Fetch_And_Add (Old.MM_RC'Access, -1);
-      end if;
-   end Store;
-
-   ----------------------------------------------------------------------------
-   function Create return Node_Access is
-      ID    : constant Processes        := Process_Ids.Process_ID;
-      UNode : constant User_Node_Access := new User_Node;
-      Node  : constant Node_Access      := UNode.all'Unchecked_Access;
-      Index : HP_Index;
-      Found : Boolean := False;
-   begin
-      --  Find a free hazard pointer.
-      for I in Hazard_Pointer'Range (2) loop
-         if Hazard_Pointer (ID, I) = null then
-            Index := I;
-            Found := True;
-            exit;
-         end if;
-      end loop;
-
-      if not Found then
-         Ada.Exceptions.Raise_Exception
-           (Constraint_Error'Identity,
-            "lockfree_reference_counting.adb: " &
-            "Maximum number of local dereferences exceeded!");
-      else
-         Hazard_Pointer (ID, Index) := Atomic_Node_Access (Node);
-      end if;
-
-      return Node;
-   end Create;
+   end Operations;
 
    ----------------------------------------------------------------------------
    --  Internal operations.
@@ -289,7 +314,8 @@ package body Lockfree_Reference_Counting is
             Node := Hazard_Pointer (P, I);
             if Node /= null then
                declare
-                  N : constant Node_Access := Node_Access (Node);
+                  N : constant Reference_Counted_Node_Access :=
+                    Reference_Counted_Node_Access (Node);
                begin
                   Insert (N, P_Set.all);
                end;
@@ -304,14 +330,16 @@ package body Lockfree_Reference_Counting is
          D_List (ID) := DL_Nexts (ID, Index);
 
          if Node.MM_RC = 0 and Node.MM_Trace and
-           not Member (Node_Access (Node), P_Set.all)
+           not Member (Reference_Counted_Node_Access (Node), P_Set.all)
          then
             DL_Nodes (ID, Index) := null;
             if DL_Claims (ID, Index) = 0 then
-               Dispose (Node, Concurrent => False);
-               Free (Node_Access (Node));
+               Dispose (Reference_Counted_Node_Access (Node),
+                        Concurrent => False);
+               Free (Reference_Counted_Node_Access (Node));
             else
-               Dispose (Node, Concurrent => True);
+               Dispose (Reference_Counted_Node_Access (Node),
+                        Concurrent => True);
                DL_Done  (ID, Index) := True;
                DL_Nodes (ID, Index) := Node;
 
@@ -341,7 +369,7 @@ package body Lockfree_Reference_Counting is
    begin
       while Index /= 0 loop
          Node  := DL_Nodes (ID, Index);
-         Clean_Up (Node);
+         Clean_Up (Reference_Counted_Node_Access (Node));
          Index := DL_Nexts (ID, Index);
       end loop;
    end Clean_Up_Local;
@@ -358,7 +386,7 @@ package body Lockfree_Reference_Counting is
                Fetch_And_Add (Target    => DL_Claims (P, Index)'Access,
                               Increment => 1);
                if Node = DL_Nodes (P, Index) then
-                  Clean_Up (Node);
+                  Clean_Up (Reference_Counted_Node_Access (Node));
                end if;
                Fetch_And_Add (Target    => DL_Claims (P, Index)'Access,
                               Increment => -1);
@@ -368,11 +396,12 @@ package body Lockfree_Reference_Counting is
    end Clean_Up_All;
 
    ----------------------------------------------------------------------------
-   function Hash_Ref (Ref  : in Node_Access;
+   function Hash_Ref (Ref  : in Reference_Counted_Node_Access;
                       Size : in Natural) return Natural is
       type Unsigned is mod 2**32;
-      function To_Unsigned is new Ada.Unchecked_Conversion (Node_Access,
-                                                            Unsigned);
+      function To_Unsigned is
+         new Ada.Unchecked_Conversion (Reference_Counted_Node_Access,
+                                       Unsigned);
    begin
       return Natural ((To_Unsigned (Ref)/4) mod Unsigned (Size));
    end Hash_Ref;

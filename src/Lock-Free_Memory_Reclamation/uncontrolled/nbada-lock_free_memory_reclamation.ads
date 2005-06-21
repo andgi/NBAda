@@ -4,7 +4,7 @@
 -- Description     : Lock-free reference counting.
 -- Author          : Anders Gidenstam and Håkan Sundell
 -- Created On      : Fri Nov 19 13:54:45 2004
--- $Id: nbada-lock_free_memory_reclamation.ads,v 1.7 2005/06/20 16:50:55 anders Exp $
+-- $Id: nbada-lock_free_memory_reclamation.ads,v 1.8 2005/06/21 00:39:52 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
@@ -31,22 +31,23 @@ package Lockfree_Reference_Counting is
 
    pragma Elaborate_Body;
 
-   type Reference_Counted_Node is abstract tagged limited private;
+   ----------------------------------------------------------------------------
+   type Reference_Counted_Node_Base is abstract tagged limited private;
    --  Inherit from this base type to create your own managed types.
-   procedure Dispose  (Node       : access Reference_Counted_Node;
+   procedure Dispose  (Node       : access Reference_Counted_Node_Base;
                        Concurrent : in     Boolean) is abstract;
    --  Dispose should set all shared references inside the node to null.
 
-   procedure Clean_Up (Node : access Reference_Counted_Node) is abstract;
+   procedure Clean_Up (Node : access Reference_Counted_Node_Base) is abstract;
    --  Clean_Up should make sure that none of the shared references
    --  inside the node points to a node that was deleted at the point
    --  in time when Clean_Up was called.
 
-   function Is_Deleted (Node : access Reference_Counted_Node)
+   function Is_Deleted (Node : access Reference_Counted_Node_Base)
                        return Boolean;
    --  Returns true if Delete (see below) has been called on the node.
 
-   procedure Free (Object : access Reference_Counted_Node) is abstract;
+   procedure Free (Object : access Reference_Counted_Node_Base) is abstract;
    --  Note: Due to some peculiarities of the Ada storage pool
    --        management managed nodes need to have a dispatching primitive
    --        operation that calls the instance of Unchecked_Deallocation
@@ -57,42 +58,57 @@ package Lockfree_Reference_Counting is
    --        This workaround is not very nice but I have not found any
    --        better way.
 
+   ----------------------------------------------------------------------------
+   type Shared_Reference_Base is limited private;
 
-   type Shared_Reference is limited private;
-   --  All shared variables of type Shared_Reference MUST be declared
-   --  atomic by 'pragma Atomic (Variable_Name);' .
-
-   type Node_Access is access all Reference_Counted_Node'Class;
-   --  Select an appropriate (preferably non-blocking) storage pool
-   --  by the "for My_Node_Access'Storage_Pool use ..." construct.
-   --  Note: There SHOULD NOT be any shared variables of type Node_Access.
-
-   --  Operations.
-   function  Deref   (Link : access Shared_Reference) return Node_Access;
-   procedure Release (Node : in Node_Access);
-
-   function  Compare_And_Swap (Link      : access Shared_Reference;
-                               Old_Value : in Node_Access;
-                               New_Value : in Node_Access)
-                              return Boolean;
-
-   procedure Delete  (Node : in Node_Access);
-
-
-   procedure Store   (Link : access Shared_Reference;
-                      Node : in Node_Access);
-
+   ----------------------------------------------------------------------------
    generic
-      type User_Node is new Reference_Counted_Node with private;
-      type User_Node_Access is access User_Node;
-   function Create return Node_Access;
-   --  Creates a new User_Node and returns a safe reference to it.
+
+      type Reference_Counted_Node is
+        new Reference_Counted_Node_Base with private;
+
+      type Shared_Reference is new Shared_Reference_Base;
+      --  All shared variables of type Shared_Reference MUST be declared
+      --  atomic by 'pragma Atomic (Variable_Name);' .
+
+   package Operations is
+
+      type Node_Access is access all Reference_Counted_Node;
+      --  Note: There SHOULD NOT be any shared variables of type
+      --        Node_Access.
+
+      ----------------------------------------------------------------------
+      --  Operations.
+      ----------------------------------------------------------------------
+      function  Deref   (Link : access Shared_Reference) return Node_Access;
+      procedure Release (Node : in Node_Access);
+
+      function  Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in Node_Access;
+                                  New_Value : in Node_Access)
+                                 return Boolean;
+
+      procedure Delete  (Node : in Node_Access);
+
+
+      procedure Store   (Link : access Shared_Reference;
+                         Node : in Node_Access);
+
+      generic
+         type User_Node_Access is access Reference_Counted_Node;
+         --  Select an appropriate (preferably non-blocking) storage
+         --  pool by the "for User_Node_Access'Storage_Pool use ..."
+         --  construct.
+      function Create return Node_Access;
+      --  Creates a new User_Node and returns a safe reference to it.
+
+   end Operations;
 
 private
 
    subtype Reference_Count is Primitives.Unsigned_32;
 
-   type Reference_Counted_Node is abstract tagged limited
+   type Reference_Counted_Node_Base is abstract tagged limited
       record
          MM_RC    : aliased Reference_Count := 0;
          pragma Atomic (MM_RC);
@@ -102,7 +118,9 @@ private
          pragma Atomic (MM_Del);
       end record;
 
-   type Shared_Reference is new Node_Access;
-   --pragma Atomic (Shared_Reference);
+   type Reference_Counted_Node_Access is
+     access all Reference_Counted_Node_Base'Class;
+
+   type Shared_Reference_Base is new Reference_Counted_Node_Access;
 
 end Lockfree_Reference_Counting;

@@ -4,7 +4,7 @@
 --  Description     : Simple example ADT for lock-free garbage collector.
 --  Author          : Anders Gidenstam
 --  Created On      : Sat May  7 20:54:49 2005
---  $Id: example_queue.adb,v 1.4 2005/06/20 16:49:17 anders Exp $
+--  $Id: example_queue.adb,v 1.5 2005/06/21 00:39:52 anders Exp $
 -------------------------------------------------------------------------------
 
 with Lock_Free_Growing_Storage_Pools;
@@ -24,13 +24,13 @@ package body Example_Queue is
    type New_Queue_Node_Access is access Queue_Node;
    for New_Queue_Node_Access'Storage_Pool use Node_Pool;
 
-   function Create_Queue_Node is new LFRC.Create (Queue_Node,
-                                                  New_Queue_Node_Access);
+   function Create_Queue_Node is new LFRC_Ops.Create (New_Queue_Node_Access);
 
    ----------------------------------------------------------------------------
    procedure Dispose  (Node       : access Queue_Node;
                        Concurrent : in     Boolean) is
-      Next : Node_Access;
+      use LFRC_Ops;
+      Next : Queue_Node_Access;
    begin
       if not Concurrent then
          Store (Node.Next'Access, null);
@@ -48,22 +48,23 @@ package body Example_Queue is
 
    ----------------------------------------------------------------------------
    procedure Clean_Up (Node : access Queue_Node) is
+      use LFRC_Ops;
       Node1, Node2 : Queue_Node_Access;
    begin
       loop
-         Node1 := Queue_Node_Access (Deref (Node.Next'Access));
+         Node1 := Deref (Node.Next'Access);
          if Node1 /= null and then Is_Deleted (Node1) then
-            Node2 := Queue_Node_Access (Deref (Node1.Next'Access));
+            Node2 := Deref (Node1.Next'Access);
             if Compare_And_Swap (Link      => Node.Next'Access,
-                                 Old_Value => Node_Access (Node1),
-                                 New_Value => Node_Access (Node2))
+                                 Old_Value => Node1,
+                                 New_Value => Node2)
             then
               null;
             end if;
-            Release (Node_Access (Node2));
-            Release (Node_Access (Node1));
+            Release (Node2);
+            Release (Node1);
          else
-            Release (Node_Access (Node1));
+            Release (Node1);
             exit;
          end if;
       end loop;
@@ -89,7 +90,8 @@ package body Example_Queue is
 
    ----------------------------------------------------------------------------
    procedure Init (Queue : in out Queue_Type) is
-      Node : constant Node_Access := Create_Queue_Node;
+      use LFRC_Ops;
+      Node : constant Queue_Node_Access := Create_Queue_Node;
    begin
       Store (Queue.Head'Access, Node);
       Store (Queue.Tail'Access, Node);
@@ -98,45 +100,47 @@ package body Example_Queue is
 
    ----------------------------------------------------------------------------
    function  Dequeue (Queue : access Queue_Type) return Value_Type is
+      use LFRC_Ops;
       Node : Queue_Node_Access;
       Next : Queue_Node_Access;
       Res  : Value_Type;
    begin
       loop
-         Node := Queue_Node_Access (Deref (Queue.Head'Access));
-         Next := Queue_Node_Access (Deref (Node.Next'Access));
+         Node := Deref (Queue.Head'Access);
+         Next := Deref (Node.Next'Access);
          if Next = null then
-            Release (Node_Access (Node));
+            Release (Node);
             raise Queue_Empty;
          end if;
          exit when Compare_And_Swap (Link      => Queue.Head'Access,
-                                     Old_Value => Node_Access (Node),
-                                     New_Value => Node_Access (Next));
-         Release (Node_Access (Node));
-         Release (Node_Access (Next));
+                                     Old_Value => Node,
+                                     New_Value => Next);
+         Release (Node);
+         Release (Next);
       end loop;
-      Delete (Node_Access (Node));
+      Delete (Node);
       Res := Next.Value;
-      Release (Node_Access (Next));
+      Release (Next);
       return Res;
    end Dequeue;
 
    ----------------------------------------------------------------------------
    procedure Enqueue (Queue : in out Queue_Type;
                       Value : in     Value_Type) is
-      Node : Queue_Node_Access := Queue_Node_Access (Create_Queue_Node);
+      use LFRC_Ops;
+      Node : Queue_Node_Access := Create_Queue_Node;
       Old, Prev, Prev2 : Queue_Node_Access;
    begin
       Node.Value := Value;
-      Old  := Queue_Node_Access (Deref (Queue.Tail'Access));
+      Old  := Deref (Queue.Tail'Access);
       Prev := Old;
       loop
          loop
-            Prev2 := Queue_Node_Access (Deref (Prev.Next'Access));
+            Prev2 := Deref (Prev.Next'Access);
             exit when Prev2 = null;
 
             if Old /= Prev then
-               Release (Node_Access (Prev));
+               Release (Prev);
             end if;
 
             Prev := Prev2;
@@ -144,23 +148,23 @@ package body Example_Queue is
 
          exit when Compare_And_Swap (Link      => Prev.Next'Access,
                                      Old_Value => null,
-                                     New_Value => Node_Access (Node));
+                                     New_Value => Node);
       end loop;
 
       declare
          Dummy : Boolean;
       begin
          Dummy := Compare_And_Swap (Link      => Queue.Tail'Access,
-                                    Old_Value => Node_Access (Old),
-                                    New_Value => Node_Access (Node));
+                                    Old_Value => Old,
+                                    New_Value => Node);
       end;
 
       if Old /= Prev then
-         Release (Node_Access (Prev));
+         Release (Prev);
       end if;
 
-      Release (Node_Access (Old));
-      Release (Node_Access (Node));
+      Release (Old);
+      Release (Node);
    end Enqueue;
 
 end Example_Queue;
