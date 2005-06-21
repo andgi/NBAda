@@ -33,7 +33,7 @@
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 24 10:25:44 2005
---  $Id: nbada-large_primitives.adb,v 1.7 2005/06/20 23:18:52 anders Exp $
+--  $Id: nbada-large_primitives.adb,v 1.8 2005/06/21 15:14:46 anders Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Conversion;
@@ -89,6 +89,8 @@ package body Large_Primitives is
       procedure Keep_Block (ID : in Processes;
                             B  : in Object_Value_Access);
 
+
+
       --  Process local static data.
       Safe_Block : array (Processes) of Object_Value_Access;
 
@@ -120,7 +122,11 @@ package body Large_Primitives is
          Exp (ID, Next (ID)).Target :=
            Managed_Node_Access (Dereference (Target));
 
-         if Exp (ID, Next (ID)).Target.all in Object_Value then
+         if
+           Exp (ID, Next (ID)).Target /= null and then
+           Exp (ID, Next (ID)).Target.all in Object_Value
+         then
+
             declare
                Val : constant Object_Value_Access :=
                  Object_Value_Access (Exp (ID, Next (ID)).Target);
