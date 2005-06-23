@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Compare and Swap test.
---  Copyright (C) 2004  Anders Gidenstam
+--  Copyright (C) 2004 - 2005  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 --  Description     : Test of synchronization primitives package.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Jul  5 16:09:25 2002
---  $Id: cas_test.adb,v 1.6 2005/04/28 21:56:26 anders Exp $
+--  $Id: cas_test.adb,v 1.7 2005/06/23 13:47:59 anders Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Text_IO;
@@ -199,9 +199,9 @@ begin
       Ada.Text_IO.Put_Line ("LC: " & My_Float'Image (LC));
 
       Ada.Text_IO.Put_Line ("VCAS (LA, LB, LC)");
-      VCAS (LA'Access, LB, LB);
+      VCAS (LA'Access, LB, LC);
       if LA = 2.0 then
-         Ada.Text_IO.Put_Line ("Void_Compare_And_Swap_64: Passed test 6.");
+         Ada.Text_IO.Put_Line ("Void_Compare_And_Swap_64: Passed test 7.");
       else
          Ada.Text_IO.Put_Line ("Void_Compare_And_Swap_64 is faulty!");
          Ada.Text_IO.Put_Line ("LA: " & My_Float'Image (LA));
