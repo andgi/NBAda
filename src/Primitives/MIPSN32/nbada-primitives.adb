@@ -28,11 +28,12 @@
 --  Description     : Synchronization primitives.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Apr 26 23:49:50 2005
---  $Id: nbada-primitives.adb,v 1.6 2005/05/08 00:31:19 anders Exp $
+--  $Id: nbada-primitives.adb,v 1.7 2005/06/23 13:49:34 anders Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
 with Ada.Characters.Latin_1;
+with Ada.Unchecked_Conversion;
 
 package body Primitives is
 
@@ -47,6 +48,27 @@ package body Primitives is
    subtype Always_True is Boolean range True .. True;
    type Assertion (Assert : Always_True) is
      null record;
+
+   ----------------------------------------------------------------------------
+   --  Backend functions containing the inline assembler.
+   --  Labels in assembler code inside a generic function causes
+   --  name space problems when the generic is instantiated several times.
+   procedure Compare_And_Swap_Unsigned_32 (Target    : access Unsigned_32;
+                                           Old_Value : in     Unsigned_32;
+                                           New_Value : in out Unsigned_32);
+   pragma Inline (Compare_And_Swap_Unsigned_32);
+   pragma Inline_Always (Compare_And_Swap_Unsigned_32);
+
+   type Unsigned_64 is mod 2**64;
+   for Unsigned_64'Size use 64;
+   pragma Atomic (Unsigned_64);
+
+   procedure Compare_And_Swap_Unsigned_64 (Target    : access Unsigned_64;
+                                           Old_Value : in     Unsigned_64;
+                                           New_Value : in out Unsigned_64);
+   pragma Inline (Compare_And_Swap_Unsigned_64);
+   pragma Inline_Always (Compare_And_Swap_Unsigned_64);
+
 
    ----------------------------------------------------------------------------
    function Atomic_Read_32 (Target : access Element) return Element is
@@ -75,29 +97,26 @@ package body Primitives is
                                   New_Value : in out Element) is
       use Ada.Characters.Latin_1;
       type Element_Access is access all Element;
+      type Unsigned_Access is access all Unsigned_32;
+
+      function To_Unsigned_Access is
+         new Ada.Unchecked_Conversion (Element_Access, Unsigned_Access);
+      function To_Unsigned is
+         new Ada.Unchecked_Conversion (Element, Unsigned_32);
+      function To_Element is
+         new Ada.Unchecked_Conversion (Unsigned_32, Element);
 
       A1 : Assertion (Assert => Element'Object_Size = 32);
    begin
-      System.Machine_Code.Asm
-        (Template =>
-           "# BEGIN Compare_And_Swap_32"     & LF & HT &
-           ".set nomove"                     & LF &
-           "$CAS1:"                          & LF & HT &
-           "ll    $12, 0(%1)"                & LF & HT &
-           "bne   $12, %2, $CAS2"            & LF & HT &
-           "move  $13, %3"                   & LF & HT &
-           "sc    $13, 0(%1)"                & LF & HT &
-           "beqz  $13, $CAS1"                & LF &
-           "$CAS2:"                          & LF & HT &
-           "move  %0, $12"                   & LF & HT &
-           "# END Compare_And_Swap_32",
-         Outputs  => Element'Asm_Output ("=r", New_Value), -- %0 = New_Value
-         Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
-                                                Element_Access (Target)),
-                      Element'Asm_Input ("r", Old_Value),  -- %2 = Old_Value
-                      Element'Asm_Input ("r", New_Value)), -- %3 = New_Value
-         Clobber  => "$12,$13",
-         Volatile => True);
+      declare
+         New_Val : Unsigned_32 := To_Unsigned (New_Value);
+      begin
+         Compare_And_Swap_Unsigned_32
+           (Target    => To_Unsigned_Access (Element_Access (Target)),
+            Old_Value => To_Unsigned (Old_Value),
+            New_Value => New_Val);
+         New_Value := To_Element (New_Val);
+      end;
    end Compare_And_Swap_32;
 
    ----------------------------------------------------------------------------
@@ -107,31 +126,26 @@ package body Primitives is
                                         return Boolean is
       use Ada.Characters.Latin_1;
       type Element_Access is access all Element;
+      type Unsigned_Access is access all Unsigned_32;
+
+      function To_Unsigned_Access is
+         new Ada.Unchecked_Conversion (Element_Access, Unsigned_Access);
+      function To_Unsigned is
+         new Ada.Unchecked_Conversion (Element, Unsigned_32);
+      function To_Element is
+         new Ada.Unchecked_Conversion (Unsigned_32, Element);
 
       A1  : Assertion (Assert => Element'Object_Size = 32);
-      Tmp : Element;
    begin
-      System.Machine_Code.Asm
-        (Template =>
-           "# BEGIN Boolean_Compare_And_Swap_32" & LF & HT &
-           ".set nomove"                     & LF &
-           "$BCAS1:"                         & LF & HT &
-           "ll    $12, 0(%1)"                & LF & HT &
-           "bne   $12, %2, $BCAS2"           & LF & HT &
-           "move  $13, %3"                   & LF & HT &
-           "sc    $13, 0(%1)"                & LF & HT &
-           "beqz  $13, $BCAS1"               & LF &
-           "$BCAS2:"                         & LF & HT &
-           "move  %0, $12"                   & LF & HT &
-           "# END Boolean_Compare_And_Swap_32",
-         Outputs  => Element'Asm_Output ("=r", Tmp),       -- %0 = Tmp
-         Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
-                                                Element_Access (Target)),
-                      Element'Asm_Input ("r", Old_Value),  -- %2 = Old_Value
-                      Element'Asm_Input ("r", New_Value)), -- %3 = New_Value
-         Clobber  => "$12,$13",
-         Volatile => True);
-      return Tmp = Old_Value;
+      declare
+         New_Val : Unsigned_32 := To_Unsigned (New_Value);
+      begin
+         Compare_And_Swap_Unsigned_32
+           (Target    => To_Unsigned_Access (Element_Access (Target)),
+            Old_Value => To_Unsigned (Old_Value),
+            New_Value => New_Val);
+         return To_Element (New_Val) = Old_Value;
+      end;
    end Boolean_Compare_And_Swap_32;
 
    ----------------------------------------------------------------------------
@@ -140,27 +154,23 @@ package body Primitives is
                                        New_Value : in     Element) is
       use Ada.Characters.Latin_1;
       type Element_Access is access all Element;
+      type Unsigned_Access is access all Unsigned_32;
+
+      function To_Unsigned_Access is
+         new Ada.Unchecked_Conversion (Element_Access, Unsigned_Access);
+      function To_Unsigned is
+         new Ada.Unchecked_Conversion (Element, Unsigned_32);
 
       A1 : Assertion (Assert => Element'Object_Size = 32);
    begin
-      System.Machine_Code.Asm
-        (Template =>
-           "# BEGIN Void_Compare_And_Swap_32" & LF & HT &
-           ".set nomove"                      & LF &
-           "$VCAS1:"                          & LF & HT &
-           "ll    $12, 0(%0)"                 & LF & HT &
-           "bne   $12, %1, $VCAS2"            & LF & HT &
-           "move  $12, %2"                    & LF & HT &
-           "sc    $12, 0(%0)"                 & LF & HT &
-           "beqz  $12, $VCAS1"                & LF &
-           "$VCAS2:"                          & LF & HT &
-           "# END Void_Compare_And_Swap_32",
-         Inputs   => (Element_Access'Asm_Input ("r",       -- %0 = Target
-                                                Element_Access (Target)),
-                      Element'Asm_Input ("r", Old_Value),  -- %1 = Old_Value
-                      Element'Asm_Input ("r", New_Value)), -- %2 = New_Value
-         Clobber  => "$12",
-         Volatile => True);
+      declare
+         New_Val : Unsigned_32 := To_Unsigned (New_Value);
+      begin
+         Compare_And_Swap_Unsigned_32
+           (Target    => To_Unsigned_Access (Element_Access (Target)),
+            Old_Value => To_Unsigned (Old_Value),
+            New_Value => New_Val);
+      end;
    end Void_Compare_And_Swap_32;
 
    ----------------------------------------------------------------------------
@@ -173,29 +183,26 @@ package body Primitives is
                                   New_Value : in out Element) is
       use Ada.Characters.Latin_1;
       type Element_Access is access all Element;
+      type Unsigned_Access is access all Unsigned_64;
+
+      function To_Unsigned_Access is
+         new Ada.Unchecked_Conversion (Element_Access, Unsigned_Access);
+      function To_Unsigned is
+         new Ada.Unchecked_Conversion (Element, Unsigned_64);
+      function To_Element is
+         new Ada.Unchecked_Conversion (Unsigned_64, Element);
 
       A1 : Assertion (Assert => Element'Object_Size = 64);
    begin
-      System.Machine_Code.Asm
-        (Template =>
-           "# BEGIN Compare_And_Swap_64"     & LF & HT &
-           ".set nomove"                     & LF &
-           "$LCAS1:"                         & LF & HT &
-           "lld   $12, 0(%1)"                & LF & HT &
-           "bne   $12, %2, $LCAS2"           & LF & HT &
-           "move  $13, %3"                   & LF & HT &
-           "scd   $13, 0(%1)"                & LF & HT &
-           "beqz  $13, $LCAS1"               & LF &
-           "$LCAS2:"                         & LF & HT &
-           "move  %0, $12"                   & LF & HT &
-           "# END Compare_And_Swap_64",
-         Outputs  => Element'Asm_Output ("=r", New_Value), -- %0 = New_Value
-         Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
-                                                Element_Access (Target)),
-                      Element'Asm_Input ("r", Old_Value),  -- %2 = Old_Value
-                      Element'Asm_Input ("r", New_Value)), -- %3 = New_Value
-         Clobber  => "$12,$13",
-         Volatile => True);
+      declare
+         New_Val : Unsigned_64 := To_Unsigned (New_Value);
+      begin
+         Compare_And_Swap_Unsigned_64
+           (Target    => To_Unsigned_Access (Element_Access (Target)),
+            Old_Value => To_Unsigned (Old_Value),
+            New_Value => New_Val);
+         New_Value := To_Element (New_Val);
+      end;
    end Compare_And_Swap_64;
 
    ----------------------------------------------------------------------------
@@ -205,31 +212,26 @@ package body Primitives is
                                         return Boolean is
       use Ada.Characters.Latin_1;
       type Element_Access is access all Element;
+      type Unsigned_Access is access all Unsigned_64;
 
-      A1  : Assertion (Assert => Element'Object_Size = 64);
-      Tmp : Element;
+      function To_Unsigned_Access is
+         new Ada.Unchecked_Conversion (Element_Access, Unsigned_Access);
+      function To_Unsigned is
+         new Ada.Unchecked_Conversion (Element, Unsigned_64);
+      function To_Element is
+         new Ada.Unchecked_Conversion (Unsigned_64, Element);
+
+      A1 : Assertion (Assert => Element'Object_Size = 64);
    begin
-      System.Machine_Code.Asm
-        (Template =>
-           "# BEGIN Boolean_Compare_And_Swap_64" & LF & HT &
-           ".set nomove"                         & LF &
-           "$LBCAS1:"                            & LF & HT &
-           "lld   $12, 0(%1)"                    & LF & HT &
-           "bne   $12, %2, $LBCAS2"              & LF & HT &
-           "move  $13, %3"                       & LF & HT &
-           "scd   $13, 0(%1)"                    & LF & HT &
-           "beqz  $13, $LBCAS1"                  & LF &
-           "$LBCAS2:"                            & LF & HT &
-           "move  %0, $12"                       & LF & HT &
-           "# END Boolean_Compare_And_Swap_64",
-         Outputs  => Element'Asm_Output ("=r", Tmp),       -- %0 = Tmp
-         Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
-                                                Element_Access (Target)),
-                      Element'Asm_Input ("r", Old_Value),  -- %2 = Old_Value
-                      Element'Asm_Input ("r", New_Value)), -- %3 = New_Value
-         Clobber  => "$12,$13",
-         Volatile => True);
-      return Tmp = Old_Value;
+      declare
+         New_Val : Unsigned_64 := To_Unsigned (New_Value);
+      begin
+         Compare_And_Swap_Unsigned_64
+           (Target    => To_Unsigned_Access (Element_Access (Target)),
+            Old_Value => To_Unsigned (Old_Value),
+            New_Value => New_Val);
+         return Old_Value = To_Element (New_Val);
+      end;
    end Boolean_Compare_And_Swap_64;
 
    ----------------------------------------------------------------------------
@@ -238,27 +240,23 @@ package body Primitives is
                                        New_Value : in     Element) is
       use Ada.Characters.Latin_1;
       type Element_Access is access all Element;
+      type Unsigned_Access is access all Unsigned_64;
+
+      function To_Unsigned_Access is
+         new Ada.Unchecked_Conversion (Element_Access, Unsigned_Access);
+      function To_Unsigned is
+         new Ada.Unchecked_Conversion (Element, Unsigned_64);
 
       A1 : Assertion (Assert => Element'Object_Size = 64);
    begin
-      System.Machine_Code.Asm
-        (Template =>
-           "# BEGIN Void_Compare_And_Swap_64" & LF & HT &
-           ".set nomove"                      & LF &
-           "$LVCAS1:"                         & LF & HT &
-           "lld   $12, 0(%0)"                 & LF & HT &
-           "bne   $12, %1, $LVCAS2"           & LF & HT &
-           "move  $12, %2"                    & LF & HT &
-           "scd   $12, 0(%0)"                 & LF & HT &
-           "beqz  $12, $LVCAS1"               & LF &
-           "$LVCAS2:"                         & LF & HT &
-           "# END Void_Compare_And_Swap_64",
-         Inputs   => (Element_Access'Asm_Input ("r",       -- %0 = Target
-                                                Element_Access (Target)),
-                      Element'Asm_Input ("r", Old_Value),  -- %1 = Old_Value
-                      Element'Asm_Input ("r", New_Value)), -- %2 = New_Value
-         Clobber  => "$12",
-         Volatile => True);
+      declare
+         New_Val : Unsigned_64 := To_Unsigned (New_Value);
+      begin
+         Compare_And_Swap_Unsigned_64
+           (Target    => To_Unsigned_Access (Element_Access (Target)),
+            Old_Value => To_Unsigned (Old_Value),
+            New_Value => New_Val);
+      end;
    end Void_Compare_And_Swap_64;
 
    ----------------------------------------------------------------------------
@@ -321,5 +319,71 @@ package body Primitives is
    begin
       null;
    end Membar;
+
+   ----------------------------------------------------------------------------
+   procedure Compare_And_Swap_Unsigned_32 (Target    : access Unsigned_32;
+                                           Old_Value : in     Unsigned_32;
+                                           New_Value : in out Unsigned_32) is
+      use Ada.Characters.Latin_1;
+      type Unsigned_Access is access all Unsigned_32;
+
+      A1 : Assertion (Assert => Unsigned_32'Object_Size = 32);
+   begin
+      System.Machine_Code.Asm
+        (Template =>
+           "# BEGIN Compare_And_Swap_32"     & LF & HT &
+           ".set nomove"                     & LF &
+           "$CAS1:"                          & LF & HT &
+           "ll    $12, 0(%1)"                & LF & HT &
+           "bne   $12, %2, $CAS2"            & LF & HT &
+           "move  $13, %3"                   & LF & HT &
+           "sc    $13, 0(%1)"                & LF & HT &
+           "beqz  $13, $CAS1"                & LF &
+           "$CAS2:"                          & LF & HT &
+           "move  %0, $12"                   & LF & HT &
+           "# END Compare_And_Swap_32",
+         Outputs  =>
+           Unsigned_32'Asm_Output ("=r", New_Value),  -- %0 = New_Value
+         Inputs   =>
+           (Unsigned_Access'Asm_Input ("r",           -- %1 = Target
+                                       Unsigned_Access (Target)),
+            Unsigned_32'Asm_Input ("r", Old_Value),   -- %2 = Old_Value
+            Unsigned_32'Asm_Input ("r", New_Value)),  -- %3 = New_Value
+         Clobber  => "$12,$13",
+         Volatile => True);
+   end Compare_And_Swap_Unsigned_32;
+
+   ----------------------------------------------------------------------------
+   procedure Compare_And_Swap_Unsigned_64 (Target    : access Unsigned_64;
+                                           Old_Value : in     Unsigned_64;
+                                           New_Value : in out Unsigned_64) is
+      use Ada.Characters.Latin_1;
+      type Unsigned_Access is access all Unsigned_64;
+
+      A1 : Assertion (Assert => Unsigned_64'Object_Size = 64);
+   begin
+      System.Machine_Code.Asm
+        (Template =>
+           "# BEGIN Compare_And_Swap_64"     & LF & HT &
+           ".set nomove"                     & LF &
+           "$LCAS1:"                         & LF & HT &
+           "lld   $12, 0(%1)"                & LF & HT &
+           "bne   $12, %2, $LCAS2"           & LF & HT &
+           "move  $13, %3"                   & LF & HT &
+           "scd   $13, 0(%1)"                & LF & HT &
+           "beqz  $13, $LCAS1"               & LF &
+           "$LCAS2:"                         & LF & HT &
+           "move  %0, $12"                   & LF & HT &
+           "# END Compare_And_Swap_64",
+         Outputs  =>
+           Unsigned_64'Asm_Output ("=r", New_Value), -- %0 = New_Value
+         Inputs   =>
+           (Unsigned_Access'Asm_Input ("r",          -- %1 = Target
+                                       Unsigned_Access (Target)),
+            Unsigned_64'Asm_Input ("r", Old_Value),  -- %2 = Old_Value
+            Unsigned_64'Asm_Input ("r", New_Value)), -- %3 = New_Value
+         Clobber  => "$12,$13",
+         Volatile => True);
+   end Compare_And_Swap_Unsigned_64;
 
 end Primitives;
