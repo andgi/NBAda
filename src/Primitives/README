@@ -33,8 +33,6 @@ Supported platforms
   'Compare & Swap' primitives on
 
    - 64bit MIPS based SGI workstations running Irix with the N32 ABI.
-     NOTE: Presently only Compare_And_Swap_64 work, the Boolean_ and Void_
-           variants do not work.
 
   As the binding uses GNAT syntax for the inline assembler, other compilers
   than GNAT is unlikely to work.
