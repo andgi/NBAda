@@ -33,7 +33,7 @@
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 24 10:25:44 2005
---  $Id: nbada-large_primitives.adb,v 1.8 2005/06/21 15:14:46 anders Exp $
+--  $Id: nbada-large_primitives.adb,v 1.9 2005/06/23 14:55:21 anders Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Unchecked_Conversion;
@@ -227,7 +227,7 @@ package body Large_Primitives is
       begin
          Val.Value := Value;
          Object_Value_Operations.Initialize
-           (To_Shared_Reference (Shared_Element_Access (Target)),
+           (To_Shared_Reference (Target.all'Unchecked_Access),
             Val);
       end Initialize;
 
