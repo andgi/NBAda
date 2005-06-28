@@ -35,7 +35,7 @@
 --                    architectures (SPAA), 134--143, ACM, July 2001.
 --  Author          : Anders Gidenstam
 --  Created On      : Mon Jun 27 17:55:38 2005
---  $Id: nbada-lock_free_bounded_queues.adb,v 1.1 2005/06/27 17:24:17 anders Exp $
+--  $Id: nbada-lock_free_bounded_queues.adb,v 1.2 2005/06/28 09:36:45 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -58,17 +58,21 @@ package body Lock_Free_Bounded_Queues is
       end if;
 
       loop
+         <<Retry>>
          declare
             Old_Tail_Index : constant Queue_Index := Queue.Tail;
             Tail_Index     : Queue_Index          := Old_Tail_Index;
             Tail_Elem      : Element_Type         :=
               Queue.Element (Tail_Index);
             Next_Index     : Queue_Index          :=
-              (Tail_Index + 1) and Queue.Max_Size;
+              (Tail_Index + 1) mod Queue.Max_Size;
          begin
             while Tail_Elem /= Null_0 and Tail_Elem /= Null_1 loop
 
                --  Check tail consistency.
+               if Old_Tail_Index /= Queue.Tail then
+                  goto Retry;
+               end if;
 
                --  If Next_Index reaches Head then the queue might be full.
                exit when Next_Index = Queue.Head;
@@ -76,15 +80,18 @@ package body Lock_Free_Bounded_Queues is
                --  Look at the next cell.
                Tail_Elem  := Queue.Element (Next_Index);
                Tail_Index := Next_Index;
-               Next_Index := (Tail_Index + 1) and Queue.Max_Size;
+               Next_Index := (Tail_Index + 1) mod Queue.Max_Size;
             end loop;
 
             --  Check tail consistency.
+            if Old_Tail_Index /= Queue.Tail then
+               goto Retry;
+            end if;
 
             --  Check whether the queue is full.
             if Next_Index = Queue.Head then
 
-               Tail_Index := (Next_Index + 1) and Queue.Max_Size;
+               Tail_Index := (Next_Index + 1) mod Queue.Max_Size;
                Tail_Elem  := Queue.Element (Tail_Index);
 
                if Tail_Elem /= Null_0 and Tail_Elem /= Null_1 then
@@ -105,8 +112,11 @@ package body Lock_Free_Bounded_Queues is
             else
 
                --  Check tail consistency.
+               if Old_Tail_Index /= Queue.Tail then
+                  goto Retry;
+               end if;
 
-               --  Get teh actual tail and attempt to enqueue the data.
+               --  Get the actual tail and attempt to enqueue the data.
                if
                  CAS (Queue.Element (Tail_Index)'Access,
                       Old_Value => Tail_Elem,
@@ -146,25 +156,34 @@ package body Lock_Free_Bounded_Queues is
 
    begin
       loop
+         <<Retry>>
          declare
             Head_Index : constant Queue_Index := Queue.Head;
             Next_Index : Queue_Index          :=
-              (Head_Index + 1) and Queue.Max_Size;
+              (Head_Index + 1) mod Queue.Max_Size;
             Head_Elem  : Element_Type         :=
               Queue.Element (Next_Index);
          begin
             --  Find the actual head.
             while Head_Elem = Null_0 or Head_Elem = Null_1 loop
                --  Check head consistency.
+               if Head_Index /= Queue.Head then
+                  goto Retry;
+               end if;
 
                --  Two consecutive NULL means empty.
                if Next_Index = Queue.Tail then
                   raise Queue_Empty;
                end if;
 
-               Next_Index := (Next_Index + 1) and Queue.Max_Size;
+               Next_Index := (Next_Index + 1) mod Queue.Max_Size;
                Head_Elem  := Queue.Element (Next_Index);
             end loop;
+
+            --  Check head consistency.
+            if Head_Index /= Queue.Head then
+               goto Retry;
+            end if;
 
             --  Check whether the queue is empty.
             if Next_Index = Queue.Tail then
@@ -172,7 +191,7 @@ package body Lock_Free_Bounded_Queues is
                --  Help the dequeue by updating tail.
                CAS (Queue.Tail'Access,
                     Old_Value => Next_Index,
-                    New_Value => (Next_Index + 1) and Queue.Max_Size);
+                    New_Value => (Next_Index + 1) mod Queue.Max_Size);
 
             else
 
@@ -191,6 +210,9 @@ package body Lock_Free_Bounded_Queues is
                   end if;
 
                   --  Check head consistency.
+                  if Head_Index /= Queue.Head then
+                     goto Retry;
+                  end if;
 
                   --  Get the actual head. Null value means empty.
                   if
