@@ -4,7 +4,7 @@
 -- Description     : Example application for lock-free FIFO queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Mon Jun 27 19:09:40 2005
--- $Id: queue_test.adb,v 1.1 2005/06/27 17:24:17 anders Exp $
+-- $Id: queue_test.adb,v 1.2 2005/06/28 09:42:23 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -20,13 +20,18 @@ with Lock_Free_Bounded_Queues;
 
 procedure Queue_Test is
 
-   type Process_Id is mod 2**16;
-   type Index_Type is mod 2**16;
+   type Process_Id is mod 2**10;
+   type Index_Type is mod 2**22;
 
    type Value_Type is
       record
          Creator : Process_Id;
          Index   : Index_Type;
+      end record;
+   for Value_Type use
+      record
+         Creator at 0 range  0 ..  9;
+         Index   at 0 range 10 .. 31;
       end record;
    for Value_Type'Size use 32;
    pragma Atomic (Value_Type);
@@ -63,7 +68,7 @@ procedure Queue_Test is
       pragma Storage_Size (1 * 1024 * 1024);
    end Consumer;
 
-   Queue                : aliased Queues.Lock_Free_Queue (2**15);
+   Queue                : aliased Queues.Lock_Free_Queue (100_000);
 
    Start                : aliased Primitives.Unsigned_32 := 0;
    Enqueue_Count        : aliased Primitives.Unsigned_32 := 0;
@@ -226,6 +231,8 @@ begin
    Ada.Text_IO.Put_Line ("Testing with producer/consumer tasks.");
    declare
       use type Primitives.Unsigned_32;
+--      P1 : Producer;
+--      C1 : Consumer;
 --      P1, P2, P3, P4 : Producer;
 --      C1, C2, C3, C4 : Consumer;
       P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
