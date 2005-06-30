@@ -1,0 +1,37 @@
+Ada implementation of P. Tsigas and Y. Zhang's lock-free FIFO queue
+-------------------------------------------------------------------
+
+Copyright (C) 2005  Anders Gidenstam.  All rights reserved.
+
+e-mail: anders-www@gidenstam.org
+www:    http://www.gidenstam.org
+
+Introduction
+
+  This is an Ada implementation of the lock-free bounded size FIFO queue
+  algorithm presented by Philippas Tsigas and Yi Zhang in
+  [P. Tsigas and Y. Zhang, "A Simple, Fast and Scalable Non-Blocking
+   Concurrent FIFO Queue for Shared Memory Multiprocessor Systems",
+   Proceedings of the 13th annual ACM symposium on Parallel algorithms and
+   architectures (SPAA), 134--143, ACM, July 2001].
+  The FIFO queue can be used for any data type that can be represented in
+  32 bits with two unique values reserved for internal use (i.e. those
+  two values must not occur as data).
+ 
+  For more details of the algorithm see the paper, which can be found on
+  Philippas Tsigas' publication page:
+  http://www.cs.chalmers.se/~tsigas/pubs.html
+
+Test program
+
+  The very minimal test program can be compiled with the following commands:
+
+  On IA32: (i.e. Intel x86 architecture)
+  > gnatmake -I../Primitives -I../Primitives/IA32 queue_test
+
+  On SPARC:
+  > gnatmake -I../Primitives -I../Primitives/SPARCv9 queue_test -cargs -Wa,-xarch=v8plus
+
+  On MIPS Irix:
+  > gnatmake -I../Primitives -I../Primitives/MIPSN32 queue_test
+
