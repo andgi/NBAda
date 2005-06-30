@@ -1,10 +1,35 @@
 -------------------------------------------------------------------------------
+--  A small test application for the lock-free FIFO queue.
+--  Copyright (C) 2005  Anders Gidenstam
+--
+--  This program is free software; you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation; either version 2 of the License, or
+--  (at your option) any later version.
+--
+--  This program is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--
+--  As a special exception, if other files instantiate generics from this
+--  unit, or you link this unit with other files to produce an executable,
+--  this unit does not by itself cause the resulting executable to be
+--  covered by the GNU General Public License. This exception does not
+--  however invalidate any other reasons why the executable file might be
+--  covered by the GNU Public License.
+--
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 -- Filename        : queue_test.adb
 -- Description     : Example application for lock-free FIFO queue.
 -- Author          : Anders Gidenstam
 -- Created On      : Mon Jun 27 19:09:40 2005
--- $Id: queue_test.adb,v 1.2 2005/06/28 09:42:23 anders Exp $
+-- $Id: queue_test.adb,v 1.3 2005/06/30 09:53:14 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -80,17 +105,17 @@ procedure Queue_Test is
    function Pinned_Task return System.Task_Info.Task_Info_Type is
    begin
       --  GNAT/IRIX
-      return new System.Task_Info.Thread_Attributes'
-        (Scope       => System.Task_Info.PTHREAD_SCOPE_SYSTEM,
-         Inheritance => System.Task_Info.PTHREAD_EXPLICIT_SCHED,
-         Policy      => System.Task_Info.SCHED_RR,
-         Priority    => System.Task_Info.No_Specified_Priority,
-         Runon_CPU   =>
-           System.Task_Info.ANY_CPU
+--      return new System.Task_Info.Thread_Attributes'
+--        (Scope       => System.Task_Info.PTHREAD_SCOPE_SYSTEM,
+--         Inheritance => System.Task_Info.PTHREAD_EXPLICIT_SCHED,
+--         Policy      => System.Task_Info.SCHED_RR,
+--         Priority    => System.Task_Info.No_Specified_Priority,
+--         Runon_CPU   =>
+--           System.Task_Info.ANY_CPU
 --           Integer (Primitives.Fetch_And_Add (Task_Count'Access, 1))
-         );
+--         );
       --  GNAT/Linux
---        return System.Task_Info.System_Scope;
+      return System.Task_Info.System_Scope;
    end Pinned_Task;
 
    ----------------------------------------------------------------------------
