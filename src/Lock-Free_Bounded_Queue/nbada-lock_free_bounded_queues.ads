@@ -35,7 +35,7 @@
 --                    architectures (SPAA), 134--143, ACM, July 2001.
 --  Author          : Anders Gidenstam
 --  Created On      : Mon Jun 27 17:21:50 2005
---  $Id: nbada-lock_free_bounded_queues.ads,v 1.1 2005/06/27 17:24:17 anders Exp $
+--  $Id: nbada-lock_free_bounded_queues.ads,v 1.2 2005/07/06 15:20:34 anders Exp $
 -------------------------------------------------------------------------------
 
 generic
@@ -56,6 +56,8 @@ package Lock_Free_Bounded_Queues is
 
    procedure Dequeue (Queue   : in out Lock_Free_Queue;
                       Element :    out Element_Type);
+
+   function  Dequeue (Queue : access Lock_Free_Queue) return Element_Type;
 
    Queue_Full  : exception;
    Queue_Empty : exception;

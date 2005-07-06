@@ -35,7 +35,7 @@
 --                    architectures (SPAA), 134--143, ACM, July 2001.
 --  Author          : Anders Gidenstam
 --  Created On      : Mon Jun 27 17:55:38 2005
---  $Id: nbada-lock_free_bounded_queues.adb,v 1.2 2005/06/28 09:36:45 anders Exp $
+--  $Id: nbada-lock_free_bounded_queues.adb,v 1.3 2005/07/06 15:20:34 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -239,6 +239,14 @@ package body Lock_Free_Bounded_Queues is
             end if;
          end;
       end loop;
+   end Dequeue;
+
+   ----------------------------------------------------------------------------
+   function  Dequeue (Queue : access Lock_Free_Queue) return Element_Type is
+      Tmp : Element_Type;
+   begin
+      Dequeue (Queue.all, Tmp);
+      return Tmp;
    end Dequeue;
 
 end Lock_Free_Bounded_Queues;
