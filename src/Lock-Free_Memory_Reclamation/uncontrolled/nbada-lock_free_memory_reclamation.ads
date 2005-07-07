@@ -4,11 +4,13 @@
 -- Description     : Lock-free reference counting.
 -- Author          : Anders Gidenstam and Håkan Sundell
 -- Created On      : Fri Nov 19 13:54:45 2004
--- $Id: nbada-lock_free_memory_reclamation.ads,v 1.9 2005/06/21 10:14:49 anders Exp $
+-- $Id: nbada-lock_free_memory_reclamation.ads,v 1.10 2005/07/07 10:40:26 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
 with Primitives;
+
+with Ada.Finalization;
 
 generic
    Max_Number_Of_Dereferences : Natural;
@@ -82,22 +84,34 @@ package Lockfree_Reference_Counting is
       --  Note: There SHOULD NOT be any shared variables of type
       --        Node_Access.
 
+      type Private_Reference is private;
+      --  Note: There SHOULD NOT be any shared variables of type
+      --        Private_Reference.
+      Null_Reference : constant Private_Reference;
+
       ----------------------------------------------------------------------
       --  Operations.
       ----------------------------------------------------------------------
-      function  Deref   (Link : access Shared_Reference) return Node_Access;
-      procedure Release (Node : in Node_Access);
+      function  Deref   (Link : access Shared_Reference)
+                        return Private_Reference;
+
+      procedure Release (Node : in Private_Reference);
+
+      function  "+"     (Node : in Private_Reference)
+                        return Node_Access;
+      pragma Inline ("+");
+      pragma Inline_Always ("+");
 
       function  Compare_And_Swap (Link      : access Shared_Reference;
-                                  Old_Value : in Node_Access;
-                                  New_Value : in Node_Access)
+                                  Old_Value : in Private_Reference;
+                                  New_Value : in Private_reference)
                                  return Boolean;
 
-      procedure Delete  (Node : in Node_Access);
+      procedure Delete  (Node : in Private_Reference);
 
 
       procedure Store   (Link : access Shared_Reference;
-                         Node : in Node_Access);
+                         Node : in Private_Reference);
 
       generic
          type User_Node_Access is access Reference_Counted_Node;
@@ -106,10 +120,91 @@ package Lockfree_Reference_Counting is
          --  construct.
          --  NOTE: The nodes allocated in this way must have an
          --        implementation of Free that use the same storage pool.
-      function Create return Node_Access;
+      function Create return Private_Reference;
       --  Creates a new User_Node and returns a safe reference to it.
 
+   private
+
+      type Private_Reference is new Node_Access;
+
+      Null_Reference : constant Private_Reference := null;
+
    end Operations;
+
+
+--     ----------------------------------------------------------------------------
+--     generic
+
+--        type Reference_Counted_Node is
+--          new Reference_Counted_Node_Base with private;
+
+--        type Shared_Reference is new Shared_Reference_Base;
+--        --  All shared variables of type Shared_Reference MUST be declared
+--        --  atomic by 'pragma Atomic (Variable_Name);' .
+
+--     package Controlled_Operations is
+
+--        type Node_Access is access all Reference_Counted_Node;
+--        --  Note: There SHOULD NOT be any shared variables of type
+--        --        Node_Access.
+
+--        type Private_Reference is private;
+--        --  Note: There SHOULD NOT be any shared variables of type
+--        --        Private_Reference.
+--        --  Private_References are automatically Released when they go out
+--        --  of scope.
+--        Null_Reference : constant Private_Reference;
+
+--        ----------------------------------------------------------------------
+--        --  Operations.
+--        ----------------------------------------------------------------------
+--        function  Deref   (Link : access Shared_Reference)
+--                          return Private_Reference;
+
+--        procedure Release (Node : in Private_Reference);
+
+--        function  "+"     (Node : Private_Reference)
+--                          return Node_Access;
+--        pragma Inline ("+");
+--        pragma Inline_Always ("+");
+
+--        function  Compare_And_Swap (Link      : access Shared_Reference;
+--                                    Old_Value : in Private_Reference;
+--                                    New_Value : in Private_reference)
+--                                   return Boolean;
+
+--        procedure Delete  (Node : in Private_Reference);
+
+
+--        procedure Store   (Link : access Shared_Reference;
+--                           Node : in Private_Reference);
+
+--        generic
+--           type User_Node_Access is access Reference_Counted_Node;
+--           --  Select an appropriate (preferably non-blocking) storage
+--           --  pool by the "for User_Node_Access'Storage_Pool use ..."
+--           --  construct.
+--           --  NOTE: The nodes allocated in this way must have an
+--           --        implementation of Free that use the same storage pool.
+--        function Create return Private_Reference;
+--        --  Creates a new User_Node and returns a safe reference to it.
+
+--     private
+
+--        type Private_Reference is
+--          new Ada.Finalization.Controlled with
+--           record
+--              HP_Index : Natural := 0;
+--              Ptr      : Node_Access;
+--           end record;
+
+--        procedure Adjust   (Node : in out Private_Reference);
+--        procedure Finalize (Node : in out Private_Reference);
+
+--        Null_Reference : constant Private_Reference;
+
+--     end Controlled_Operations;
+
 
 private
 
