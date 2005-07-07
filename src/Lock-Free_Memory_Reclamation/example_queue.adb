@@ -4,7 +4,7 @@
 --  Description     : Simple example ADT for lock-free garbage collector.
 --  Author          : Anders Gidenstam
 --  Created On      : Sat May  7 20:54:49 2005
---  $Id: example_queue.adb,v 1.5 2005/06/21 00:39:52 anders Exp $
+--  $Id: example_queue.adb,v 1.6 2005/07/07 10:41:19 anders Exp $
 -------------------------------------------------------------------------------
 
 with Lock_Free_Growing_Storage_Pools;
@@ -33,13 +33,13 @@ package body Example_Queue is
       Next : Queue_Node_Access;
    begin
       if not Concurrent then
-         Store (Node.Next'Access, null);
+         Store (Node.Next'Access, Null_Reference);
       else
          loop
             Next := Deref (Node.Next'Access);
             exit when Compare_And_Swap (Link      => Node.Next'Access,
                                         Old_Value => Next,
-                                        New_Value => null);
+                                        New_Value => Null_Reference);
             Release (Next);
          end loop;
          Release (Next);
@@ -53,8 +53,8 @@ package body Example_Queue is
    begin
       loop
          Node1 := Deref (Node.Next'Access);
-         if Node1 /= null and then Is_Deleted (Node1) then
-            Node2 := Deref (Node1.Next'Access);
+         if Node1 /= Null_Reference and then Is_Deleted (+Node1) then
+            Node2 := Deref ("+" (Node1).Next'Access);
             if Compare_And_Swap (Link      => Node.Next'Access,
                                  Old_Value => Node1,
                                  New_Value => Node2)
@@ -76,11 +76,11 @@ package body Example_Queue is
         Ada.Unchecked_Deallocation (Queue_Node,
                                     New_Queue_Node_Access);
       function To_New_Queue_Node_Access is new
-        Ada.Unchecked_Conversion (Queue_Node_Access,
+        Ada.Unchecked_Conversion (LFRC_Ops.Node_Access,
                                   New_Queue_Node_Access);
 
       X : New_Queue_Node_Access :=
-        To_New_Queue_Node_Access (Queue_Node_Access (Node));
+        To_New_Queue_Node_Access (LFRC_Ops.Node_Access (Node));
       --  This is dangerous in the general case but here we know
       --  for sure that we have allocated all the nodes of the
       --  Object_Value type from the Object_Value_Access2 pool.
@@ -107,8 +107,8 @@ package body Example_Queue is
    begin
       loop
          Node := Deref (Queue.Head'Access);
-         Next := Deref (Node.Next'Access);
-         if Next = null then
+         Next := Deref ("+"(Node).Next'Access);
+         if Next = Null_Reference then
             Release (Node);
             raise Queue_Empty;
          end if;
@@ -119,7 +119,7 @@ package body Example_Queue is
          Release (Next);
       end loop;
       Delete (Node);
-      Res := Next.Value;
+      Res := "+" (Next).Value;
       Release (Next);
       return Res;
    end Dequeue;
@@ -131,13 +131,13 @@ package body Example_Queue is
       Node : Queue_Node_Access := Create_Queue_Node;
       Old, Prev, Prev2 : Queue_Node_Access;
    begin
-      Node.Value := Value;
+      "+" (Node).Value := Value;
       Old  := Deref (Queue.Tail'Access);
       Prev := Old;
       loop
          loop
-            Prev2 := Deref (Prev.Next'Access);
-            exit when Prev2 = null;
+            Prev2 := Deref ("+" (Prev).Next'Access);
+            exit when Prev2 = Null_Reference;
 
             if Old /= Prev then
                Release (Prev);
@@ -146,8 +146,8 @@ package body Example_Queue is
             Prev := Prev2;
          end loop;
 
-         exit when Compare_And_Swap (Link      => Prev.Next'Access,
-                                     Old_Value => null,
+         exit when Compare_And_Swap (Link      => "+" (Prev).Next'Access,
+                                     Old_Value => Null_Reference,
                                      New_Value => Node);
       end loop;
 

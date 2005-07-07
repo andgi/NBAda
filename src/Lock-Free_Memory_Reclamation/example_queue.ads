@@ -67,8 +67,7 @@ private
    package LFRC_Ops is new LFRC.Operations (Queue_Node,
                                             Queue_Node_Reference);
 
-   subtype Queue_Node_Access is LFRC_Ops.Node_Access;
-
+   subtype Queue_Node_Access is LFRC_Ops.Private_Reference;
 
    type Queue_Type is limited
       record
