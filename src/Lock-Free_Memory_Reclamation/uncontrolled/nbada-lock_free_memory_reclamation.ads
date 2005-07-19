@@ -1,16 +1,16 @@
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
--- Filename        : lock_free_reference_counting.ads
--- Description     : Lock-free reference counting.
--- Author          : Anders Gidenstam and Håkan Sundell
--- Created On      : Fri Nov 19 13:54:45 2004
--- $Id: nbada-lock_free_memory_reclamation.ads,v 1.11 2005/07/19 10:20:34 anders Exp $
+--  Filename        : lock_free_reference_counting.ads
+--  Description     : Lock-free reference counting.
+--  Author          : Anders Gidenstam and Håkan Sundell
+--  Created On      : Fri Nov 19 13:54:45 2004
+--  $Id: nbada-lock_free_memory_reclamation.ads,v 1.12 2005/07/19 16:27:19 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
 with Primitives;
 
-with Ada.Finalization;
+--  with Ada.Finalization;
 
 generic
    Max_Number_Of_Dereferences : Natural;
@@ -107,6 +107,10 @@ package Lock_Free_Reference_Counting is
                                   New_Value : in Private_reference)
                                  return Boolean;
 
+      procedure Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in     Private_Reference;
+                                  New_Value : in     Private_reference);
+
       procedure Delete  (Node : in Private_Reference);
 
 
@@ -123,11 +127,17 @@ package Lock_Free_Reference_Counting is
       function Create return Private_Reference;
       --  Creates a new User_Node and returns a safe reference to it.
 
+      --  Private (and shared) references can be tagged with a mark.
+      procedure Mark      (Node : in out Private_Reference);
+      procedure Unmark    (Node : in out Private_Reference);
+      function  Is_Marked (Node : in     Private_Reference)
+                          return Boolean;
+
    private
 
-      type Private_Reference is new Node_Access;
+      type Private_Reference is mod 2 ** 32;
 
-      Null_Reference : constant Private_Reference := null;
+      Null_Reference : constant Private_Reference := 0;
 
    end Operations;
 
@@ -223,6 +233,12 @@ private
    type Reference_Counted_Node_Access is
      access all Reference_Counted_Node_Base'Class;
 
-   type Shared_Reference_Base is new Reference_Counted_Node_Access;
+   type Shared_Reference_Base is mod 2 ** 32;
+   Null_Reference : constant Shared_Reference_Base := 0;
+
+   Mark_Bits  : constant := 1;
+   --  NOTE: Reference_Counted_Node_Base'Alignment >= 2 ** Mark_Bits MUST hold.
+   Mark_Mask  : constant Shared_Reference_Base := 2 ** Mark_Bits - 1;
+   Ref_Mask   : constant Shared_Reference_Base := - (2 ** Mark_Bits);
 
 end Lock_Free_Reference_Counting;
