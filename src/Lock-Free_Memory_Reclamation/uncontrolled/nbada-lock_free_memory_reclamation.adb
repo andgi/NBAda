@@ -1,10 +1,10 @@
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
--- Filename        : lockfree_reference_counting.adb
+-- Filename        : lock_free_reference_counting.adb
 -- Description     : Lock-free reference counting.
 -- Author          : Anders Gidenstam and Håkan Sundell
 -- Created On      : Fri Nov 19 14:07:58 2004
--- $Id: nbada-lock_free_memory_reclamation.adb,v 1.13 2005/07/07 10:40:26 anders Exp $
+-- $Id: nbada-lock_free_memory_reclamation.adb,v 1.14 2005/07/19 10:20:34 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -14,7 +14,7 @@ with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
 
-package body Lockfree_Reference_Counting is
+package body Lock_Free_Reference_Counting is
 
    ----------------------------------------------------------------------------
    --  Types.
@@ -127,7 +127,7 @@ package body Lockfree_Reference_Counting is
          if not Found then
             Ada.Exceptions.Raise_Exception
               (Constraint_Error'Identity,
-               "lockfree_reference_counting.adb: " &
+               "lock_free_reference_counting.adb: " &
                "Maximum number of local dereferences exceeded!");
          else
             loop
@@ -303,7 +303,7 @@ package body Lockfree_Reference_Counting is
          if not Found then
             Ada.Exceptions.Raise_Exception
               (Constraint_Error'Identity,
-               "lockfree_reference_counting.adb: " &
+               "lock_free_reference_counting.adb: " &
                "Maximum number of local dereferences exceeded!");
          else
             Hazard_Pointer (ID, Index) := Atomic_Node_Access (Node);
@@ -361,7 +361,7 @@ package body Lockfree_Reference_Counting is
 --           if not Found then
 --              Ada.Exceptions.Raise_Exception
 --                (Constraint_Error'Identity,
---                 "lockfree_reference_counting.adb: " &
+--                 "lock_free_reference_counting.adb: " &
 --                 "Maximum number of local dereferences exceeded!");
 --           else
 --              loop
@@ -532,7 +532,7 @@ package body Lockfree_Reference_Counting is
 --           if not Found then
 --              Ada.Exceptions.Raise_Exception
 --                (Constraint_Error'Identity,
---                 "lockfree_reference_counting.adb: " &
+--                 "lock_free_reference_counting.adb: " &
 --                 "Maximum number of local dereferences exceeded!");
 --           else
 --              Hazard_Pointer (ID, Index) := Atomic_Node_Access (Node);
@@ -560,7 +560,7 @@ package body Lockfree_Reference_Counting is
 --              if not Found then
 --                 Ada.Exceptions.Raise_Exception
 --                   (Constraint_Error'Identity,
---                    "lockfree_reference_counting.adb: " &
+--                    "lock_free_reference_counting.adb: " &
 --                    "Maximum number of local dereferences exceeded!");
 --              else
 --                 Hazard_Pointer (ID, Index) := Node.Ptr;
@@ -724,4 +724,4 @@ package body Lockfree_Reference_Counting is
       return Natural ((To_Unsigned (Ref)/4) mod Unsigned (Size));
    end Hash_Ref;
 
-end Lockfree_Reference_Counting;
+end Lock_Free_Reference_Counting;

@@ -1,10 +1,10 @@
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
--- Filename        : lockfree_reference_counting.ads
+-- Filename        : lock_free_reference_counting.ads
 -- Description     : Lock-free reference counting.
 -- Author          : Anders Gidenstam and Håkan Sundell
 -- Created On      : Fri Nov 19 13:54:45 2004
--- $Id: nbada-lock_free_memory_reclamation.ads,v 1.10 2005/07/07 10:40:26 anders Exp $
+-- $Id: nbada-lock_free_memory_reclamation.ads,v 1.11 2005/07/19 10:20:34 anders Exp $
 -------------------------------------------------------------------------------
 
 with Process_Identification;
@@ -30,7 +30,7 @@ generic
    --  The threshold on the delete list size for Clean_Up to be done.
    Scan_Threshold               : Natural := Clean_Up_Threshold;
    --  The threshold on the delete list size for Scan to be done.
-package Lockfree_Reference_Counting is
+package Lock_Free_Reference_Counting is
 
    pragma Elaborate_Body;
 
@@ -225,4 +225,4 @@ private
 
    type Shared_Reference_Base is new Reference_Counted_Node_Access;
 
-end Lockfree_Reference_Counting;
+end Lock_Free_Reference_Counting;

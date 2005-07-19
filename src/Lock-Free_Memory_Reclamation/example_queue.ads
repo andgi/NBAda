@@ -7,10 +7,10 @@
 --  $ID$
 -------------------------------------------------------------------------------
 
-with Lockfree_Reference_Counting;
+with Lock_Free_Reference_Counting;
 with Process_Identification;
 
-pragma Elaborate_All (Lockfree_Reference_Counting);
+pragma Elaborate_All (Lock_Free_Reference_Counting);
 
 generic
    type Value_Type is private;
@@ -34,7 +34,7 @@ package Example_Queue is
 
 private
 
-   package LFRC is new Lockfree_Reference_Counting
+   package LFRC is new Lock_Free_Reference_Counting
      (Max_Number_Of_Dereferences   => 4,
       --  Remember to account for the dereferences in the
       --  callbacks Clean_Up and Dispose (which are invoked by Delete).
