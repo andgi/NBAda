@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 -- Primitives - A binding to the synchronization primitives of the hardware.
--- Copyright (C) 2004  Anders Gidenstam
+-- Copyright (C) 2004 - 2005  Anders Gidenstam
 --
 -- This program is free software; you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 -- Description     : Synchronization primitives.
 -- Author          : Anders Gidenstam
 -- Created On      : Fri Jul  5 14:53:50 2002
--- $Id: nbada-primitives.adb,v 1.8 2004/11/02 15:54:35 anders Exp $
+-- $Id: nbada-primitives.adb,v 1.9 2005/08/15 14:31:35 anders Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
@@ -214,6 +214,7 @@ package body Primitives is
 --          Clobber  => "l0",
 --          Volatile => True);
 --       return Tmp = Old_Value;
+      return False;
    end Boolean_Compare_And_Swap_64;
 
    ----------------------------------------------------------------------------
