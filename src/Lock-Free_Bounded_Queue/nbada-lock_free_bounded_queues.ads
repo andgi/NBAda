@@ -35,7 +35,7 @@
 --                    architectures (SPAA), 134--143, ACM, July 2001.
 --  Author          : Anders Gidenstam
 --  Created On      : Mon Jun 27 17:21:50 2005
---  $Id: nbada-lock_free_bounded_queues.ads,v 1.2 2005/07/06 15:20:34 anders Exp $
+--  $Id: nbada-lock_free_bounded_queues.ads,v 1.3 2005/08/16 21:56:32 anders Exp $
 -------------------------------------------------------------------------------
 
 generic
@@ -46,6 +46,7 @@ generic
    --  NOTE: These two values MUST be different and MUST NOT appear as
    --        data values in the queue.
 package Lock_Free_Bounded_Queues is
+   pragma Pure (Lock_Free_Bounded_Queues);
 
    type Queue_Size is mod 2**32;
 
