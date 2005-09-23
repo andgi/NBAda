@@ -28,8 +28,10 @@
 --  Description     : Synchronization primitives.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Jul  5 14:53:50 2002
---  $Id: nbada-primitives.adb,v 1.9 2005/04/27 13:16:47 anders Exp $
+--  $Id: nbada-primitives.adb,v 1.10 2005/09/23 15:21:49 anders Exp $
 -------------------------------------------------------------------------------
+
+pragma License (Modified_GPL);
 
 with System.Machine_Code;
 with Ada.Characters.Latin_1;
@@ -41,12 +43,23 @@ package body Primitives is
    --
    ----------------------------------------------------------------------------
 
+   --  NOTE: The disabled "mfence" in the machine code below is necessary to
+   --        guarantee sequencially consistent memory on some modern IA32
+   --        multiprocessors.
+   --        However, when enabled the produced binary cannot be run on older
+   --        x86 machines (like my AMD Athlon XP 1600+).
+
+   CAS_Based_FAA : constant Boolean := True;
+   --  NOTE: The pure assembler FAA breaks when optimized for some reason.
+   --        This is a workaround.
+
    ----------------------------------------------------------------------------
    --  Home made assert construction. Provides some degree of compile time
    --  checking.
    subtype Always_True is Boolean range True .. True;
    type Assertion (Assert : Always_True) is
      null record;
+
 
    ----------------------------------------------------------------------------
    function Atomic_Read_32 (Target : access Element) return Element is
@@ -181,8 +194,10 @@ package body Primitives is
 
       A1 : Assertion (Assert => Element'Object_Size = 64);
       Tmp : Element;
+      pragma Unreferenced (Tmp);
    begin
       raise Not_Implemented;
+      return False;
    end Boolean_Compare_And_Swap_64;
 
    ----------------------------------------------------------------------------
@@ -198,24 +213,41 @@ package body Primitives is
    end Void_Compare_And_Swap_64;
 
    ----------------------------------------------------------------------------
+   function CAS is new Boolean_Compare_And_Swap_32 (Unsigned_32);
+   --  Used in the implementation of CAS-based Fetch_And_Add.
+
+   ----------------------------------------------------------------------------
    procedure Fetch_And_Add (Target    : access Unsigned_32;
                             Increment : in     Unsigned_32) is
       use Ada.Characters.Latin_1;
       type Unsigned_32_Access is access all Unsigned_32;
    begin
-      System.Machine_Code.Asm
-        (Template =>
-           "#BEGIN Fetch_And_Add_32"      & LF &
---           "mfence"                       & LF & HT &
-           "lock"                         & LF & HT &
-           "xaddl %1, (%0)"               & LF & HT &   -- Fetch & add
---           "mfence"                       & LF & HT &
-           "#END Fetch_And_Add_32",
-         Inputs   => (Unsigned_32_Access'Asm_Input         -- %0 = Target
-                      ("r", Unsigned_32_Access (Target)),
-                      Unsigned_32'Asm_Input ("r",          -- %1 = Increment
-                                             Increment)),
-         Volatile => True);
+      if CAS_Based_FAA then
+         loop
+            declare
+               use type Primitives.Unsigned_32;
+               Tmp : Unsigned_32;
+            begin
+               Tmp := Target.all;
+               exit when CAS (Target, Tmp, Tmp + Increment);
+            end;
+         end loop;
+      else
+         --  This code breaks when optimized.
+         System.Machine_Code.Asm
+           (Template =>
+              "#BEGIN Fetch_And_Add_32"      & LF & HT &
+            --           "mfence"                       & LF & HT &
+            "lock"                         & LF & HT &
+            "xaddl %1, (%0)"               & LF & HT &        -- Fetch & add
+            --           "mfence"                       & LF & HT &
+            "#END Fetch_And_Add_32",
+            Inputs   => (Unsigned_32_Access'Asm_Input         -- %0 = Target
+                         ("r", Unsigned_32_Access (Target)),
+                         Unsigned_32'Asm_Input ("r",          -- %1 = Increment
+                                                Increment)),
+            Volatile => True);
+      end if;
    end Fetch_And_Add;
 
    ----------------------------------------------------------------------------
@@ -227,21 +259,33 @@ package body Primitives is
 
       Tmp : Unsigned_32;
    begin
-      System.Machine_Code.Asm
-        (Template =>
-           "#BEGIN Fetch_And_Add_32"      & LF &
---           "mfence"                       & LF & HT &
-           "lock"                         & LF & HT &
-           "xaddl %2, (%1)"               & LF & HT &   -- Fetch & add
-           "movl %2, %0"                  & LF & HT &
---           "mfence"                       & LF & HT &
-           "#END Fetch_And_Add_32",
-         Outputs  => Unsigned_32'Asm_Output ("=r", Tmp),   -- %0 = Tmp
-         Inputs   => (Unsigned_32_Access'Asm_Input         -- %1 = Target
-                      ("r", Unsigned_32_Access (Target)),
-                      Unsigned_32'Asm_Input ("r",          -- %2 = Increment
-                                             Increment)),
-         Volatile => True);
+      if CAS_Based_FAA then
+         loop
+            declare
+               use type Primitives.Unsigned_32;
+            begin
+               Tmp := Target.all;
+               exit when CAS (Target, Tmp, Tmp + Increment);
+            end;
+         end loop;
+      else
+         --  This code breaks when optimized.
+         System.Machine_Code.Asm
+           (Template =>
+              "#BEGIN Fetch_And_Add_32"      & LF & HT &
+            --           "mfence"                       & LF & HT &
+            "lock"                         & LF & HT &
+            "xaddl %2, (%1)"               & LF & HT &        -- Fetch & add
+            "movl %2, %0"                  & LF & HT &
+            --           "mfence"                       & LF & HT &
+            "#END Fetch_And_Add_32",
+            Outputs  => Unsigned_32'Asm_Output ("=r", Tmp),   -- %0 = Tmp
+            Inputs   => (Unsigned_32_Access'Asm_Input         -- %1 = Target
+                         ("r", Unsigned_32_Access (Target)),
+                         Unsigned_32'Asm_Input ("r",          -- %2 = Increment
+                                                Increment)),
+            Volatile => True);
+      end if;
       return Tmp;
    end Fetch_And_Add;
 
@@ -251,7 +295,7 @@ package body Primitives is
    begin
       System.Machine_Code.Asm
         (Template =>
-           "#BEGIN Membar" & LF &
+           "#BEGIN Membar" & LF & HT &
 --           "mfence"        & LF & HT &
            "#END Membar");
    end Membar;

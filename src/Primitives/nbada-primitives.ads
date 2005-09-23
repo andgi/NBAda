@@ -28,8 +28,10 @@
 --  Description     : Synchronization primitives.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Jul  5 12:27:13 2002
---  $Id: nbada-primitives.ads,v 1.12 2005/06/09 13:28:48 anders Exp $
+--  $Id: nbada-primitives.ads,v 1.13 2005/09/23 15:21:49 anders Exp $
 -------------------------------------------------------------------------------
+
+pragma License (Modified_GPL);
 
 package Primitives is
 

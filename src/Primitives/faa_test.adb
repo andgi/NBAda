@@ -28,7 +28,7 @@
 --  Description     : Test of synchronization primitives package.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Jul  9 14:07:11 2002
---  $Id: faa_test.adb,v 1.3 2005/04/27 13:14:28 anders Exp $
+--  $Id: faa_test.adb,v 1.4 2005/09/23 15:21:49 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
@@ -38,19 +38,33 @@ with Ada.Exceptions;
 procedure FAA_Test is
 
    Count : aliased Primitives.Unsigned_32 := 0;
-   pragma Volatile (Count);
+   pragma Atomic (Count);
+   Count_CAS : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Count_CAS);
 
-   task type Counter (Count : access Primitives.Unsigned_32);
+   function CAS is
+     new Primitives.Boolean_Compare_And_Swap_32 (Primitives.Unsigned_32);
+
+   task type Counter;
 
    task body Counter is
-      Old : Primitives.Unsigned_32;
    begin
       for I in 1 .. 10_000_000 loop
-         Primitives.Fetch_And_Add (Target    => Count,
+         Primitives.Fetch_And_Add (Target    => Count'Access,
                                    Increment => 1);
+--           loop
+--              declare
+--                 use type Primitives.Unsigned_32;
+--                 T : Primitives.Unsigned_32 := Count_CAS;
+--              begin
+--                 exit when CAS (Count_CAS'Access, T, T + 1);
+--              end;
+--           end loop;
       end loop;
       Ada.Text_IO.Put_Line ("Count: " &
-                            Primitives.Unsigned_32'Image (Count.all));
+                            Primitives.Unsigned_32'Image (Count) &
+                            "  Count_CAS: " &
+                            Primitives.Unsigned_32'Image (Count_CAS));
    exception
       when E : others =>
          Ada.Text_IO.Put_Line (Ada.Exceptions.Exception_Information (E));
@@ -81,6 +95,6 @@ begin
 
    --  Start tasks;
    for I in Counters'Range loop
-      Counters (I) := new Counter (Count'Access);
+      Counters (I) := new Counter;
    end loop;
 end FAA_Test;
