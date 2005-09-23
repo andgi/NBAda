@@ -33,8 +33,10 @@
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 23 17:59:44 2005
---  $Id: large_primitives.ads,v 1.5 2005/06/20 23:18:52 anders Exp $
+--  $Id: large_primitives.ads,v 1.6 2005/09/23 17:27:35 anders Exp $
 -------------------------------------------------------------------------------
+
+pragma License (Modified_GPL);
 
 with Process_Identification;
 with Hazard_Pointers;

@@ -29,8 +29,10 @@
 --  Description     : Test of large word LL/SC/VL and hazard pointers.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 24 15:00:10 2005
---  $Id: large_primitives_test.adb,v 1.3 2005/06/09 14:53:17 anders Exp $
+--  $Id: large_primitives_test.adb,v 1.4 2005/09/23 17:27:35 anders Exp $
 -------------------------------------------------------------------------------
+
+pragma License (Modified_GPL);
 
 with Process_Identification;
 with Large_Primitives;

@@ -29,8 +29,10 @@
 --  Description     : A simple closed hash table.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 21:51:42 2004
---  $Id: hash_tables.ads,v 1.4 2005/06/09 14:40:50 anders Exp $
+--  $Id: hash_tables.ads,v 1.5 2005/09/23 17:27:35 anders Exp $
 -------------------------------------------------------------------------------
+
+pragma License (Modified_GPL);
 
 generic
    type Element_Type is private;

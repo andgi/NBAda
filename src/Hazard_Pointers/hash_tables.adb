@@ -29,8 +29,10 @@
 --  Description     : A simple closed hash table.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 21:56:38 2004
---  $Id: hash_tables.adb,v 1.2 2005/02/25 16:26:04 anders Exp $
+--  $Id: hash_tables.adb,v 1.3 2005/09/23 17:27:35 anders Exp $
 -------------------------------------------------------------------------------
+
+pragma License (Modified_GPL);
 
 package body Hash_Tables is
 

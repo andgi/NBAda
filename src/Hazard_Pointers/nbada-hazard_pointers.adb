@@ -34,8 +34,10 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:35:09 2004
---  $Id: nbada-hazard_pointers.adb,v 1.8 2005/06/20 23:18:52 anders Exp $
+--  $Id: nbada-hazard_pointers.adb,v 1.9 2005/09/23 17:27:35 anders Exp $
 -------------------------------------------------------------------------------
+
+pragma License (Modified_GPL);
 
 with Primitives;
 with Hash_Tables;

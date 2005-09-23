@@ -33,8 +33,10 @@
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 24 10:25:44 2005
---  $Id: large_primitives.adb,v 1.9 2005/06/23 14:55:21 anders Exp $
+--  $Id: large_primitives.adb,v 1.10 2005/09/23 17:27:35 anders Exp $
 -------------------------------------------------------------------------------
+
+pragma License (Modified_GPL);
 
 with Ada.Unchecked_Conversion;
 with System;

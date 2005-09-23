@@ -34,8 +34,10 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:10:15 2004
---  $Id: nbada-hazard_pointers.ads,v 1.7 2005/06/20 23:18:52 anders Exp $
+--  $Id: nbada-hazard_pointers.ads,v 1.8 2005/09/23 17:27:35 anders Exp $
 -------------------------------------------------------------------------------
+
+pragma License (Modified_GPL);
 
 with Process_Identification;
 
