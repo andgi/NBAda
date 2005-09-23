@@ -35,7 +35,7 @@ Supported platforms
    - 64bit MIPS based SGI workstations running Irix with the N32 ABI.
 
   As the binding uses GNAT syntax for the inline assembler, other compilers
-  than GNAT is unlikely to work.
+  than GNAT are unlikely to work without adapting the machine code insertions.
 
 Test programs
 
