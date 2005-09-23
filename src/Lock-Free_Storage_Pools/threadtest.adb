@@ -4,7 +4,7 @@
 --  Description     : Ada translation of the Hoard benchmark.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Jun 27 22:25:04 2003
---  $Id: threadtest.adb,v 1.2 2005/06/20 16:43:12 anders Exp $
+--  $Id: threadtest.adb,v 1.3 2005/09/23 14:08:23 anders Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Real_Time;
@@ -14,16 +14,17 @@ with Ada.Command_Line;
 with Ada.Text_IO;
 
 --  with Lock_Free_Fixed_Size_Storage_Pools;
-with NBmalloc_Storage_Pools;
+with Lock_Free_Growing_Storage_Pools;
+--  with NBmalloc_Storage_Pools;
 
 procedure Threadtest is
 
    Version : constant String :=
-     "$Id: threadtest.adb,v 1.2 2005/06/20 16:43:12 anders Exp $";
+     "$Id: threadtest.adb,v 1.3 2005/09/23 14:08:23 anders Exp $";
 
    No_Iterations : Natural := 500;
    No_Objects    : Natural := 30_000;
-   No_Threads    : Natural := 1;
+   No_Threads    : Natural := 32;
    Work          : Natural := 100;
 
    task type Worker;
@@ -40,13 +41,15 @@ procedure Threadtest is
 
    Pool_Size : constant := 2**15;
    My_Pool :
---       Lock_Free_Fixed_Size_Storage_Pools.Lock_Free_Storage_Pool
---       (Pool_Size  => Pool_Size,
---        Block_Size => Foo'Max_Size_In_Storage_Elements);
-     NBmalloc_Storage_Pools.Lock_Free_Storage_Pool;
+--     Lock_Free_Fixed_Size_Storage_Pools.Lock_Free_Storage_Pool
+--     (Pool_Size  => Pool_Size,
+--      Block_Size => Foo'Max_Size_In_Storage_Elements);
+     Lock_Free_Growing_Storage_Pools.Lock_Free_Storage_Pool
+     (Block_Size => Foo'Max_Size_In_Storage_Elements);
+--     NBmalloc_Storage_Pools.Lock_Free_Storage_Pool;
 
    type Foo_Access is access Foo;
-   --for Foo_Access'Storage_Pool use My_Pool;
+   for Foo_Access'Storage_Pool use My_Pool;
 
    type Foo_Array is array (Positive range <>) of Foo_Access;
 

@@ -28,8 +28,10 @@
 --  Description     : A lock-free fixed size storage pool implementation.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Apr  3 17:06:17 2003
---  $Id: nbada-lock_free_fixed_size_storage_pools.ads,v 1.5 2005/06/20 16:35:26 anders Exp $
+--  $Id: nbada-lock_free_fixed_size_storage_pools.ads,v 1.6 2005/09/23 14:08:22 anders Exp $
 -------------------------------------------------------------------------------
+
+pragma License (Modified_GPL);
 
 with System.Storage_Elements;
 with System.Storage_Pools;

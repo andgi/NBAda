@@ -28,14 +28,16 @@
 --  Description     : A lock-free fixed size storage pool implementation.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Apr  3 17:50:52 2003
---  $Id: nbada-lock_free_fixed_size_storage_pools.adb,v 1.6 2005/06/20 16:35:26 anders Exp $
+--  $Id: nbada-lock_free_fixed_size_storage_pools.adb,v 1.7 2005/09/23 14:08:22 anders Exp $
 -------------------------------------------------------------------------------
+
+pragma License (Modified_GPL);
 
 with Ada.Unchecked_Deallocation;
 with System.Address_To_Access_Conversions;
 with Primitives;
 
---with Ada.Text_IO;
+--  with Ada.Text_IO;
 
 package body Lock_Free_Fixed_Size_Storage_Pools is
 
