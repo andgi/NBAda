@@ -25,12 +25,14 @@
 --
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
--- Filename        : queue_test.adb
--- Description     : Example application for lock-free FIFO queue.
--- Author          : Anders Gidenstam
--- Created On      : Mon Jun 27 19:09:40 2005
--- $Id: queue_test.adb,v 1.3 2005/06/30 09:53:14 anders Exp $
+--  Filename        : queue_test.adb
+--  Description     : Example application for lock-free FIFO queue.
+--  Author          : Anders Gidenstam
+--  Created On      : Mon Jun 27 19:09:40 2005
+--  $Id: queue_test.adb,v 1.4 2005/09/23 15:48:47 anders Exp $
 -------------------------------------------------------------------------------
+
+pragma License (Modified_GPL);
 
 with Primitives;
 

@@ -35,8 +35,10 @@
 --                    architectures (SPAA), 134--143, ACM, July 2001.
 --  Author          : Anders Gidenstam
 --  Created On      : Mon Jun 27 17:55:38 2005
---  $Id: nbada-lock_free_bounded_queues.adb,v 1.3 2005/07/06 15:20:34 anders Exp $
+--  $Id: nbada-lock_free_bounded_queues.adb,v 1.4 2005/09/23 15:48:47 anders Exp $
 -------------------------------------------------------------------------------
+
+pragma License (Modified_GPL);
 
 with Primitives;
 
