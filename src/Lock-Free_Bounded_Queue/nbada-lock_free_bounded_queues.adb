@@ -35,7 +35,7 @@
 --                    architectures (SPAA), 134--143, ACM, July 2001.
 --  Author          : Anders Gidenstam
 --  Created On      : Mon Jun 27 17:55:38 2005
---  $Id: nbada-lock_free_bounded_queues.adb,v 1.4 2005/09/23 15:48:47 anders Exp $
+--  $Id: nbada-lock_free_bounded_queues.adb,v 1.5 2005/11/18 10:19:56 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -250,5 +250,66 @@ package body Lock_Free_Bounded_Queues is
       Dequeue (Queue.all, Tmp);
       return Tmp;
    end Dequeue;
+
+   ----------------------------------------------------------------------------
+   function Is_Empty (Queue : access Lock_Free_Queue) return Boolean is
+   begin
+
+      loop
+         <<Retry>>
+         declare
+            Head_Index : constant Queue_Index := Queue.Head;
+            Next_Index : Queue_Index          :=
+              (Head_Index + 1) mod Queue.Max_Size;
+            Head_Elem  : Element_Type         :=
+              Queue.Element (Next_Index);
+         begin
+            --  Find the actual head.
+            while Head_Elem = Null_0 or Head_Elem = Null_1 loop
+               --  Check head consistency.
+               if Head_Index /= Queue.Head then
+                  goto Retry;
+               end if;
+
+               --  Two consecutive NULL means empty.
+               if Next_Index = Queue.Tail then
+                  return True;
+               end if;
+
+               Next_Index := (Next_Index + 1) mod Queue.Max_Size;
+               Head_Elem  := Queue.Element (Next_Index);
+            end loop;
+
+            --  Check head consistency.
+            if Head_Index /= Queue.Head then
+               goto Retry;
+            end if;
+
+            --  Check whether the queue is empty.
+            if Next_Index = Queue.Tail then
+
+               --  Help the dequeue by updating tail.
+               CAS (Queue.Tail'Access,
+                    Old_Value => Next_Index,
+                    New_Value => (Next_Index + 1) mod Queue.Max_Size);
+
+            else
+
+               --  Check head consistency.
+               if Head_Index /= Queue.Head then
+                  goto Retry;
+               end if;
+
+               --  Check the actual head. Null value means empty.
+               --  But Head_Elem can't be null here, can it?
+               if Queue.Element (Next_Index) = Head_Elem then
+                  return Head_Elem = Null_0 or Head_Elem = Null_1;
+               end if;
+
+            end if;
+         end;
+      end loop;
+
+   end Is_Empty;
 
 end Lock_Free_Bounded_Queues;
