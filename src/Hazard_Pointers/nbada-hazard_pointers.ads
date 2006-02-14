@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Hazard Pointers - An implementation of Maged Michael's hazard pointers.
---  Copyright (C) 2004, 2005  Anders Gidenstam
+--  Copyright (C) 2004 - 2006  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:10:15 2004
---  $Id: nbada-hazard_pointers.ads,v 1.8 2005/09/23 17:27:35 anders Exp $
+--  $Id: nbada-hazard_pointers.ads,v 1.9 2006/02/14 15:45:56 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -63,12 +63,9 @@ package Hazard_Pointers is
    --        This workaround is not very nice but I have not found any
    --        better way.
 
-   ----------------------------------------------------------------------------
-   --  type Shared_Reference_Base is limited private;
-
    type Managed_Node_Access is access all Managed_Node_Base'Class;
    --  Note: There SHOULD NOT be any shared variables of type
-   --        Node_Access.
+   --        Managed_Node_Access.
 
    procedure Release     (Local  : in Managed_Node_Access);
    --  Note: Each dereferenced shared pointer MUST be released
@@ -80,8 +77,8 @@ package Hazard_Pointers is
    package Operations is
 
       type Shared_Reference is limited private;
-      --  All shared variables of type Shared_Reference MUST be
-      --  declared atomic by 'pragma Atomic (Variable_Name);' .
+      --  Note: All shared variables of type Shared_Reference MUST be
+      --        declared atomic by 'pragma Atomic (Variable_Name);' .
 
       type Node_Access is access all Managed_Node;
       --  Select an appropriate (preferably non-blocking) storage pool
@@ -133,6 +130,8 @@ package Hazard_Pointers is
       type Shared_Reference is new Node_Access;
       --   pragma Atomic (Shared_Reference);
       --   pragma Volatile (Shared_Reference);
+      --  Note: All shared variables of type Shared_Reference MUST be
+      --        declared atomic by 'pragma Atomic (Variable_Name);' .
 
    end Operations;
 

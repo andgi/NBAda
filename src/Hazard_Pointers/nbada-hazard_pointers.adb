@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Hazard Pointers - An implementation of Maged Michael's hazard pointers.
---  Copyright (C) 2004, 2005  Anders Gidenstam
+--  Copyright (C) 2004 - 2006  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:35:09 2004
---  $Id: nbada-hazard_pointers.adb,v 1.9 2005/09/23 17:27:35 anders Exp $
+--  $Id: nbada-hazard_pointers.adb,v 1.10 2006/02/14 15:45:56 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -150,7 +150,8 @@ package body Hazard_Pointers is
          ID : constant Processes := Process_Ids.Process_ID;
       begin
          Release (Local);
-         Local.all.MM_Next := Shared_Reference_Base (D_List (ID));
+         Managed_Node_Base (Local.all).MM_Next :=
+           Shared_Reference_Base (D_List (ID));
          D_List  (ID)      := Managed_Node_Access (Local);
          D_Count (ID)      := D_Count (ID) + 1;
          if D_Count (ID) >=
