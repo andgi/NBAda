@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Lock-free fixed size storage pool.
---  Copyright (C) 2003 - 2005  Anders Gidenstam
+--  Copyright (C) 2003 - 2006  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 --  Description     : A lock-free fixed size storage pool implementation.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Apr  3 17:06:17 2003
---  $Id: nbada-lock_free_fixed_size_storage_pools.ads,v 1.6 2005/09/23 14:08:22 anders Exp $
+--  $Id: nbada-lock_free_fixed_size_storage_pools.ads,v 1.7 2006/02/14 15:41:32 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -92,6 +92,7 @@ private
          Version : Version_Number := 0;
       end record;
    for Pool_Block_Ref'Size use 32;
+   pragma Atomic (Pool_Block_Ref);
 
    Null_Ref : constant Pool_Block_Ref := (Block_Index'Last, 0);
 
