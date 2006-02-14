@@ -1,7 +1,7 @@
 Ada implementation of Maged Michael's Hazard Pointers
 -----------------------------------------------------
 
-Copyright (C) 2004 - 2005  Anders Gidenstam.  All rights reserved.
+Copyright (C) 2004 - 2006  Anders Gidenstam.  All rights reserved.
 
 e-mail: anders-www@gidenstam.org
 www:    http://www.gidenstam.org
@@ -31,16 +31,29 @@ Introduction
   Curiously, despite its name, the algorithm works perfectly well also using
   32-bit Compare and Swap.
 
+   For data-structures that require more from the memory management
+   than Hazard Pointers offer I recommend a reference counter based
+   approach like the one developed by me and my colleagues. (See
+   [Anders Gidenstam, Marina Papatriantafilou, Håkan Sundell, Philippas
+    Tsigas, "Efficient and Reliable Lock-Free Memory Reclamation Based on
+    Reference Counting", Proc. of the 8th International Symposium on
+    Parallel Architectures, Algorithms, and Networks (I-SPAN), pages 202 -
+    207, 2005].) I have made an Ada implementation of our scheme which I
+   hope I can make available for download soon.
+
 Test program
 
-  The very minimal test program can be compiled with the following commands:
+  The very minimal test programs can be compiled with the following commands:
 
   On IA32: (i.e. Intel x86 architecture)
-  > gnatmake -I../Primitives -I../Primitives/IA32 large_primitives_test
+  > ./COMPILE.IA32
+  > gnatmake -I../Primitives -I../Primitives/IA32 -I../Lock-Free_Storage_Pools -gnato -fstack-check -gnata -gnatv -gnatf -O stack_test
 
   On SPARC:
-  > gnatmake -I../Primitives -I../Primitives/SPARCv9 large_primitives_test -cargs -Wa,-xarch=v8plus
+  > ./COMPILE.SPARCv8+
+  > gnatmake -I../Primitives -I../Primitives/SPARCv9 -I../Lock-Free_Storage_Pools -gnato -fstack-check -gnata -gnatv -gnatf stack_test -cargs -Wa,-xarch=v8plu
 
   On MIPS Irix:
-  > gnatmake -I../Primitives -I../Primitives/MIPSN32 large_primitives_test
+  > ./COMPILE.MIPSN32
+  > gnatmake -I../Primitives -I../Primitives/MIPSN32 -I../Lock-Free_Storage_Pools -gnato -fstack-check -gnata -gnatv -gnatf stack_tes
 
