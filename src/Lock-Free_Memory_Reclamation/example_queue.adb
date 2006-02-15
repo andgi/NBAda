@@ -1,11 +1,35 @@
 -------------------------------------------------------------------------------
+--  Lock-Free Reference Counting - An implementation of the lock-free
+--  garbage reclamation scheme by A. Gidenstam, M. Papatriantafilou, H. Sundell
+--  and P. Tsigas.
+--
+--  Copyright (C) 2004 - 2006  Anders Gidenstam
+--
+--  This program is free software; you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation; either version 2 of the License, or
+--  (at your option) any later version.
+--
+--  This program is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : example_queue.adb
---  Description     : Simple example ADT for lock-free garbage collector.
+--  Description     : Simple example ADT for lock-free garbage reclamation
+--                    scheme.
 --  Author          : Anders Gidenstam
 --  Created On      : Sat May  7 20:54:49 2005
---  $Id: example_queue.adb,v 1.6 2005/07/07 10:41:19 anders Exp $
+--  $Id: example_queue.adb,v 1.7 2006/02/15 17:11:02 anders Exp $
 -------------------------------------------------------------------------------
+
+pragma License (GPL);
 
 with Lock_Free_Growing_Storage_Pools;
 
@@ -59,7 +83,7 @@ package body Example_Queue is
                                  Old_Value => Node1,
                                  New_Value => Node2)
             then
-              null;
+               null;
             end if;
             Release (Node2);
             Release (Node1);
@@ -128,7 +152,7 @@ package body Example_Queue is
    procedure Enqueue (Queue : in out Queue_Type;
                       Value : in     Value_Type) is
       use LFRC_Ops;
-      Node : Queue_Node_Access := Create_Queue_Node;
+      Node : constant Queue_Node_Access := Create_Queue_Node;
       Old, Prev, Prev2 : Queue_Node_Access;
    begin
       "+" (Node).Value := Value;
@@ -151,13 +175,9 @@ package body Example_Queue is
                                      New_Value => Node);
       end loop;
 
-      declare
-         Dummy : Boolean;
-      begin
-         Dummy := Compare_And_Swap (Link      => Queue.Tail'Access,
-                                    Old_Value => Old,
-                                    New_Value => Node);
-      end;
+      Compare_And_Swap (Link      => Queue.Tail'Access,
+                        Old_Value => Old,
+                        New_Value => Node);
 
       if Old /= Prev then
          Release (Prev);

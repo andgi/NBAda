@@ -1,21 +1,53 @@
 -------------------------------------------------------------------------------
+--  Lock-Free Reference Counting - An implementation of the lock-free
+--  garbage reclamation scheme by A. Gidenstam, M. Papatriantafilou, H. Sundell
+--  and P. Tsigas.
+--
+--  Copyright (C) 2004 - 2006  Anders Gidenstam
+--
+--  This program is free software; you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation; either version 2 of the License, or
+--  (at your option) any later version.
+--
+--  This program is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : lock_free_reference_counting.ads
---  Description     : Lock-free reference counting.
---  Author          : Anders Gidenstam and Håkan Sundell
+--  Description     : Ada implementation of the lock-free garbage reclamation
+--                    Scheme from "Efficient and Reliable Lock-Free Memory
+--                    Reclamation Based on Reference Counting",
+--                    Anders Gidenstam, Marina Papatriantafilou,
+--                    Håkan Sundell and Philippas Tsigas,
+--                    Proceedings of the 8th International Symposium on
+--                    Parallel Architectures, Algorithms and Networks (I-SPAN),
+--                    pages 202 - 207, IEEE Computer Society, 2005.
+--  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 13:54:45 2004
---  $Id: nbada-lock_free_memory_reclamation.ads,v 1.12 2005/07/19 16:27:19 anders Exp $
+--  $Id: nbada-lock_free_memory_reclamation.ads,v 1.13 2006/02/15 17:11:02 anders Exp $
 -------------------------------------------------------------------------------
+
+pragma License (GPL);
 
 with Process_Identification;
 with Primitives;
 
---  with Ada.Finalization;
-
 generic
+
    Max_Number_Of_Dereferences : Natural;
    --  Maximum number of simultaneously dereferenced links per thread.
+
    Max_Number_Of_Links_Per_Node : Natural;
+   --  Maximum number of links in a shared node.
+
    with package Process_Ids is
      new Process_Identification (<>);
    --  Process identification.
@@ -24,33 +56,37 @@ generic
      Process_Ids.Max_Number_Of_Processes ** 2 *
        (Max_Number_Of_Dereferences + Max_Number_Of_Links_Per_Node +
         Max_Number_Of_Links_Per_Node + 1);
-   --  NOTE: Do not change unless you really know what you are doing!
-   --  The bound is derived in the paper.
+   --  Note: Do not change Max_Delete_List_Size unless you really know what
+   --        you are doing! The bound is derived in the paper.
+
    Clean_Up_Threshold           : Natural := Max_Delete_List_Size;
    --  The threshold on the delete list size for Clean_Up to be done.
+
    Scan_Threshold               : Natural := Clean_Up_Threshold;
    --  The threshold on the delete list size for Scan to be done.
+
 package Lock_Free_Reference_Counting is
 
    pragma Elaborate_Body;
 
    ----------------------------------------------------------------------------
-   type Reference_Counted_Node_Base is abstract tagged limited private;
+   type Managed_Node_Base is abstract tagged limited private;
    --  Inherit from this base type to create your own managed types.
-   procedure Dispose  (Node       : access Reference_Counted_Node_Base;
+
+   procedure Dispose  (Node       : access Managed_Node_Base;
                        Concurrent : in     Boolean) is abstract;
    --  Dispose should set all shared references inside the node to null.
 
-   procedure Clean_Up (Node : access Reference_Counted_Node_Base) is abstract;
+   procedure Clean_Up (Node : access Managed_Node_Base) is abstract;
    --  Clean_Up should make sure that none of the shared references
    --  inside the node points to a node that was deleted at the point
    --  in time when Clean_Up was called.
 
-   function Is_Deleted (Node : access Reference_Counted_Node_Base)
+   function Is_Deleted (Node : access Managed_Node_Base)
                        return Boolean;
    --  Returns true if Delete (see below) has been called on the node.
 
-   procedure Free (Object : access Reference_Counted_Node_Base) is abstract;
+   procedure Free (Object : access Managed_Node_Base) is abstract;
    --  Note: Due to some peculiarities of the Ada storage pool
    --        management managed nodes need to have a dispatching primitive
    --        operation that calls the instance of Unchecked_Deallocation
@@ -71,8 +107,8 @@ package Lock_Free_Reference_Counting is
    ----------------------------------------------------------------------------
    generic
 
-      type Reference_Counted_Node is
-        new Reference_Counted_Node_Base with private;
+      type Managed_Node is
+        new Managed_Node_Base with private;
 
       type Shared_Reference is new Shared_Reference_Base;
       --  All shared variables of type Shared_Reference MUST be declared
@@ -80,7 +116,7 @@ package Lock_Free_Reference_Counting is
 
    package Operations is
 
-      type Node_Access is access all Reference_Counted_Node;
+      type Node_Access is access all Managed_Node;
       --  Note: There SHOULD NOT be any shared variables of type
       --        Node_Access.
 
@@ -104,12 +140,12 @@ package Lock_Free_Reference_Counting is
 
       function  Compare_And_Swap (Link      : access Shared_Reference;
                                   Old_Value : in Private_Reference;
-                                  New_Value : in Private_reference)
+                                  New_Value : in Private_Reference)
                                  return Boolean;
 
       procedure Compare_And_Swap (Link      : access Shared_Reference;
                                   Old_Value : in     Private_Reference;
-                                  New_Value : in     Private_reference);
+                                  New_Value : in     Private_Reference);
 
       procedure Delete  (Node : in Private_Reference);
 
@@ -118,11 +154,11 @@ package Lock_Free_Reference_Counting is
                          Node : in Private_Reference);
 
       generic
-         type User_Node_Access is access Reference_Counted_Node;
+         type User_Node_Access is access Managed_Node;
          --  Select an appropriate (preferably non-blocking) storage
          --  pool by the "for User_Node_Access'Storage_Pool use ..."
          --  construct.
-         --  NOTE: The nodes allocated in this way must have an
+         --  Note: The nodes allocated in this way must have an
          --        implementation of Free that use the same storage pool.
       function Create return Private_Reference;
       --  Creates a new User_Node and returns a safe reference to it.
@@ -141,86 +177,11 @@ package Lock_Free_Reference_Counting is
 
    end Operations;
 
-
---     ----------------------------------------------------------------------------
---     generic
-
---        type Reference_Counted_Node is
---          new Reference_Counted_Node_Base with private;
-
---        type Shared_Reference is new Shared_Reference_Base;
---        --  All shared variables of type Shared_Reference MUST be declared
---        --  atomic by 'pragma Atomic (Variable_Name);' .
-
---     package Controlled_Operations is
-
---        type Node_Access is access all Reference_Counted_Node;
---        --  Note: There SHOULD NOT be any shared variables of type
---        --        Node_Access.
-
---        type Private_Reference is private;
---        --  Note: There SHOULD NOT be any shared variables of type
---        --        Private_Reference.
---        --  Private_References are automatically Released when they go out
---        --  of scope.
---        Null_Reference : constant Private_Reference;
-
---        ----------------------------------------------------------------------
---        --  Operations.
---        ----------------------------------------------------------------------
---        function  Deref   (Link : access Shared_Reference)
---                          return Private_Reference;
-
---        procedure Release (Node : in Private_Reference);
-
---        function  "+"     (Node : Private_Reference)
---                          return Node_Access;
---        pragma Inline ("+");
---        pragma Inline_Always ("+");
-
---        function  Compare_And_Swap (Link      : access Shared_Reference;
---                                    Old_Value : in Private_Reference;
---                                    New_Value : in Private_reference)
---                                   return Boolean;
-
---        procedure Delete  (Node : in Private_Reference);
-
-
---        procedure Store   (Link : access Shared_Reference;
---                           Node : in Private_Reference);
-
---        generic
---           type User_Node_Access is access Reference_Counted_Node;
---           --  Select an appropriate (preferably non-blocking) storage
---           --  pool by the "for User_Node_Access'Storage_Pool use ..."
---           --  construct.
---           --  NOTE: The nodes allocated in this way must have an
---           --        implementation of Free that use the same storage pool.
---        function Create return Private_Reference;
---        --  Creates a new User_Node and returns a safe reference to it.
-
---     private
-
---        type Private_Reference is
---          new Ada.Finalization.Controlled with
---           record
---              HP_Index : Natural := 0;
---              Ptr      : Node_Access;
---           end record;
-
---        procedure Adjust   (Node : in out Private_Reference);
---        procedure Finalize (Node : in out Private_Reference);
-
---        Null_Reference : constant Private_Reference;
-
---     end Controlled_Operations;
-
-
 private
 
    subtype Reference_Count is Primitives.Unsigned_32;
 
-   type Reference_Counted_Node_Base is abstract tagged limited
+   type Managed_Node_Base is abstract tagged limited
       record
          MM_RC    : aliased Reference_Count := 0;
          pragma Atomic (MM_RC);
@@ -230,15 +191,15 @@ private
          pragma Atomic (MM_Del);
       end record;
 
-   type Reference_Counted_Node_Access is
-     access all Reference_Counted_Node_Base'Class;
+   type Managed_Node_Access is
+     access all Managed_Node_Base'Class;
 
    type Shared_Reference_Base is mod 2 ** 32;
    Null_Reference : constant Shared_Reference_Base := 0;
 
    Mark_Bits  : constant := 1;
-   --  NOTE: Reference_Counted_Node_Base'Alignment >= 2 ** Mark_Bits MUST hold.
+   --  Note: Reference_Counted_Node_Base'Alignment >= 2 ** Mark_Bits MUST hold.
    Mark_Mask  : constant Shared_Reference_Base := 2 ** Mark_Bits - 1;
-   Ref_Mask   : constant Shared_Reference_Base := - (2 ** Mark_Bits);
+   Ref_Mask   : constant Shared_Reference_Base := -(2 ** Mark_Bits);
 
 end Lock_Free_Reference_Counting;
