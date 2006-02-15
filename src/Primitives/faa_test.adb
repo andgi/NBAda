@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Fetch and Add test.
---  Copyright (C) 2004  Anders Gidenstam
+--  Copyright (C) 2004 - 2006  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,8 +28,10 @@
 --  Description     : Test of synchronization primitives package.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Jul  9 14:07:11 2002
---  $Id: faa_test.adb,v 1.5 2006/02/15 13:33:57 anders Exp $
+--  $Id: faa_test.adb,v 1.6 2006/02/15 13:41:47 anders Exp $
 -------------------------------------------------------------------------------
+
+pragma License (Modified_GPL);
 
 with Primitives;
 with Ada.Text_IO;
@@ -44,20 +46,31 @@ procedure FAA_Test is
    Count_CAS : aliased Primitives.Unsigned_32 := 0;
    pragma Atomic (Count_CAS);
 
-   ----------------------------------------------------------------------------
-   System_Scope_Task : aliased System.Task_Info.Thread_Attributes :=
-     (System.Task_Info.PTHREAD_SCOPE_SYSTEM,
-      System.Task_Info.PTHREAD_EXPLICIT_SCHED,
-      System.Task_Info.SCHED_RR,
-      System.Task_Info.No_Specified_Priority,
-      System.Task_Info.ANY_CPU);
+   function System_Scope_Task return System.Task_Info.Task_Info_Type;
 
    task type Counter is
-      pragma Task_Info (System_Scope_Task'Unchecked_Access);
+      pragma Task_Info (System_Scope_Task);
    end Counter;
 
-   function CAS is
-     new Primitives.Boolean_Compare_And_Swap_32 (Primitives.Unsigned_32);
+--   function CAS is
+--      new Primitives.Boolean_Compare_And_Swap_32 (Primitives.Unsigned_32);
+
+   ----------------------------------------------------------------------------
+   function System_Scope_Task return System.Task_Info.Task_Info_Type is
+   begin
+      --  GNAT/IRIX
+--        return new System.Task_Info.Thread_Attributes'
+--          (Scope       => System.Task_Info.PTHREAD_SCOPE_SYSTEM,
+--           Inheritance => System.Task_Info.PTHREAD_EXPLICIT_SCHED,
+--           Policy      => System.Task_Info.SCHED_RR,
+--           Priority    => System.Task_Info.No_Specified_Priority,
+--           Runon_CPU   =>
+--             --System.Task_Info.ANY_CPU
+--             Integer (Primitives.Fetch_And_Add (Task_Count'Access, 1))
+--           );
+      --  GNAT/Linux and GNAT/Solaris
+      return System.Task_Info.System_Scope;
+   end System_Scope_Task;
 
    task body Counter is
    begin
