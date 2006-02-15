@@ -28,7 +28,7 @@
 --  Description     : Synchronization primitives.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Apr 26 23:49:50 2005
---  $Id: nbada-primitives.adb,v 1.7 2005/06/23 13:49:34 anders Exp $
+--  $Id: nbada-primitives.adb,v 1.8 2006/02/15 13:33:58 anders Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
@@ -56,8 +56,8 @@ package body Primitives is
    procedure Compare_And_Swap_Unsigned_32 (Target    : access Unsigned_32;
                                            Old_Value : in     Unsigned_32;
                                            New_Value : in out Unsigned_32);
-   pragma Inline (Compare_And_Swap_Unsigned_32);
-   pragma Inline_Always (Compare_And_Swap_Unsigned_32);
+--   pragma Inline (Compare_And_Swap_Unsigned_32);
+--   pragma Inline_Always (Compare_And_Swap_Unsigned_32);
 
    type Unsigned_64 is mod 2**64;
    for Unsigned_64'Size use 64;
@@ -66,8 +66,8 @@ package body Primitives is
    procedure Compare_And_Swap_Unsigned_64 (Target    : access Unsigned_64;
                                            Old_Value : in     Unsigned_64;
                                            New_Value : in out Unsigned_64);
-   pragma Inline (Compare_And_Swap_Unsigned_64);
-   pragma Inline_Always (Compare_And_Swap_Unsigned_64);
+--   pragma Inline (Compare_And_Swap_Unsigned_64);
+--   pragma Inline_Always (Compare_And_Swap_Unsigned_64);
 
 
    ----------------------------------------------------------------------------

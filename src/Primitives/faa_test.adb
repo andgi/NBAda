@@ -28,12 +28,14 @@
 --  Description     : Test of synchronization primitives package.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Jul  9 14:07:11 2002
---  $Id: faa_test.adb,v 1.4 2005/09/23 15:21:49 anders Exp $
+--  $Id: faa_test.adb,v 1.5 2006/02/15 13:33:57 anders Exp $
 -------------------------------------------------------------------------------
 
 with Primitives;
 with Ada.Text_IO;
 with Ada.Exceptions;
+
+with System.Task_Info;
 
 procedure FAA_Test is
 
@@ -42,10 +44,20 @@ procedure FAA_Test is
    Count_CAS : aliased Primitives.Unsigned_32 := 0;
    pragma Atomic (Count_CAS);
 
+   ----------------------------------------------------------------------------
+   System_Scope_Task : aliased System.Task_Info.Thread_Attributes :=
+     (System.Task_Info.PTHREAD_SCOPE_SYSTEM,
+      System.Task_Info.PTHREAD_EXPLICIT_SCHED,
+      System.Task_Info.SCHED_RR,
+      System.Task_Info.No_Specified_Priority,
+      System.Task_Info.ANY_CPU);
+
+   task type Counter is
+      pragma Task_Info (System_Scope_Task'Unchecked_Access);
+   end Counter;
+
    function CAS is
      new Primitives.Boolean_Compare_And_Swap_32 (Primitives.Unsigned_32);
-
-   task type Counter;
 
    task body Counter is
    begin
@@ -76,6 +88,7 @@ procedure FAA_Test is
    Counters : Counter_Array (1 .. 10);
 begin
    declare
+      use type Primitives.Unsigned_32;
       Test : aliased Primitives.Unsigned_32 := 0;
    begin
       Ada.Text_IO.Put_Line ("Test 1: 10 x FAA(Test'Access, 2)." &
@@ -87,6 +100,9 @@ begin
             (Primitives.Fetch_And_Add (Target    => Test'Access,
                                        Increment => 2)));
       end loop;
+      if Test /= 20 then
+         Ada.Text_IO.Put_Line ("Test 1: Failed! Final value is incorrect.");
+      end if;
    end;
 
    Ada.Text_IO.Put_Line ("Test 2: 10 concurrent tasks count to " &

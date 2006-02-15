@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Primitives - A binding to the synchronization primitives of the hardware.
---  Copyright (C) 2004 - 2005  Anders Gidenstam
+--  Copyright (C) 2004 - 2006  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 --  Description     : Synchronization primitives.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Jul  5 12:27:13 2002
---  $Id: nbada-primitives.ads,v 1.13 2005/09/23 15:21:49 anders Exp $
+--  $Id: nbada-primitives.ads,v 1.14 2006/02/15 13:33:57 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -217,8 +217,8 @@ package Primitives is
    --    begin atomic
    --      Target.all := Target.all + Increment;
    --    end atomic;
-   pragma Inline (Fetch_And_Add);
-   pragma Inline_Always (Fetch_And_Add);
+--   pragma Inline (Fetch_And_Add);
+--   pragma Inline_Always (Fetch_And_Add);
 
 
    function  Fetch_And_Add (Target    : access Unsigned_32;
@@ -230,8 +230,8 @@ package Primitives is
    --      Target.all := Tmp + Increment;
    --      return Tmp;
    --    end atomic;
-   pragma Inline (Fetch_And_Add);
-   pragma Inline_Always (Fetch_And_Add);
+--   pragma Inline (Fetch_And_Add);
+--   pragma Inline_Always (Fetch_And_Add);
 
    ----------------------------------------------------------------------------
    --  Memory synchronization barrier.
