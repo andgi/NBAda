@@ -32,7 +32,7 @@
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 14:07:58 2004
---  $Id: nbada-lock_free_memory_reclamation.adb,v 1.17 2006/02/17 14:29:48 anders Exp $
+--  $Id: nbada-lock_free_memory_reclamation.adb,v 1.18 2006/02/17 14:45:53 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -134,7 +134,7 @@ package body Lock_Free_Reference_Counting is
 
       function To_Node_Access (X : Private_Reference)
                               return Node_Access;
-      pragma Inline_Always (To_Node_Access);
+      pragma Inline (To_Node_Access);
 
       type Shared_Reference_Base_Access is access all Shared_Reference_Base;
       type Shared_Reference_Access is access all Shared_Reference;
