@@ -5,7 +5,7 @@
 --                    by H. Sundell and P. Tsigas.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 15 18:59:45 2006
---  $Id: nbada-lock_free_deques.adb,v 1.1 2006/02/17 15:43:09 anders Exp $
+--  $Id: nbada-lock_free_deques.adb,v 1.2 2006/02/17 20:04:25 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -46,13 +46,19 @@ package body Lock_Free_Deques is
 
    procedure Push_Common (Node, Next : Deque_Node_Access);
 
-   function Help_Insert (Prev, Node : in Deque_Node_Access)
+   function Help_Insert (After, Node : in Deque_Node_Access)
                         return Deque_Node_Access;
+   --  Updates Node.Previous to point to After (or a predecessor
+   --  to After in case After is deleted).
+   --  Note: Help_Insert releases After but not Node. It returns the node
+   --        in front of Node.
 
-   procedure Delete_Next (Node : in     Deque_Node_Access);
-   --  Marks Node as logically deleted and unliks Node from the active
-   --  structure.
-   --  Note: The reference to Node is not released by Delete_Next.
+   procedure Help_Delete (Node : in     Deque_Node_Access);
+   --  Fully mark Node as logically deleted and unliks Node from the active
+   --  forward list structure.
+   --  Note: The reference to Node is not released by Help_Delete.
+   --        Node.Next should be marked before the call to Help_Delete.
+   --  Note: Uses at most 3 additional dereferences.
 
    ----------------------------------------------------------------------------
    --  Public operations.
@@ -82,7 +88,8 @@ package body Lock_Free_Deques is
 
       loop
          if "+"(Node).Next /= Unmark (Next) then
-            Node := Help_Insert (Node, Next);
+            Node := Help_Insert (Node  => Next,
+                                 After => Node);
 
          elsif Node = Deque.Head then
             Release (Node);
@@ -93,12 +100,15 @@ package body Lock_Free_Deques is
                                  Old_Value => Unmark (Next),
                                  New_Value => Mark (Next))
          then
-            Delete_Next (Node);
+            --  Unlink Node from the forward chain.
+            Help_Delete (Node);
             declare
                Prev : Deque_Node_Access;
             begin
+               --  Unlink Node from the backward chain.
                Prev := Dereference ("+"(Node).Previous'Access);
-               Prev := Help_Insert (Prev, Next);
+               Prev := Help_Insert (Node  => Next,
+                                    After => Prev);
                Release (Prev);
                Release (Next);
             end;
@@ -129,7 +139,8 @@ package body Lock_Free_Deques is
       loop
          if "+"(Prev).Next /= Unmark (Next) then
 
-            Prev := Help_Insert (Prev, Next);
+            Prev := Help_Insert (Node  => Next,
+                                 After => Prev);
 
          else
             Store ("+"(Node).Previous'Access, Unmark (Prev));
@@ -173,17 +184,18 @@ package body Lock_Free_Deques is
          Old := Dereference ("+"(Node).Next'Access);
 
          if Is_Marked (Old) then
-            Delete_Next (Node);
+            Help_Delete (Node);
             Release (Node);
 
          elsif Compare_And_Swap (Link      => "+"(Node).Next'Access,
                                  Old_Value => Old,
                                  New_Value => Mark (Old))
          then
-            Delete_Next (Node);
+            Help_Delete (Node);
 
             Next := Dereference ("+"(Node).Next'Access);
-            Prev := Help_Insert (Prev, Next);
+            Prev := Help_Insert (Node  => Next,
+                                 After => Prev);
 
             Release (Prev);
             Release (Next);
@@ -285,7 +297,7 @@ package body Lock_Free_Deques is
          begin
             Prev := Dereference (Node.Previous'Access);
 
-            if Prev /= Null_Reference and then Is_Marked (Node.Next) then
+            if Prev /= Null_Reference and then Is_Marked ("+"(Prev).Next) then
                --  Prev is logically deleted.
                Prev2 := Dereference ("+"(Prev).Previous'Access);
                Compare_And_Swap (Link      => Node.Previous'Access,
@@ -303,7 +315,7 @@ package body Lock_Free_Deques is
             Next, Next2 : Deque_Node_Access;
          begin
             Next := Dereference (Node.Next'Access);
-            if Next /= Null_Reference and then Is_Marked (Node.Next) then
+            if Next /= Null_Reference and then Is_Marked ("+"(Next).Next) then
                --  Next is logically deleted.
                Next2 := Dereference ("+"(Next).Next'Access);
                Compare_And_Swap (Link      => Node.Next'Access,
@@ -374,7 +386,8 @@ package body Lock_Free_Deques is
                declare
                   Prev : Deque_Node_Access;
                begin
-                  Prev := Help_Insert (Node, Next);
+                  Prev := Help_Insert (Node  => Next,
+                                       After => Node);
                end;
             end if;
 
@@ -389,20 +402,22 @@ package body Lock_Free_Deques is
    end Push_Common;
 
    ----------------------------------------------------------------------
-   function Help_Insert (Prev, Node : in Deque_Node_Access)
+   function Help_Insert (After, Node : in Deque_Node_Access)
                         return Deque_Node_Access is
       use LFRC_Ops;
-      Prev1     : Deque_Node_Access := Prev;
-      Prev_Next : Deque_Node_Access;
-      Last_Link : Boolean := True;
+      Prev1      : Deque_Node_Access := After;
+      Prev1_Next : Deque_Node_Access;
+      Last_Link  : Boolean := True;
    begin
       loop
          --  Should this be a Dereference that ignores deleted nodes?
-         Prev_Next := Dereference ("+"(Prev1).Next'Access);
+         Prev1_Next := Dereference ("+"(Prev1).Next'Access);
 
-         if Prev_Next = Null_Reference then
+         if Is_Marked (Prev1_Next) then
+            --  Prev1 is being deleted.
+
             if not Last_Link then
-               Delete_Next (Prev1);
+               Help_Delete (Prev1);
                Last_Link := True;
             end if;
 
@@ -413,34 +428,41 @@ package body Lock_Free_Deques is
                Release (Prev1);
                Prev1 := Prev2;
             end;
+            Release (Prev1_Next);
          else
             declare
-               Old_Link : constant Deque_Node_Access :=
+               Node_Prev : constant Deque_Node_Access :=
                  Dereference ("+"(Node).Previous'Access);
             begin
-               if Is_Marked (Old_Link) then
-                  Release (Prev_Next);
-                  Release (Old_Link);
+               if Is_Marked (Node_Prev) then
+                  --  Node is being deleted.
+
+                  Release (Prev1_Next);
+                  Release (Node_Prev);
                   exit;
                end if;
 
-               if Prev_Next /= Node then
+               if Prev1_Next /= Node then
+                  --  There are nodes between Prev1 and Node.
                   Last_Link := False;
                   Release (Prev1);
-                  Prev1 := Prev_Next;
+                  Prev1 := Prev1_Next;
                else
-                  Release (Prev_Next);
+                  --  Prev1 is immediately in front of Node.
+                  --  Update Node.Previous.
+                  Release (Prev1_Next);
                   if Compare_And_Swap (Link      => "+"(Node).Previous'Access,
-                                       Old_Value => Old_Link,
+                                       Old_Value => Node_Prev,
                                        New_Value => Unmark (Prev1))
                   then
                      if not Is_Marked ("+"(Prev1).Previous) then
-                        Release (Old_Link);
+                        Release (Node_Prev);
                         exit;
                      end if;
+                     --  Somebody has deleted Prev1. Continue.
                   end if;
                end if;
-               Release (Old_Link);
+               Release (Node_Prev);
             end;
          end if;
          --  Back-off.
@@ -450,13 +472,14 @@ package body Lock_Free_Deques is
    end Help_Insert;
 
    ----------------------------------------------------------------------
-   procedure Delete_Next (Node : in     Deque_Node_Access) is
+   procedure Help_Delete (Node : in     Deque_Node_Access) is
       use LFRC_Ops;
    begin
       declare
          Old_Link : Deque_Node_Access;
       begin
          --  Set logically deleted mark on Node.Previous.
+         --  Node.Next should already be marked.
          loop
             Old_Link := Dereference ("+"(Node).Previous'Access);
 
@@ -482,14 +505,8 @@ package body Lock_Free_Deques is
          Next := Dereference ("+"(Node).Next'Access);
 
          loop
-            exit when Prev = Next;
-
-            if Next = Null_Reference then
-               Ada.Exceptions.Raise_Exception
-                 (Constraint_Error'Identity,
-                  "lock_free_deques.adb:469  Delete_Next: " &
-                  "Node.Next is null! This should not happen!");
-            end if;
+            --  WTF does this do?!
+            exit when Unmark (Prev) = Unmark (Next);
 
             if Is_Marked ("+"(Next).Next) then
                declare
@@ -503,11 +520,20 @@ package body Lock_Free_Deques is
                declare
                   Prev_Next : Deque_Node_Access;
                begin
+                  --  Saftey check on Prev.
+                  if Prev = Null_Reference then
+                     Ada.Exceptions.Raise_Exception
+                       (Constraint_Error'Identity,
+                        "lock_free_deques.adb:525  Help_Delete: " &
+                        "Node.Previous is null! This should not happen!");
+                  end if;
+
                   Prev_Next := Dereference ("+"(Prev).Next'Access);
 
-                  if Prev_Next = Null_Reference then
+                  if Is_Marked (Prev_Next) then
+                     Release (Prev_Next);
                      if not Last_Link then
-                        Delete_Next (Prev);
+                        Help_Delete (Prev);
                         Last_Link := True;
                      end if;
 
@@ -519,7 +545,7 @@ package body Lock_Free_Deques is
                         Prev := Prev2;
                      end;
                   else
-                     if Prev_Next /= Node then
+                     if Prev_Next /= Unmark (Node) then
                         Last_Link := False;
                         Release (Prev);
                         Prev := Prev_Next;
@@ -539,6 +565,6 @@ package body Lock_Free_Deques is
          Release (Prev);
          Release (Next);
       end;
-   end Delete_Next;
+   end Help_Delete;
 
 end Lock_Free_Deques;

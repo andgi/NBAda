@@ -4,7 +4,7 @@
 --  Description     : Test program for the lock-free deque.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 16 16:06:25 2006
--- $Id: deque_test.adb,v 1.1 2006/02/17 15:43:08 anders Exp $
+-- $Id: deque_test.adb,v 1.2 2006/02/17 20:04:25 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -32,7 +32,7 @@ procedure Deque_Test is
          Index   : Integer;
       end record;
    package Deques is new Lock_Free_Deques (Value_Type  => Value_Type,
-					   Process_Ids => PID);
+                                           Process_Ids => PID);
    use Deques;
 
    ----------------------------------------------------------------------------
@@ -232,22 +232,22 @@ begin
    Ada.Text_IO.Put_Line ("Testing with left producer/right consumer tasks.");
    declare
       use type Primitives.Unsigned_32;
-      P0, P1--, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
-	: Left_Producer;
-      C0, C1--, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
-	: Right_Consumer;
+      P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
+        : Left_Producer;
+      C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
+        : Right_Consumer;
    begin
       delay 5.0;
       T1 := Ada.Real_Time.Clock;
       Primitives.Fetch_And_Add (Start'Access, 1);
    end;
    T2 := Ada.Real_Time.Clock;
-   
+
 --     Push_Left (Deque, Value_Type'(1, 10));
 --     Push_Left (Deque, Value_Type'(1, 20));
 --     Push_Left (Deque, Value_Type'(1, 30));
 --     Push_Left (Deque, Value_Type'(1, 40));
-   
+
    delay 1.0;
    Ada.Text_IO.Put_Line ("Left_Push count: " &
                          Primitives.Unsigned_32'Image (Left_Push_Count));
@@ -282,9 +282,9 @@ begin
 
          Ada.Text_IO.Put_Line ("Final push count: " &
                                Primitives.Unsigned_32'Image
-			       (Left_Push_Count));
+                               (Left_Push_Count));
          Ada.Text_IO.Put_Line ("Final pop count: " &
                                Primitives.Unsigned_32'Image
-			       (Right_Pop_Count));
+                               (Right_Pop_Count));
    end;
 end Deque_Test;
