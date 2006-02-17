@@ -32,7 +32,7 @@
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 14:07:58 2004
---  $Id: nbada-lock_free_memory_reclamation.adb,v 1.16 2006/02/15 17:11:02 anders Exp $
+--  $Id: nbada-lock_free_memory_reclamation.adb,v 1.17 2006/02/17 14:29:48 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -134,7 +134,6 @@ package body Lock_Free_Reference_Counting is
 
       function To_Node_Access (X : Private_Reference)
                               return Node_Access;
-      pragma Inline (To_Node_Access);
       pragma Inline_Always (To_Node_Access);
 
       type Shared_Reference_Base_Access is access all Shared_Reference_Base;
@@ -150,8 +149,8 @@ package body Lock_Free_Reference_Counting is
       Ref_Mask   : constant Private_Reference := -(2 ** Mark_Bits);
 
       ----------------------------------------------------------------------
-      function  Deref   (Link : access Shared_Reference)
-                        return Private_Reference is
+      function  Dereference (Link : access Shared_Reference)
+                            return Private_Reference is
          ID       : constant Processes := Process_Ids.Process_ID;
          Index    : HP_Index;
          Found    : Boolean := False;
@@ -184,7 +183,7 @@ package body Lock_Free_Reference_Counting is
          else
             return Null_Reference;
          end if;
-      end Deref;
+      end Dereference;
 
       ----------------------------------------------------------------------
       procedure Release (Node : in Private_Reference) is
@@ -207,6 +206,10 @@ package body Lock_Free_Reference_Counting is
       ----------------------------------------------------------------------
       function  "+"     (Node : in Private_Reference)
                         return Node_Access renames To_Node_Access;
+
+      ----------------------------------------------------------------------
+      function Deref (Node : in Private_Reference)
+                     return Node_Access renames To_Node_Access;
 
       ----------------------------------------------------------------------
       procedure Delete  (Node : in Private_Reference) is
@@ -264,8 +267,8 @@ package body Lock_Free_Reference_Counting is
            Compare_And_Swap_32
            (Target    =>
               To_Shared_Reference_Base_Access (Link.all'Unchecked_Access),
-            Old_Value => Shared_Reference_Base (Old_Value),
-            New_Value => Shared_Reference_Base (New_Value))
+            Old_Value => (Ref => Shared_Reference_Base_Impl (Old_Value)),
+            New_Value => (Ref => Shared_Reference_Base_Impl (New_Value)))
          then
             if To_Node_Access (New_Value) /= null then
                declare
@@ -318,7 +321,7 @@ package body Lock_Free_Reference_Counting is
            To_Node_Access (To_Private_Reference (Link.all));
       begin
          To_Shared_Reference_Base_Access (Link.all'Unchecked_Access).all :=
-           Shared_Reference_Base (Node);
+           (Ref => Shared_Reference_Base_Impl (Node));
 
          if To_Node_Access (Node) /= null then
             declare
@@ -378,9 +381,23 @@ package body Lock_Free_Reference_Counting is
       end Mark;
 
       ----------------------------------------------------------------------
+      function  Mark      (Node : in     Private_Reference)
+                          return Private_Reference is
+      begin
+         return Node or 1;
+      end Mark;
+
+      ----------------------------------------------------------------------
       procedure Unmark    (Node : in out Private_Reference) is
       begin
          Node := Node and Ref_Mask;
+      end Unmark;
+
+      ----------------------------------------------------------------------
+      function  Unmark    (Node : in     Private_Reference)
+                          return Private_Reference is
+      begin
+         return Node and Ref_Mask;
       end Unmark;
 
       ----------------------------------------------------------------------
@@ -389,6 +406,27 @@ package body Lock_Free_Reference_Counting is
       begin
          return (Node and Mark_Mask) = 1;
       end Is_Marked;
+
+      ----------------------------------------------------------------------
+      function  Is_Marked (Node : in     Shared_Reference)
+                          return Boolean is
+      begin
+         return (To_Private_Reference (Node) and Mark_Mask) = 1;
+      end Is_Marked;
+
+      ----------------------------------------------------------------------
+      function "=" (Link : in     Shared_Reference;
+                    Ref  : in     Private_Reference) return Boolean is
+      begin
+         return To_Private_Reference (Link) = Ref;
+      end "=";
+
+      ----------------------------------------------------------------------
+      function "=" (Ref  : in     Private_Reference;
+                    Link : in     Shared_Reference) return Boolean is
+      begin
+         return To_Private_Reference (Link) = Ref;
+      end "=";
 
       ----------------------------------------------------------------------
       function To_Node_Access (X : Private_Reference)

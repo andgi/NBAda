@@ -26,7 +26,7 @@
 --                    scheme.
 --  Author          : Anders Gidenstam
 --  Created On      : Sat May  7 20:54:49 2005
---  $Id: example_queue.adb,v 1.7 2006/02/15 17:11:02 anders Exp $
+--  $Id: example_queue.adb,v 1.8 2006/02/17 14:29:48 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -60,7 +60,7 @@ package body Example_Queue is
          Store (Node.Next'Access, Null_Reference);
       else
          loop
-            Next := Deref (Node.Next'Access);
+            Next := Dereference (Node.Next'Access);
             exit when Compare_And_Swap (Link      => Node.Next'Access,
                                         Old_Value => Next,
                                         New_Value => Null_Reference);
@@ -76,9 +76,9 @@ package body Example_Queue is
       Node1, Node2 : Queue_Node_Access;
    begin
       loop
-         Node1 := Deref (Node.Next'Access);
+         Node1 := Dereference (Node.Next'Access);
          if Node1 /= Null_Reference and then Is_Deleted (+Node1) then
-            Node2 := Deref ("+" (Node1).Next'Access);
+            Node2 := Dereference ("+"(Node1).Next'Access);
             if Compare_And_Swap (Link      => Node.Next'Access,
                                  Old_Value => Node1,
                                  New_Value => Node2)
@@ -130,8 +130,8 @@ package body Example_Queue is
       Res  : Value_Type;
    begin
       loop
-         Node := Deref (Queue.Head'Access);
-         Next := Deref ("+"(Node).Next'Access);
+         Node := Dereference (Queue.Head'Access);
+         Next := Dereference ("+"(Node).Next'Access);
          if Next = Null_Reference then
             Release (Node);
             raise Queue_Empty;
@@ -143,7 +143,7 @@ package body Example_Queue is
          Release (Next);
       end loop;
       Delete (Node);
-      Res := "+" (Next).Value;
+      Res := "+"(Next).Value;
       Release (Next);
       return Res;
    end Dequeue;
@@ -155,12 +155,12 @@ package body Example_Queue is
       Node : constant Queue_Node_Access := Create_Queue_Node;
       Old, Prev, Prev2 : Queue_Node_Access;
    begin
-      "+" (Node).Value := Value;
-      Old  := Deref (Queue.Tail'Access);
+      "+"(Node).Value := Value;
+      Old  := Dereference (Queue.Tail'Access);
       Prev := Old;
       loop
          loop
-            Prev2 := Deref ("+" (Prev).Next'Access);
+            Prev2 := Dereference ("+"(Prev).Next'Access);
             exit when Prev2 = Null_Reference;
 
             if Old /= Prev then
@@ -170,7 +170,7 @@ package body Example_Queue is
             Prev := Prev2;
          end loop;
 
-         exit when Compare_And_Swap (Link      => "+" (Prev).Next'Access,
+         exit when Compare_And_Swap (Link      => "+"(Prev).Next'Access,
                                      Old_Value => Null_Reference,
                                      New_Value => Node);
       end loop;

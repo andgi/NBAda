@@ -32,7 +32,7 @@
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 13:54:45 2004
---  $Id: nbada-lock_free_memory_reclamation.ads,v 1.13 2006/02/15 17:11:02 anders Exp $
+--  $Id: nbada-lock_free_memory_reclamation.ads,v 1.14 2006/02/17 14:29:48 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -128,15 +128,16 @@ package Lock_Free_Reference_Counting is
       ----------------------------------------------------------------------
       --  Operations.
       ----------------------------------------------------------------------
-      function  Deref   (Link : access Shared_Reference)
-                        return Private_Reference;
+      function  Dereference (Link : access Shared_Reference)
+                            return Private_Reference;
 
       procedure Release (Node : in Private_Reference);
 
       function  "+"     (Node : in Private_Reference)
                         return Node_Access;
-      pragma Inline ("+");
       pragma Inline_Always ("+");
+      function  Deref   (Node : in Private_Reference)
+                        return Node_Access;
 
       function  Compare_And_Swap (Link      : access Shared_Reference;
                                   Old_Value : in Private_Reference;
@@ -164,10 +165,33 @@ package Lock_Free_Reference_Counting is
       --  Creates a new User_Node and returns a safe reference to it.
 
       --  Private (and shared) references can be tagged with a mark.
+      --  NOTE: A private reference with the value Null_Reference always loses
+      --        its mark.
       procedure Mark      (Node : in out Private_Reference);
+      pragma Inline_Always (Mark);
+      function  Mark      (Node : in     Private_Reference)
+                          return Private_Reference;
+      pragma Inline_Always (Mark);
       procedure Unmark    (Node : in out Private_Reference);
+      pragma Inline_Always (Unmark);
+      function  Unmark    (Node : in     Private_Reference)
+                          return Private_Reference;
+      pragma Inline_Always (Unmark);
       function  Is_Marked (Node : in     Private_Reference)
                           return Boolean;
+      pragma Inline_Always (Is_Marked);
+
+      function  Is_Marked (Node : in     Shared_Reference)
+                          return Boolean;
+      pragma Inline_Always (Is_Marked);
+
+      function "=" (Link : in     Shared_Reference;
+                    Ref  : in     Private_Reference) return Boolean;
+      pragma Inline_Always ("=");
+      function "=" (Ref  : in     Private_Reference;
+                    Link : in     Shared_Reference) return Boolean;
+      pragma Inline_Always ("=");
+      --  It is possible to compare a reference to the current value of a link.
 
    private
 
@@ -194,12 +218,19 @@ private
    type Managed_Node_Access is
      access all Managed_Node_Base'Class;
 
-   type Shared_Reference_Base is mod 2 ** 32;
-   Null_Reference : constant Shared_Reference_Base := 0;
+   type Shared_Reference_Base_Impl is mod 2 ** 32;
+   type Shared_Reference_Base is
+      record
+         Ref : Shared_Reference_Base_Impl := 0;
+      end record;
+   for Shared_Reference_Base'Size use 32;
+   pragma Atomic (Shared_Reference_Base);
+
+   Null_Reference : constant Shared_Reference_Base := (Ref => 0);
 
    Mark_Bits  : constant := 1;
    --  Note: Reference_Counted_Node_Base'Alignment >= 2 ** Mark_Bits MUST hold.
-   Mark_Mask  : constant Shared_Reference_Base := 2 ** Mark_Bits - 1;
-   Ref_Mask   : constant Shared_Reference_Base := -(2 ** Mark_Bits);
+   Mark_Mask  : constant Shared_Reference_Base_Impl := 2 ** Mark_Bits - 1;
+   Ref_Mask   : constant Shared_Reference_Base_Impl := -(2 ** Mark_Bits);
 
 end Lock_Free_Reference_Counting;
