@@ -5,7 +5,7 @@
 --                    by H. Sundell and P. Tsigas.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 15 18:59:45 2006
---  $Id: nbada-lock_free_deques.adb,v 1.2 2006/02/17 20:04:25 anders Exp $
+--  $Id: nbada-lock_free_deques.adb,v 1.3 2006/02/17 22:45:36 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -31,7 +31,7 @@ package body Lock_Free_Deques is
    function Create_Deque_Node is new LFRC_Ops.Create (New_Deque_Node_Access);
 
    ----------------------------------------------------------------------------
-   -- Internal operations.
+   --  Internal operations.
    ----------------------------------------------------------------------------
 
    function Read_All (Link : access Deque_Node_Reference)
@@ -532,10 +532,12 @@ package body Lock_Free_Deques is
 
                   if Is_Marked (Prev_Next) then
                      Release (Prev_Next);
-                     if not Last_Link then
-                        Help_Delete (Prev);
-                        Last_Link := True;
-                     end if;
+                     --  Note: Recursion wreaks havoc with the number
+                     --        of local dereferences.
+--                       if not Last_Link then
+--                          Help_Delete (Prev);
+--                          Last_Link := True;
+--                       end if;
 
                      declare
                         Prev2 : Deque_Node_Access;
