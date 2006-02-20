@@ -5,7 +5,7 @@
 --                    by H. Sundell and P. Tsigas.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 15 18:46:02 2006
---  $Id: nbada-lock_free_deques.ads,v 1.1 2006/02/17 15:43:09 anders Exp $
+--  $Id: nbada-lock_free_deques.ads,v 1.2 2006/02/20 15:02:15 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -52,7 +52,7 @@ private
       --        PopLeft   <= ?
       --        Dispose   <= ?
       --        Clean_up  <= ?
-      --  Delete is called from Dequeue on a dereferenced node so the
+      --  Delete is called from Pop* on a dereferenced node so the
       --  maximum number of simultaneous dereferences is ?.
       Max_Number_Of_Links_Per_Node => 2,
       Clean_Up_Threshold           => 256,

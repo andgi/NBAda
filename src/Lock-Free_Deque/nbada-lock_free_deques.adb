@@ -5,7 +5,7 @@
 --                    by H. Sundell and P. Tsigas.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 15 18:59:45 2006
---  $Id: nbada-lock_free_deques.adb,v 1.3 2006/02/17 22:45:36 anders Exp $
+--  $Id: nbada-lock_free_deques.adb,v 1.4 2006/02/20 15:02:15 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -45,13 +45,17 @@ package body Lock_Free_Deques is
    pragma Inline_Always (Read);
 
    procedure Push_Common (Node, Next : Deque_Node_Access);
+   --  Note: Push_Common releases both Node and Next.
 
-   function Help_Insert (After, Node : in Deque_Node_Access)
-                        return Deque_Node_Access;
+   procedure Help_Insert (Node  : in     Deque_Node_Access;
+                          After : in out Deque_Node_Access);
    --  Updates Node.Previous to point to After (or a predecessor
    --  to After in case After is deleted).
-   --  Note: Help_Insert releases After but not Node. It returns the node
-   --        in front of Node.
+   --  Note: Help_Insert updates After to point to the node
+   --        in front of Node (if needed). The old value of After
+   --        is released.
+   --  Note: Uses at most 2 + Help_Delete additional dereferences.
+   --        (With recursive helping disabled).
 
    procedure Help_Delete (Node : in     Deque_Node_Access);
    --  Fully mark Node as logically deleted and unliks Node from the active
@@ -88,8 +92,8 @@ package body Lock_Free_Deques is
 
       loop
          if "+"(Node).Next /= Unmark (Next) then
-            Node := Help_Insert (Node  => Next,
-                                 After => Node);
+            Help_Insert (Node  => Next,
+                         After => Node);
 
          elsif Node = Deque.Head then
             Release (Node);
@@ -107,8 +111,8 @@ package body Lock_Free_Deques is
             begin
                --  Unlink Node from the backward chain.
                Prev := Dereference ("+"(Node).Previous'Access);
-               Prev := Help_Insert (Node  => Next,
-                                    After => Prev);
+               Help_Insert (Node  => Next,
+                            After => Prev);
                Release (Prev);
                Release (Next);
             end;
@@ -139,8 +143,8 @@ package body Lock_Free_Deques is
       loop
          if "+"(Prev).Next /= Unmark (Next) then
 
-            Prev := Help_Insert (Node  => Next,
-                                 After => Prev);
+            Help_Insert (Node  => Next,
+                         After => Prev);
 
          else
             Store ("+"(Node).Previous'Access, Unmark (Prev));
@@ -150,13 +154,14 @@ package body Lock_Free_Deques is
                                  Old_Value => Unmark (Next),
                                  New_Value => Unmark (Node))
             then
-               Release (Prev);
                exit;
             end if;
          end if;
 
          --  Back-off.
       end loop;
+
+      Release (Prev);
 
       Push_Common (Node, Next);
 
@@ -165,51 +170,55 @@ package body Lock_Free_Deques is
    ----------------------------------------------------------------------
    function  Pop_Left  (Deque : access Deque_Type) return Value_Type is
       use LFRC_Ops;
-      Next, Prev, Node, Old : Deque_Node_Access;
-      Value                 : Value_Type;
+      Prev  : Deque_Node_Access;
    begin
       Prev := Dereference (Deque.Head'Access);
-
       loop
-         Node := Dereference ("+"(Prev).Next'Access);
-         if Node = Deque.Tail then
+         declare
+            Node  : constant Deque_Node_Access :=
+              Dereference ("+"(Prev).Next'Access);
+            Value : Value_Type;
+         begin
+            if Node = Deque.Tail then
+               Release (Node);
+               Release (Prev);
+               raise Deque_Empty;
+            end if;
 
-            Release (Node);
-            Release (Prev);
+            declare
+               Next : constant Deque_Node_Access :=
+                 Dereference ("+"(Node).Next'Access);
+            begin
+               if Is_Marked (Next) then
+                  Help_Delete (Node);
+                  Release (Node);
+                  Release (Next);
 
-            raise Deque_Empty;
+               elsif Compare_And_Swap (Link      => "+"(Node).Next'Access,
+                                       Old_Value => Next,
+                                       New_Value => Mark (Next))
+               then
+                  --  We marked Node as logically deleted.
+                  --  Now unlink it.
+                  Help_Delete (Node);
+                  Help_Insert (Node  => Next,
+                               After => Prev);
 
-         end if;
+                  Release (Prev);
+                  Release (Next);
 
-         Old := Dereference ("+"(Node).Next'Access);
+                  Value := "+"(Node).Value;
+                  Delete (Node);
+                  return Value;
+               else
 
-         if Is_Marked (Old) then
-            Help_Delete (Node);
-            Release (Node);
-
-         elsif Compare_And_Swap (Link      => "+"(Node).Next'Access,
-                                 Old_Value => Old,
-                                 New_Value => Mark (Old))
-         then
-            Help_Delete (Node);
-
-            Next := Dereference ("+"(Node).Next'Access);
-            Prev := Help_Insert (Node  => Next,
-                                 After => Prev);
-
-            Release (Prev);
-            Release (Next);
-
-            Value := "+"(Node).Value;
-            Delete (Node);
-            return Value;
-
-         else
-            Release (Node);
-            --  Back-off.
-         end if;
+                  Release (Node);
+                  Release (Next);
+                  --  Back-off.
+               end if;
+            end;
+         end;
       end loop;
-
    end Pop_Left;
 
    ----------------------------------------------------------------------
@@ -369,43 +378,53 @@ package body Lock_Free_Deques is
    ----------------------------------------------------------------------
    procedure Push_Common (Node, Next : Deque_Node_Access) is
       use LFRC_Ops;
-      Next_Prev : Deque_Node_Access;
    begin
       loop
-         Next_Prev := Dereference ("+"(Next).Previous'Access);
-
-         exit when Is_Marked (Next_Prev) or "+"(Node).Next /= Unmark (Next);
-
-         if Compare_And_Swap (Link      => "+"(Next).Previous'Access,
-                              Old_Value => Next_Prev,
-                              New_Value => Unmark (Node))
-         then
-            Release (Next_Prev);
-
-            if Is_Marked ("+"(Node).Previous) then
-               declare
-                  Prev : Deque_Node_Access;
-               begin
-                  Prev := Help_Insert (Node  => Next,
-                                       After => Node);
-               end;
+         declare
+            Next_Prev : constant Deque_Node_Access :=
+              Dereference ("+"(Next).Previous'Access);
+         begin
+            if Is_Marked (Next_Prev) or "+"(Node).Next /= Unmark (Next) then
+               Release (Next_Prev);
+               Release (Node);
+               exit;
             end if;
 
-            exit;
-         end if;
+            if Compare_And_Swap (Link      => "+"(Next).Previous'Access,
+                                 Old_Value => Next_Prev,
+                                 New_Value => Unmark (Node))
+            then
+               Release (Next_Prev);
 
+               if Is_Marked ("+"(Node).Previous) then
+                  declare
+                     Tmp : Deque_Node_Access := Node;
+                  begin
+                     Help_Insert (Node  => Next,
+                                  After => Tmp);
+                     --  Tmp/Node will be released twice.
+                     --  Ugly but safe now (due to how Push_Common is used)
+                     --  and remains safe even if Deque_Node_Access is
+                     --  replaced with a controlled type that counts the
+                     --  number of local references to each node.
+                     Release (Tmp);
+                  end;
+               end if;
+               Release (Node);
+               exit;
+            end if;
+            Release (Next_Prev);
+         end;
          --  Back-off.
       end loop;
-
       Release (Next);
-      Release (Node);
    end Push_Common;
 
    ----------------------------------------------------------------------
-   function Help_Insert (After, Node : in Deque_Node_Access)
-                        return Deque_Node_Access is
+   procedure Help_Insert (Node  : in     Deque_Node_Access;
+                          After : in out Deque_Node_Access) is
       use LFRC_Ops;
-      Prev1      : Deque_Node_Access := After;
+      Prev1      : Deque_Node_Access renames After;
       Prev1_Next : Deque_Node_Access;
       Last_Link  : Boolean := True;
    begin
@@ -467,8 +486,6 @@ package body Lock_Free_Deques is
          end if;
          --  Back-off.
       end loop;
-
-      return Prev1;
    end Help_Insert;
 
    ----------------------------------------------------------------------
@@ -505,7 +522,7 @@ package body Lock_Free_Deques is
          Next := Dereference ("+"(Node).Next'Access);
 
          loop
-            --  WTF does this do?!
+            --  Exit if Node is already unlinked.
             exit when Unmark (Prev) = Unmark (Next);
 
             if Is_Marked ("+"(Next).Next) then
@@ -531,6 +548,8 @@ package body Lock_Free_Deques is
                   Prev_Next := Dereference ("+"(Prev).Next'Access);
 
                   if Is_Marked (Prev_Next) then
+                     --  Help to unlink this node.
+
                      Release (Prev_Next);
                      --  Note: Recursion wreaks havoc with the number
                      --        of local dereferences.
