@@ -4,12 +4,11 @@
 --  Description     : Test program for the lock-free deque.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 16 16:06:25 2006
--- $Id: deque_test.adb,v 1.3 2006/02/20 15:02:15 anders Exp $
+-- $Id: deque_test.adb,v 1.4 2006/03/02 15:46:47 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Process_Identification;
 with Primitives;
 
 with Ada.Text_IO;
@@ -19,21 +18,12 @@ with Ada.Real_Time;
 
 with System.Task_Info;
 
-with Lock_Free_Deques;
+with My_Deque;
 
 procedure Deque_Test is
 
-   package PID is
-      new Process_Identification (Max_Number_Of_Processes => 32);
-
-   type Value_Type is
-      record
-         Creator : PID.Process_ID_Type;
-         Index   : Integer;
-      end record;
-   package Deques is new Lock_Free_Deques (Value_Type  => Value_Type,
-                                           Process_Ids => PID);
-   use Deques;
+   use My_Deque;
+   use My_Deque.Deques;
 
    ----------------------------------------------------------------------------
    --  Test application.
