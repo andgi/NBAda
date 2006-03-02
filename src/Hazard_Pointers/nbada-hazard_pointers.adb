@@ -34,7 +34,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:35:09 2004
---  $Id: nbada-hazard_pointers.adb,v 1.10 2006/02/14 15:45:56 anders Exp $
+--  $Id: nbada-hazard_pointers.adb,v 1.11 2006/03/02 13:58:11 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -133,6 +133,10 @@ package body Hazard_Pointers is
             loop
                Node := Node_Access (Shared.all);
                Hazard_Pointer (ID, Index) := Shared_Reference_Base (Node);
+
+               Primitives.Membar;
+               --  The write to the hazard pointer must be visible before
+               --  Link is read again.
                exit when Node_Access (Shared.all) = Node;
             end loop;
          end if;
