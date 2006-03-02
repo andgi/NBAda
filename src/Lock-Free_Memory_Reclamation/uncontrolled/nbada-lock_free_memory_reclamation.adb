@@ -32,7 +32,7 @@
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 14:07:58 2004
---  $Id: nbada-lock_free_memory_reclamation.adb,v 1.18 2006/02/17 14:45:53 anders Exp $
+--  $Id: nbada-lock_free_memory_reclamation.adb,v 1.19 2006/03/02 13:59:50 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -175,6 +175,10 @@ package body Lock_Free_Reference_Counting is
                Node_Ref := To_Private_Reference (Link.all);
                Hazard_Pointer (ID, Index) :=
                  Atomic_Node_Access (To_Node_Access (Node_Ref));
+
+               Primitives.Membar;
+               --  The write to the hazard pointer must be visible before
+               --  Link is read again.
                exit when To_Private_Reference (Link.all) = Node_Ref;
             end loop;
          end if;
