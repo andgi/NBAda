@@ -23,13 +23,16 @@
 --  however invalidate any other reasons why the executable file might be
 --  covered by the GNU Public License.
 -------------------------------------------------------------------------------
+pragma Style_Checks (OFF);
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : lock_free_fixed_size_storage_pools.ads
 --  Description     : A lock-free fixed storage pool implementation.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Jun 14 17:00:17 2005
---  $Id: nbada-lock_free_growing_storage_pools.ads,v 1.2 2005/09/23 14:08:23 anders Exp $
+--  $Id: nbada-lock_free_growing_storage_pools.ads,v 1.3 2006/03/03 17:43:22 anders Exp $
 -------------------------------------------------------------------------------
+pragma Style_Checks (ALL_CHECKS);
 
 pragma License (Modified_GPL);
 

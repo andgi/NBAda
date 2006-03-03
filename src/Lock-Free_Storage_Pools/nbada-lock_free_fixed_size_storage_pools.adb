@@ -23,13 +23,16 @@
 --  however invalidate any other reasons why the executable file might be
 --  covered by the GNU Public License.
 -------------------------------------------------------------------------------
+pragma Style_Checks (OFF);
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : lock_free_fixed_size_storage_pools.adb
 --  Description     : A lock-free fixed size storage pool implementation.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Apr  3 17:50:52 2003
---  $Id: nbada-lock_free_fixed_size_storage_pools.adb,v 1.7 2005/09/23 14:08:22 anders Exp $
+--  $Id: nbada-lock_free_fixed_size_storage_pools.adb,v 1.8 2006/03/03 17:43:22 anders Exp $
 -------------------------------------------------------------------------------
+pragma Style_Checks (ALL_CHECKS);
 
 pragma License (Modified_GPL);
 
@@ -255,7 +258,7 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
               To_Block_Access (Block_Ref, Pool);
             use type System.Address;
          begin
-            --  Sefety check.
+            --  Safety check.
             if Block.all'Address /=
                Pool.Storage (I * Pool.Real_Block_Size)'Address or
                Block.all'Address mod Pool_Block'Alignment /= 0
@@ -296,7 +299,7 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
    begin
       if Is_Null (X) then
          return null;
-      elsif Block_Count (X.Index) < Pool.Pool_Size then
+      elsif Block_Count (X.Index) <= Pool.Pool_Size then
          declare
             use System.Storage_Elements;
             Block : constant Pool_Block_Access :=

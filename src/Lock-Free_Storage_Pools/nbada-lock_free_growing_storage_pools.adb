@@ -23,13 +23,16 @@
 --  however invalidate any other reasons why the executable file might be
 --  covered by the GNU Public License.
 -------------------------------------------------------------------------------
+pragma Style_Checks (OFF);
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : lock_free_growing_storage_pools.adb
 --  Description     : A lock-free fixed storage pool implementation.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Jun 14 17:46:13 2005
---  $Id: nbada-lock_free_growing_storage_pools.adb,v 1.2 2005/09/23 14:08:22 anders Exp $
+--  $Id: nbada-lock_free_growing_storage_pools.adb,v 1.3 2006/03/03 17:43:22 anders Exp $
 -------------------------------------------------------------------------------
+pragma Style_Checks (ALL_CHECKS);
 
 pragma License (Modified_GPL);
 
@@ -71,7 +74,8 @@ package body Lock_Free_Growing_Storage_Pools is
                      subtype My_Element_Pool is
                        Element_Pool (Pool_Size => LFFSSP.Block_Count'Last,
                                      Block_Size => Pool.Block_Size);
-                     New_Pool : Element_Pool_Access := new My_Element_Pool;
+                     New_Pool : constant Element_Pool_Access :=
+                       new My_Element_Pool;
                   begin
                      loop
                         declare
