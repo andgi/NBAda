@@ -30,7 +30,7 @@
 --                    memory management and ABA prevention.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 18:15:38 2005
---  $Id: example_stack.adb,v 1.1 2005/09/23 17:28:44 anders Exp $
+--  $Id: example_stack.adb,v 1.2 2006/03/03 16:59:53 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -56,25 +56,26 @@ package body Example_Stack is
    procedure Push (On      : in out Stack_Type;
                    Element : in     Element_Type) is
       use HP_Ops;
-      New_Node : New_Stack_Node_Access := new Stack_Node;
-      Old_Head : Node_Access;
+      New_Node : constant New_Stack_Node_Access := new Stack_Node;
    begin
       New_Node.Element := Element;
       loop
-         Old_Head := Dereference (On.Head'Access);
+         declare
+            Old_Head : constant Node_Access := Dereference (On.Head'Access);
+         begin
+            New_Node.Next := Stack_Node_No_Access (Old_Head);
 
-         New_Node.Next := Stack_Node_No_Access (Old_Head);
+            if
+              Boolean_Compare_And_Swap (Shared    => On.Head'Access,
+                                        Old_Value => Old_Head,
+                                        New_Value => Node_Access (New_Node))
+            then
+               Release (Old_Head);
+               return;
+            end if;
 
-         if
-           Boolean_Compare_And_Swap (Shared    => On.Head'Access,
-                                     Old_Value => Old_Head,
-                                     New_Value => Node_Access (New_Node))
-         then
             Release (Old_Head);
-            return;
-         end if;
-
-         Release (Old_Head);
+         end;
       end loop;
    end Push;
 
@@ -82,38 +83,38 @@ package body Example_Stack is
    procedure Pop  (From    : in out Stack_Type;
                    Element :    out Element_Type) is
       use HP_Ops;
-      Old_Head : Node_Access;
    begin
       loop
-         Old_Head := Dereference (From.Head'Access);
+         declare
+            Old_Head : constant Node_Access := Dereference (From.Head'Access);
+         begin
+            if Old_Head /= null then
 
-         if Old_Head /= null then
+               if
+                 Boolean_Compare_And_Swap (Shared    => From.Head'Access,
+                                           Old_Value => Old_Head,
+                                           New_Value =>
+                                             Node_Access (Old_Head.Next))
+               then
+                  --  NOTE: Old_Head.Next is guaranteed to be up-to-date when
+                  --  the CAS succeeds because the only way for concurrent
+                  --  operations to update Old_Head.Next is to pop the node
+                  --  Old_Head and then push it(/a new node at the same memory
+                  --  address) on the stack again. The hazard pointer scheme
+                  --  guarantees that this cannot happen before we Release our
+                  --  reference to Old_Head.
 
-            if
-              Boolean_Compare_And_Swap (Shared    => From.Head'Access,
-                                        Old_Value => Old_Head,
-                                        New_Value =>
-                                          Node_Access (Old_Head.Next))
-            then
-               --  NOTE: Old_Head.Next is guaranteed to be up-to-date when the
-               --  CAS succeeds because the only way for concurrent operations
-               --  to update Old_Head.Next is to pop the node Old_Head and then
-               --  push it(/a new node at the same memory address) on the
-               --  stack again. The hazard pointer scheme guarantees that this
-               --  cannot happen before we Release our reference to Old_Head.
+                  Element := Old_Head.Element;
+                  Delete (Old_Head);
+                  return;
+               end if;
 
-               Element := Old_Head.Element;
-               Delete (Old_Head);
-               return;
+               Release (Old_Head);
+            else
+               Release (Old_Head);
+               raise Stack_Empty;
             end if;
-
-            Release (Old_Head);
-
-         else
-            Release (Old_Head);
-
-            raise Stack_Empty;
-         end if;
+         end;
       end loop;
    end Pop;
 
