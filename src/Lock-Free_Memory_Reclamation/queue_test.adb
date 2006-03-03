@@ -25,12 +25,11 @@
 -- Description     : Example application for lock-free reference counting.
 -- Author          : Anders Gidenstam
 -- Created On      : Wed Apr 13 22:09:40 2005
--- $Id: queue_test.adb,v 1.10 2006/02/15 17:11:02 anders Exp $
+-- $Id: queue_test.adb,v 1.11 2006/03/03 17:55:45 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Process_Identification;
 with Primitives;
 
 with Ada.Text_IO;
@@ -40,21 +39,12 @@ with Ada.Real_Time;
 
 with System.Task_Info;
 
-with Example_Queue;
+with My_Queue;
 
 procedure Queue_Test is
 
-   package PID is
-      new Process_Identification (Max_Number_Of_Processes => 32);
-
-   type Value_Type is
-      record
-         Creator : PID.Process_ID_Type;
-         Index   : Integer;
-      end record;
-   package Queues is new Example_Queue (Value_Type  => Value_Type,
-                                        Process_Ids => PID);
-   use Queues;
+   use My_Queue;
+   use My_Queue.Queues;
 
    ----------------------------------------------------------------------------
    --  Test application.
