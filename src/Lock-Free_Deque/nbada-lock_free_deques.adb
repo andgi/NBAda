@@ -5,7 +5,7 @@
 --                    by H. Sundell and P. Tsigas.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 15 18:59:45 2006
---  $Id: nbada-lock_free_deques.adb,v 1.4 2006/02/20 15:02:15 anders Exp $
+--  $Id: nbada-lock_free_deques.adb,v 1.5 2006/03/03 17:53:22 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -42,7 +42,7 @@ package body Lock_Free_Deques is
    --  Behaves like LFRC_Ops.Dereference except that it returns
    --  Null_Reference if the link is marked as logically deleted.
    --  Note: It looks very unlikely that this is useful here!
-   pragma Inline_Always (Read);
+--   pragma Inline_Always (Read);
 
    procedure Push_Common (Node, Next : Deque_Node_Access);
    --  Note: Push_Common releases both Node and Next.

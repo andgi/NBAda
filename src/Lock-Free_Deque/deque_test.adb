@@ -4,7 +4,7 @@
 --  Description     : Test program for the lock-free deque.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 16 16:06:25 2006
--- $Id: deque_test.adb,v 1.4 2006/03/02 15:46:47 anders Exp $
+-- $Id: deque_test.adb,v 1.5 2006/03/03 17:53:22 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -325,7 +325,7 @@ procedure Deque_Test is
                      end if;
                      Last (V.Creator) := V.Index;
 
-                  when ALL_TESTS |STACK_LEFT | STACK_RIGHT =>
+                  when ALL_TESTS | STACK_LEFT | STACK_RIGHT =>
                      null;
                end case;
 
