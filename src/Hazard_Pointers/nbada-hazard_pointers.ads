@@ -34,7 +34,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:10:15 2004
---  $Id: nbada-hazard_pointers.ads,v 1.10 2006/03/08 11:15:28 anders Exp $
+--  $Id: nbada-hazard_pointers.ads,v 1.11 2006/03/08 11:18:21 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -62,10 +62,6 @@ package Hazard_Pointers is
    --        called - often with disastrous consequences.
    --        This workaround is not very nice but I have not found any
    --        better way.
-
-   type Managed_Node_Access is access all Managed_Node_Base'Class;
-   --  Note: There SHOULD NOT be any shared variables of type
-   --        Managed_Node_Access.
 
    ----------------------------------------------------------------------------
    generic
@@ -133,10 +129,15 @@ package Hazard_Pointers is
 
    procedure Print_Statistics;
 
+   type Managed_Node_Access is access all Managed_Node_Base'Class;
+   --  Note: There SHOULD NOT be any shared variables of type
+   --        Managed_Node_Access.
+   --  Note: This type should be private. DO NOT USE IT.
+
    procedure Release     (Local  : in Managed_Node_Access);
    --  Note: Each dereferenced shared pointer MUST be released
    --        eventually.
-   --  Note: This operation is deprecated and should disappear.
+   --  Note: This operation is deprecated and should be private.
    --        DO NOT USE IT.
 
 private
