@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Epoch-based memory reclamation.
---  Copyright (C) 2005 - 2006  Anders Gidenstam
+--  Copyright (C) 2006  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ pragma Style_Checks (Off);
 --                    University of Cambridge, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Mar  8 12:28:31 2006
---  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.3 2006/03/09 17:28:15 anders Exp $
+--  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.4 2006/03/09 18:47:08 anders Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -43,6 +43,7 @@ pragma License (Modified_GPL);
 
 with Primitives;
 
+with Ada.Unchecked_Conversion;
 with Ada.Text_IO;
 
 package body Epoch_Based_Memory_Reclamation is
@@ -65,6 +66,9 @@ package body Epoch_Based_Memory_Reclamation is
    pragma Atomic (Epoch);
 
    type Node_Count   is new Primitives.Unsigned_32;
+
+   procedure Enter_Critical_Section (ID : in Processes);
+   procedure Exit_Critical_Section  (ID : in Processes);
 
    procedure Update_Global_Epoch;
    procedure Cleanup (ID    : in Processes;
@@ -118,32 +122,7 @@ package body Epoch_Based_Memory_Reclamation is
       begin
          --  Check whether this task is already in a critical section.
          if Dereferenced_Count (ID) = 0 then
-            --  Look for epoch change.
-            declare
-               Last_Epoch_ID : constant Epoch_ID := Current_Epoch (ID).ID;
-            begin
-               Current_Epoch (ID) := Global_Epoch;
-               Primitives.Membar;
-               if Current_Epoch (ID).ID /= Last_Epoch_ID then
-                  --  Clean up the delete list of the epoch before
-                  --  Last_Epoch.
-                  Cleanup (ID, Last_Epoch_ID - 1);
-                  if Last_Epoch_ID /= Current_Epoch (ID).ID - 1 then
-                     --  Last epoch is also safe to clean.
-                     Cleanup (ID, Last_Epoch_ID);
-                     null;
-                  end if;
-               end if;
-
-               --  Attempt to update the global epoch.
-               --  The above step should probably be redone if successful.
-               if Natural (CS_Count (ID)) < Epoch_Update_Threshold then
-                  CS_Count (ID) :=  CS_Count (ID) + 1;
-               else
-                  Update_Global_Epoch;
-                  CS_Count (ID) := 0;
-               end if;
-            end;
+            Enter_Critical_Section (ID);
          end if;
          Dereferenced_Count (ID) := Dereferenced_Count (ID) + 1;
 
@@ -156,25 +135,7 @@ package body Epoch_Based_Memory_Reclamation is
       begin
          Dereferenced_Count (ID) := Dereferenced_Count (ID) - 1;
          if Dereferenced_Count (ID) = 0 then
-            --  Look for epoch change.
-            declare
-               Last_Epoch_ID : constant Epoch_ID := Current_Epoch (ID).ID;
-            begin
-               Primitives.Membar;
-               --  Clear the active flag.
-               Current_Epoch (ID) := (Global_Epoch.ID, False);
-
-               if Current_Epoch (ID).ID /= Last_Epoch_ID then
-                  --  Clean up the delete list of the epoch before
-                  --  Last_Epoch.
-                  Cleanup (ID, Last_Epoch_ID - 1);
-                  if Last_Epoch_ID /= Current_Epoch (ID).ID - 1 then
-                     --  Last epoch is also safe to clean.
-                     Cleanup (ID, Last_Epoch_ID);
-                     null;
-                  end if;
-               end if;
-            end;
+            Exit_Critical_Section (ID);
          end if;
       end Release;
 
@@ -235,6 +196,223 @@ package body Epoch_Based_Memory_Reclamation is
    end Operations;
 
    ----------------------------------------------------------------------------
+   --  Reference Operations.
+   ----------------------------------------------------------------------------
+
+   ----------------------------------------------------------------------------
+   package body  Reference_Operations is
+
+      ----------------------------------------------------------------------
+      function To_Private_Reference is
+         new Ada.Unchecked_Conversion (Shared_Reference, Private_Reference);
+      function To_Private_Reference is
+         new Ada.Unchecked_Conversion (Node_Access, Private_Reference);
+
+      ----------------------------------------------------------------------
+      function To_Shared_Reference is
+         new Ada.Unchecked_Conversion (Private_Reference, Shared_Reference);
+
+      ----------------------------------------------------------------------
+      function Boolean_Compare_And_Swap is
+         new Primitives.Boolean_Compare_And_Swap_32 (Private_Reference);
+      procedure Value_Compare_And_Swap is
+         new Primitives.Compare_And_Swap_32 (Private_Reference);
+      procedure Void_Compare_And_Swap is
+         new Primitives.Void_Compare_And_Swap_32 (Private_Reference);
+
+      ----------------------------------------------------------------------
+      function  Dereference (Link : access Shared_Reference)
+                            return Private_Reference is
+         ID    : constant Processes := Process_Ids.Process_ID;
+      begin
+         --  Check whether this task is already in a critical section.
+         if Dereferenced_Count (ID) = 0 then
+            Enter_Critical_Section (ID);
+         end if;
+         Dereferenced_Count (ID) := Dereferenced_Count (ID) + 1;
+
+         declare
+            Node_Ref : constant Private_Reference :=
+              To_Private_Reference (Link.all);
+         begin
+            if Deref (Node_Ref) /= null then
+               return Node_Ref;
+            else
+               return Null_Reference;
+            end if;
+         end;
+      end Dereference;
+
+      ----------------------------------------------------------------------
+      procedure Release (Node : in Private_Reference) is
+         ID    : constant Processes := Process_Ids.Process_ID;
+      begin
+         Dereferenced_Count (ID) := Dereferenced_Count (ID) - 1;
+         if Dereferenced_Count (ID) = 0 then
+            Exit_Critical_Section (ID);
+         end if;
+      end Release;
+
+      ----------------------------------------------------------------------
+      function  "+"     (Node : in Private_Reference)
+                        return Node_Access renames Deref;
+
+      ----------------------------------------------------------------------
+      function  Deref   (Node : in Private_Reference)
+                        return Node_Access is
+
+         function To_Node_Access is
+            new Ada.Unchecked_Conversion (Private_Reference,
+                                          Node_Access);
+
+      begin
+         return To_Node_Access (Node and Ref_Mask);
+      end Deref;
+
+      ----------------------------------------------------------------------
+      function  Boolean_Compare_And_Swap (Link      : access Shared_Reference;
+                                          Old_Value : in Private_Reference;
+                                          New_Value : in Private_Reference)
+                                         return Boolean is
+
+         type Shared_Reference_Access is access all Shared_Reference;
+         type Private_Reference_Access is access all Private_Reference;
+         function To_Private_Reference_Access is
+            new Ada.Unchecked_Conversion (Shared_Reference_Access,
+                                          Private_Reference_Access);
+
+      begin
+         return Boolean_Compare_And_Swap
+           (Target =>
+              To_Private_Reference_Access (Shared_Reference_Access (Link)),
+            Old_Value => Old_Value,
+            New_Value => New_Value);
+      end Boolean_Compare_And_Swap;
+
+      ----------------------------------------------------------------------
+      procedure Void_Compare_And_Swap    (Link      : access Shared_Reference;
+                                          Old_Value : in Private_Reference;
+                                          New_Value : in Private_Reference) is
+
+         type Shared_Reference_Access is access all Shared_Reference;
+         type Private_Reference_Access is access all Private_Reference;
+         function To_Private_Reference_Access is
+            new Ada.Unchecked_Conversion (Shared_Reference_Access,
+                                          Private_Reference_Access);
+
+      begin
+         Void_Compare_And_Swap
+           (Target =>
+              To_Private_Reference_Access (Shared_Reference_Access (Link)),
+            Old_Value => Old_Value,
+            New_Value => New_Value);
+      end Void_Compare_And_Swap;
+
+      ----------------------------------------------------------------------
+      procedure Delete  (Node : in Private_Reference) is
+         ID      : constant Processes := Process_Ids.Process_ID;
+         Epoch   : constant Epoch_ID  := Current_Epoch (ID).ID mod 3;
+         Deleted : constant Node_Access := Deref (Node);
+      begin
+         Release (Node);
+         Managed_Node_Base (Deleted.all).MM_Next :=
+           Shared_Reference_Base (D_List (ID, Epoch));
+         D_List  (ID, Epoch) := Managed_Node_Access (Deleted);
+      end Delete;
+
+      ----------------------------------------------------------------------
+      procedure Store   (Link : access Shared_Reference;
+                         Node : in Private_Reference) is
+
+         type Shared_Reference_Access is access all Shared_Reference;
+         type Private_Reference_Access is access all Private_Reference;
+         function To_Private_Reference_Access is
+            new Ada.Unchecked_Conversion (Shared_Reference_Access,
+                                          Private_Reference_Access);
+
+         Tmp : constant Private_Reference := To_Private_Reference (Link.all);
+      begin
+         To_Private_Reference_Access (Shared_Reference_Access (Link)).all :=
+           Node;
+
+         if Tmp /= Null_Reference then
+            Delete (Tmp);
+         end if;
+      end Store;
+
+      ----------------------------------------------------------------------
+      function Create return Private_Reference is
+         ID    : constant Processes        := Process_Ids.Process_ID;
+         UNode : constant User_Node_Access := new Managed_Node;
+         Node  : constant Node_Access      := UNode.all'Unchecked_Access;
+      begin
+         --  Check whether this task is already in a critical section.
+         if Dereferenced_Count (ID) = 0 then
+            Enter_Critical_Section (ID);
+         end if;
+         Dereferenced_Count (ID) := Dereferenced_Count (ID) + 1;
+
+         return To_Private_Reference (Node);
+      end Create;
+
+      ----------------------------------------------------------------------
+      procedure Mark      (Node : in out Private_Reference) is
+      begin
+         Node := Node or 1;
+      end Mark;
+
+      ----------------------------------------------------------------------
+      function  Mark      (Node : in     Private_Reference)
+                          return Private_Reference is
+      begin
+         return Node or 1;
+      end Mark;
+
+      ----------------------------------------------------------------------
+      procedure Unmark    (Node : in out Private_Reference) is
+      begin
+         Node := Node and Ref_Mask;
+      end Unmark;
+
+      ----------------------------------------------------------------------
+      function  Unmark    (Node : in     Private_Reference)
+                          return Private_Reference is
+      begin
+         return Node and Ref_Mask;
+      end Unmark;
+
+      ----------------------------------------------------------------------
+      function  Is_Marked (Node : in     Private_Reference)
+                          return Boolean is
+      begin
+         return (Node and Mark_Mask) = 1;
+      end Is_Marked;
+
+      ----------------------------------------------------------------------
+      function  Is_Marked (Node : in     Shared_Reference)
+                          return Boolean is
+      begin
+         return (To_Private_Reference (Node) and Mark_Mask) = 1;
+      end Is_Marked;
+
+      ----------------------------------------------------------------------
+      function "=" (Link : in     Shared_Reference;
+                    Ref  : in     Private_Reference) return Boolean is
+      begin
+         return To_Private_Reference (Link) = Ref;
+      end "=";
+
+      ----------------------------------------------------------------------
+      function "=" (Ref  : in     Private_Reference;
+                    Link : in     Shared_Reference) return Boolean is
+      begin
+         return To_Private_Reference (Link) = Ref;
+      end "=";
+
+   end Reference_Operations;
+   ----------------------------------------------------------------------------
+
+   ----------------------------------------------------------------------------
    procedure Print_Statistics is
    begin
       Ada.Text_IO.Put_Line
@@ -250,6 +428,62 @@ package body Epoch_Based_Memory_Reclamation is
    ----------------------------------------------------------------------------
    --  Private operations.
    ----------------------------------------------------------------------------
+
+   ----------------------------------------------------------------------------
+   procedure Enter_Critical_Section (ID : in Processes) is
+   begin
+      --  Look for epoch change.
+      declare
+         Last_Epoch_ID : constant Epoch_ID := Current_Epoch (ID).ID;
+      begin
+         Current_Epoch (ID) := Global_Epoch;
+         Primitives.Membar;
+         if Current_Epoch (ID).ID /= Last_Epoch_ID then
+            --  Clean up the delete list of the epoch before
+            --  Last_Epoch.
+            Cleanup (ID, Last_Epoch_ID - 1);
+            if Last_Epoch_ID /= Current_Epoch (ID).ID - 1 then
+               --  Last epoch is also safe to clean.
+               Cleanup (ID, Last_Epoch_ID);
+               null;
+            end if;
+            CS_Count (ID) := 0;
+         end if;
+
+         --  Attempt to update the global epoch.
+         --  The above step should probably be redone if successful.
+         if Natural (CS_Count (ID)) < Epoch_Update_Threshold then
+            CS_Count (ID) :=  CS_Count (ID) + 1;
+         else
+            Update_Global_Epoch;
+         end if;
+      end;
+   end Enter_Critical_Section;
+
+   ----------------------------------------------------------------------------
+   procedure Exit_Critical_Section  (ID : in Processes) is
+   begin
+      --  Look for epoch change.
+      declare
+         Last_Epoch_ID : constant Epoch_ID := Current_Epoch (ID).ID;
+      begin
+         Primitives.Membar;
+         --  Clear the active flag.
+         Current_Epoch (ID) := (Global_Epoch.ID, False);
+
+         if Current_Epoch (ID).ID /= Last_Epoch_ID then
+            --  Clean up the delete list of the epoch before
+            --  Last_Epoch.
+            Cleanup (ID, Last_Epoch_ID - 1);
+            if Last_Epoch_ID /= Current_Epoch (ID).ID - 1 then
+               --  Last epoch is also safe to clean.
+               Cleanup (ID, Last_Epoch_ID);
+               null;
+            end if;
+            CS_Count (ID) := 0;
+         end if;
+      end;
+   end Exit_Critical_Section;
 
    ----------------------------------------------------------------------------
    procedure Update_Global_Epoch is
