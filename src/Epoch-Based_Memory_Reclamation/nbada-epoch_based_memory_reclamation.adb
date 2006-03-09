@@ -31,11 +31,11 @@ pragma Style_Checks (Off);
 --  Description     : Implementation of Keir Fraser's epoch-based memory
 --                    reclamation scheme.
 --                    See Keir Fraser, "Practical lock-freedom",
---                    Technical Report 579, Computer Laboratorym,
+--                    Technical Report 579, Computer Laboratory,
 --                    University of Cambridge, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Mar  8 12:28:31 2006
---  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.2 2006/03/09 17:23:44 anders Exp $
+--  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.3 2006/03/09 17:28:15 anders Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
