@@ -29,7 +29,7 @@
 --  Description     : Test of the lock-free example stack.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 18:54:53 2005
---  $Id: stack_test.adb,v 1.1 2005/09/23 17:28:44 anders Exp $
+--  $Id: stack_test.adb,v 1.2 2006/03/09 17:39:19 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -65,7 +65,7 @@ procedure Stack_Test is
    --  Test application.
    ----------------------------------------------------------------------------
 
-   No_Of_Elements : constant := 10_000;
+   No_Of_Elements : constant := 100_000;
    STACK_LIFO_PROPERTY_VIOLATION : exception;
 
    Output_File : Ada.Text_IO.File_Type renames
