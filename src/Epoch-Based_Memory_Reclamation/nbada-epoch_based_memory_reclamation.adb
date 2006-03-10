@@ -35,7 +35,7 @@ pragma Style_Checks (Off);
 --                    University of Cambridge, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Mar  8 12:28:31 2006
---  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.4 2006/03/09 18:47:08 anders Exp $
+--  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.5 2006/03/10 18:45:48 anders Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -44,6 +44,7 @@ pragma License (Modified_GPL);
 with Primitives;
 
 with Ada.Unchecked_Conversion;
+with Ada.Exceptions;
 with Ada.Text_IO;
 
 package body Epoch_Based_Memory_Reclamation is
@@ -118,24 +119,36 @@ package body Epoch_Based_Memory_Reclamation is
       ----------------------------------------------------------------------
       function  Dereference (Shared : access Shared_Reference)
                             return Node_Access is
-         ID    : constant Processes := Process_Ids.Process_ID;
+         ID    : constant Processes   := Process_Ids.Process_ID;
+         Node  : constant Node_Access := Node_Access (Shared.all);
       begin
-         --  Check whether this task is already in a critical section.
-         if Dereferenced_Count (ID) = 0 then
-            Enter_Critical_Section (ID);
+         if Node /= null then
+            --  Check whether this task is already in a critical section.
+            if Dereferenced_Count (ID) = 0 then
+               Enter_Critical_Section (ID);
+            end if;
+            Dereferenced_Count (ID) := Dereferenced_Count (ID) + 1;
          end if;
-         Dereferenced_Count (ID) := Dereferenced_Count (ID) + 1;
 
-         return Node_Access (Shared.all);
+         return Node;
       end Dereference;
 
       ----------------------------------------------------------------------
       procedure Release     (Local  : in Node_Access) is
          ID    : constant Processes := Process_Ids.Process_ID;
       begin
-         Dereferenced_Count (ID) := Dereferenced_Count (ID) - 1;
-         if Dereferenced_Count (ID) = 0 then
-            Exit_Critical_Section (ID);
+         if Local /= null then
+            if Dereferenced_Count (ID) = 0 then
+               Ada.Exceptions.Raise_Exception
+              (Constraint_Error'Identity,
+               "epoch_based_memory_reclamation.adb: " &
+               "Fatal error: More private references released than " &
+               "dereferenced!");
+            end if;
+            Dereferenced_Count (ID) := Dereferenced_Count (ID) - 1;
+            if Dereferenced_Count (ID) = 0 then
+               Exit_Critical_Section (ID);
+            end if;
          end if;
       end Release;
 
@@ -223,33 +236,36 @@ package body Epoch_Based_Memory_Reclamation is
       ----------------------------------------------------------------------
       function  Dereference (Link : access Shared_Reference)
                             return Private_Reference is
-         ID    : constant Processes := Process_Ids.Process_ID;
+         ID   : constant Processes := Process_Ids.Process_ID;
+         Node : constant Private_Reference := To_Private_Reference (Link.all);
       begin
-         --  Check whether this task is already in a critical section.
-         if Dereferenced_Count (ID) = 0 then
-            Enter_Critical_Section (ID);
-         end if;
-         Dereferenced_Count (ID) := Dereferenced_Count (ID) + 1;
-
-         declare
-            Node_Ref : constant Private_Reference :=
-              To_Private_Reference (Link.all);
-         begin
-            if Deref (Node_Ref) /= null then
-               return Node_Ref;
-            else
-               return Null_Reference;
+         if Deref (Node) /= null then
+            --  Check whether this task is already in a critical section.
+            if Dereferenced_Count (ID) = 0 then
+               Enter_Critical_Section (ID);
             end if;
-         end;
+            Dereferenced_Count (ID) := Dereferenced_Count (ID) + 1;
+         end if;
+
+         return Node;
       end Dereference;
 
       ----------------------------------------------------------------------
       procedure Release (Node : in Private_Reference) is
          ID    : constant Processes := Process_Ids.Process_ID;
       begin
-         Dereferenced_Count (ID) := Dereferenced_Count (ID) - 1;
-         if Dereferenced_Count (ID) = 0 then
-            Exit_Critical_Section (ID);
+         if "+"(Node) /= null then
+            if Dereferenced_Count (ID) = 0 then
+               Ada.Exceptions.Raise_Exception
+                 (Constraint_Error'Identity,
+                  "epoch_based_memory_reclamation.adb: " &
+                  "Fatal error: More private references released than " &
+                  "dereferenced!");
+            end if;
+            Dereferenced_Count (ID) := Dereferenced_Count (ID) - 1;
+            if Dereferenced_Count (ID) = 0 then
+               Exit_Critical_Section (ID);
+            end if;
          end if;
       end Release;
 
@@ -335,7 +351,7 @@ package body Epoch_Based_Memory_Reclamation is
          To_Private_Reference_Access (Shared_Reference_Access (Link)).all :=
            Node;
 
-         if Tmp /= Null_Reference then
+         if "+"(Tmp) /= null then
             Delete (Tmp);
          end if;
       end Store;
@@ -433,6 +449,7 @@ package body Epoch_Based_Memory_Reclamation is
    procedure Enter_Critical_Section (ID : in Processes) is
    begin
       --  Look for epoch change.
+--      Ada.Text_IO.Put ("l");
       declare
          Last_Epoch_ID : constant Epoch_ID := Current_Epoch (ID).ID;
       begin
@@ -464,6 +481,7 @@ package body Epoch_Based_Memory_Reclamation is
    procedure Exit_Critical_Section  (ID : in Processes) is
    begin
       --  Look for epoch change.
+--      Ada.Text_IO.Put ("u");
       declare
          Last_Epoch_ID : constant Epoch_ID := Current_Epoch (ID).ID;
       begin

@@ -35,7 +35,7 @@ pragma Style_Checks (Off);
 --                    University of Cambridge, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Mar  8 12:04:29 2006
---  $Id: nbada-epoch_based_memory_reclamation.ads,v 1.4 2006/03/09 18:47:08 anders Exp $
+--  $Id: nbada-epoch_based_memory_reclamation.ads,v 1.5 2006/03/10 18:45:48 anders Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -166,12 +166,15 @@ package Epoch_Based_Memory_Reclamation is
       --  Note: There SHOULD NOT be any shared variables of type
       --        Private_Reference.
       Null_Reference : constant Private_Reference;
+      --  Note: A marked null reference is not equal to Null_Reference.
 
       ----------------------------------------------------------------------
       --  Operations.
       ----------------------------------------------------------------------
       function  Dereference (Link : access Shared_Reference)
                             return Private_Reference;
+      --  Note: Dereference preservs any mark on Link.all.
+      --        In particular Mark (Null_Reference) /= Null_Reference.
 
       procedure Release (Node : in Private_Reference);
 
@@ -180,7 +183,6 @@ package Epoch_Based_Memory_Reclamation is
       pragma Inline_Always ("+");
       function  Deref   (Node : in Private_Reference)
                         return Node_Access;
-
 
       function  Boolean_Compare_And_Swap (Link      : access Shared_Reference;
                                           Old_Value : in Private_Reference;
@@ -209,8 +211,6 @@ package Epoch_Based_Memory_Reclamation is
       --  Creates a new User_Node and returns a safe reference to it.
 
       --  Private (and shared) references can be tagged with a mark.
-      --  NOTE: A private reference with the value Null_Reference always loses
-      --        its mark.
       procedure Mark      (Node : in out Private_Reference);
       pragma Inline_Always (Mark);
       function  Mark      (Node : in     Private_Reference)
