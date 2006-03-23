@@ -9,7 +9,7 @@ pragma Style_Checks (Off);
 --                    pages 73-82, August 2002.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Mar 10 12:23:47 2006
---  $Id: nbada-lock_free_sets.adb,v 1.1 2006/03/10 18:43:50 anders Exp $
+--  $Id: nbada-lock_free_sets.adb,v 1.2 2006/03/23 10:02:42 anders Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -113,8 +113,9 @@ package body Lock_Free_Sets is
                   Prev, Cur, Next);
             if not Found then
                Release (Prev);
+               Release (Cur);
                Release (Next);
-               return;
+               raise Not_Found;
             end if;
 
             if
@@ -172,6 +173,7 @@ package body Lock_Free_Sets is
          end;
       else
          Release (Prev);
+         Release (Cur);
          Release (Next);
          raise Not_Found;
       end if;
@@ -216,62 +218,74 @@ package body Lock_Free_Sets is
         To_Mutable (Set.Head'Access);
    begin
       loop
-         Prev := Dereference (Mutable_Set_Head);
-         --  Prev is a dummy node always present at the head of the list.
-         if "+"(Prev) = null then
-            --  This should not happen!
-            raise Constraint_Error;
-         end if;
-         Cur  := Dereference ("+"(Prev).Next'Access);
-
-         Traverse :
-         loop
-            if "+"(Cur) = null then
-               Found := False;
-               Next  := Null_Reference;
-               --  Prev is a valid reference. Cur and Next are null.
-               return;
+         declare
+            Previous : List_Node_Access := Dereference (Mutable_Set_Head);
+            Current  : List_Node_Access := Null_Reference;
+         begin
+            --  Previous is a dummy node always present at the head of the
+            --  list.
+            if "+"(Previous) = null then
+               --  This should not happen!
+               raise Constraint_Error;
             end if;
+            Current  := Dereference ("+"(Previous).Next'Access);
 
-            Next := Dereference ("+"(Cur).Next'Access);
-            if "+"(Prev).Next /= Unmark (Cur) then
-               --  Retry from the list head.
-               exit Traverse;
-            else
-               if not Is_Marked (Next) then
-                  if not ("+"(Cur).Key < Key) then
-                     Found :=  "+"(Cur).Key = Key;
-                     --  Prev is a valid reference. Cur and Next are valid
-                     --  references or null.
-                     return;
-                  else
-                     Release (Prev);
-                     Prev := Cur;
-                     Cur  := Null_Reference;
-                  end if;
+            Traverse :
+            loop
+               if "+"(Current) = null then
+                  Found := False;
+                  Prev  := Previous;
+                  Cur   := Null_Reference;
+                  Next  := Null_Reference;
+                  --  Prev is a valid reference. Cur and Next are null.
+                  return;
+               end if;
+
+               Next := Dereference ("+"(Current).Next'Access);
+               if "+"(Previous).Next /= Unmark (Current) then
+                  --  Retry from the list head.
+                  exit Traverse;
                else
-                  --  Cur.Next is marked, i.e. Cur is logically deleted.
-                  if
-                    Boolean_Compare_And_Swap
-                    (Link      => "+"(Prev).Next'Access,
-                     Old_Value => Unmark (Cur),
-                     New_Value => Unmark (Next))
-                  then
-                     Delete (Cur);
-                     Cur := Null_Reference;
+                  if not Is_Marked (Next) then
+                     if not ("+"(Current).Key < Key) then
+                        Found :=  "+"(Current).Key = Key;
+                        --  Prev is a valid reference. Cur and Next are valid
+                        --  references or null.
+                        Prev := Previous;
+                        Cur  := Current;
+                        return;
+                     else
+                        Release (Previous);
+                        Previous := Current;
+                        Current  := Null_Reference;
+                     end if;
                   else
-                     --  Retry from the list head.
-                     exit Traverse;
+                     --  Current.Next is marked, i.e. Current is logically
+                     --  deleted.
+                     if
+                       Boolean_Compare_And_Swap
+                       (Link      => "+"(Previous).Next'Access,
+                        Old_Value => Unmark (Current),
+                        New_Value => Unmark (Next))
+                     then
+                        Delete (Current);
+                        Current := Null_Reference;
+                     else
+                        --  Retry from the list head.
+                        exit Traverse;
+                     end if;
                   end if;
                end if;
-            end if;
-            Release (Cur);
-            Cur  := Next;
-            Next := Null_Reference;
-         end loop Traverse;
-         Release (Prev);
-         Release (Cur);
-         Release (Next);
+               Release (Current);
+               Current := Next;
+               Next    := Null_Reference;
+            end loop Traverse;
+
+            --  Clean-up before next iteration.
+            Release (Previous);
+            Release (Current);
+            Release (Next);
+         end;
       end loop;
    end Find;
 

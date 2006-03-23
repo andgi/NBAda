@@ -9,7 +9,7 @@ pragma Style_Checks (Off);
 --                    pages 73-82, August 2002.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Mar 10 11:54:37 2006
---  $Id: nbada-lock_free_sets.ads,v 1.1 2006/03/10 18:43:50 anders Exp $
+--  $Id: nbada-lock_free_sets.ads,v 1.2 2006/03/23 10:02:42 anders Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -18,6 +18,7 @@ pragma License (Modified_GPL);
 with Process_Identification;
 
 with Epoch_Based_Memory_Reclamation;
+--  with Hazard_Pointers;
 
 generic
 
@@ -53,11 +54,16 @@ package Lock_Free_Sets is
    function  Find    (Set : in Set_Type;
                       Key : in Key_Type) return Value_Type;
 
-private
+--  private
 
-   package Memory_Reclamation_Scheme is new Epoch_Based_Memory_Reclamation
-     (Process_Ids => Process_Ids);
+   package Memory_Reclamation_Scheme is
+      new Epoch_Based_Memory_Reclamation (Process_Ids => Process_Ids);
+--   package Memory_Reclamation_Scheme is
+--      new Hazard_Pointers (Process_Ids                => Process_Ids,
+--                           Max_Number_Of_Dereferences => 4);
    package MRS renames Memory_Reclamation_Scheme;
+
+private
 
    type List_Node_Reference is new MRS.Shared_Reference_Base;
 
