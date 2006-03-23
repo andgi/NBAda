@@ -4,7 +4,7 @@
 --  Description     : Test application for the lock-free sets.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Mar 10 17:51:23 2006
---  $Id: set_test.adb,v 1.1 2006/03/10 18:43:50 anders Exp $
+--  $Id: set_test.adb,v 1.2 2006/03/23 09:57:23 anders Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -31,8 +31,8 @@ procedure Set_Test is
    --  Test application.
    ----------------------------------------------------------------------------
 
-   No_Of_Elements : constant := 100;
-   Key_Universe   : constant := No_Of_Elements / 10;
+   No_Of_Elements : constant := 1000;
+   subtype Key_Universe is My_Set.Key_Type range 0 .. No_Of_Elements * 100;
 
    Output_File : Ada.Text_IO.File_Type renames
      Ada.Text_IO.Standard_Output;
@@ -85,9 +85,13 @@ procedure Set_Test is
    ----------------------------------------------------------------------------
    task body Inserter is
       No_Inserts : Primitives.Unsigned_32 := 0;
+      Gen : Random.Generator;
    begin
       PID.Register;
-      Primitives.Fetch_And_Add (No_Inserters_Running'Access, 1);
+--      Primitives.Fetch_And_Add (No_Inserters_Running'Access, 1);
+      Random.Reset (Gen,
+                    Integer (Primitives.Fetch_And_Add
+                             (No_Inserters_Running'Access, 1)));
 
       declare
          use type Primitives.Unsigned_32;
@@ -99,19 +103,13 @@ procedure Set_Test is
 
       declare
          ID  : constant PID.Process_ID_Type := PID.Process_ID;
-         Gen : Random.Generator;
       begin
-         Random.Reset (Gen);
-
          for I in 1 .. No_Of_Elements loop
             begin
-               Ada.Text_IO.Put (',');
                Insert (Into  => Set,
                        Key   =>
-                         I,
-                         --Random.Random (Gen) mod Key_Universe,
+                         Random.Random (Gen) mod (Key_Universe'Last + 1),
                        Value => Value_Type'(ID, I));
-               Ada.Text_IO.Put ('.');
                No_Inserts := Primitives.Unsigned_32'Succ (No_Inserts);
 
             exception
@@ -181,8 +179,7 @@ procedure Set_Test is
             begin
                Delete (From => Set,
                        Key  =>
-                         I
-                       --Random.Random (Gen) mod Key_Universe
+                         Random.Random (Gen) mod (Key_Universe'Last + 1)
                        );
                No_Removes := Primitives.Unsigned_32'Succ (No_Removes);
                I := I + 1;
@@ -193,7 +190,7 @@ procedure Set_Test is
                   declare
                      use type Primitives.Unsigned_32;
                   begin
-                     exit when Done > Key_Universe and
+                     exit when Done > Key_Universe'Last and
                        No_Inserters_Running = 0;
                   end;
 
@@ -233,6 +230,7 @@ procedure Set_Test is
          Ada.Text_IO.New_Line (Output_File);
    end Remover;
 
+   use type Ada.Real_Time.Time;
    T1, T2 : Ada.Real_Time.Time;
 begin
    PID.Register;
@@ -256,4 +254,48 @@ begin
    end;
    T2 := Ada.Real_Time.Clock;
 
+   delay 1.0;
+   Ada.Text_IO.Put_Line ("Insert count: " &
+                         Primitives.Unsigned_32'Image (Insert_Count));
+   Ada.Text_IO.Put_Line ("Delete count: " &
+                         Primitives.Unsigned_32'Image (Delete_Count));
+   Ada.Text_IO.Put_Line ("Elapsed time:" &
+                         Duration'Image (Ada.Real_Time.To_Duration (T2 - T1)));
+
+   Ada.Text_IO.Put_Line ("Emptying set.");
+   delay 5.0;
+
+   begin
+      for K in Key_Universe loop
+         begin
+            Delete (From => Set,
+                    Key  => K);
+
+            Ada.Text_IO.Put_Line (Output_File,
+                                  "Deleted " &
+                                  Key_Universe'Image (K));
+            Primitives.Fetch_And_Add (Delete_Count'Access, 1);
+
+         exception
+            when Sets.Not_Found =>
+               null;
+         end;
+      end loop;
+
+   exception
+      when E : others =>
+         Ada.Text_IO.New_Line (Output_File);
+         Ada.Text_IO.Put_Line (Output_File,
+                               "raised " &
+                               Ada.Exceptions.Exception_Name (E) &
+                               " : " &
+                               Ada.Exceptions.Exception_Message (E));
+         Ada.Text_IO.New_Line (Output_File);
+   end;
+
+   Ada.Text_IO.Put_Line ("Final insert count: " &
+                         Primitives.Unsigned_32'Image (Insert_Count));
+   Ada.Text_IO.Put_Line ("Final delete count: " &
+                         Primitives.Unsigned_32'Image (Delete_Count));
+   MRS.Print_Statistics;
 end Set_Test;
