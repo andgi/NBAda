@@ -28,13 +28,14 @@
 --  Description     : Synchronization primitives.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Jul  5 14:53:50 2002
---  $Id: nbada-primitives.adb,v 1.11 2006/02/14 17:00:07 anders Exp $
+--  $Id: nbada-primitives.adb,v 1.12 2006/10/17 18:45:40 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
 
 with System.Machine_Code;
 with Ada.Characters.Latin_1;
+with Ada.Unchecked_Conversion;
 
 package body Primitives is
 
@@ -43,15 +44,24 @@ package body Primitives is
    --
    ----------------------------------------------------------------------------
 
-   --  NOTE: The disabled "mfence" in the machine code below is necessary to
-   --        guarantee sequencially consistent memory on some modern IA32
-   --        multiprocessors.
-   --        However, when enabled the produced binary cannot be run on older
-   --        x86 machines (like my AMD Athlon XP 1600+).
+   ----------------------------------------------------------------------------
+   --  Configuration options.
 
-   CAS_Based_FAA : constant Boolean := True;
-   --  NOTE: The pure assembler FAA breaks when optimized for some reason.
+   MFENCE : constant String := "mfence";
+   --  NOTE: The "mfence" instruction in the machine code below is
+   --        necessary to guarantee sequencially consistent memory on some
+   --        modern IA32 multiprocessors.  However, when enabled the
+   --        produced binary cannot be run on older x86 machines (like my
+   --        AMD Athlon XP 1600+).
+   --        To disable the mfence instruction, change the string constant
+   --        MFENCE to "#mfence" instead of "mfence".
+
+
+   CAS_Based_FAA : constant Boolean := False;
+   --  NOTE: The pure assembler FAA breaks on some IA32 implementations
+   --        when optimized for some reason.
    --        This is a workaround.
+
 
    ----------------------------------------------------------------------------
    --  Home made assert construction. Provides some degree of compile time
@@ -94,12 +104,11 @@ package body Primitives is
       System.Machine_Code.Asm
         (Template =>
            "#BEGIN Compare_And_Swap_32"  & LF & HT &
---           "mfence"                      & LF & HT &
+           MFENCE                        & LF & HT &
            "movl %2, %%eax"              & LF & HT &
-           "lock"                        & LF & HT &
-           "cmpxchg %3, (%1)"            & LF & HT &   -- Compare & swap
+           "lock cmpxchg %3, (%1)"       & LF & HT &   -- Compare & swap
            "movl %%eax, %0"              & LF & HT &
---           "mfence"                      & LF & HT &
+           MFENCE                        & LF & HT &
            "#END Compare_And_Swap_32",
          Outputs  => Element'Asm_Output ("=g", New_Value), -- %0 = New_Value
          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
@@ -124,12 +133,11 @@ package body Primitives is
       System.Machine_Code.Asm
         (Template =>
            "#BEGIN Compare_And_Swap_32"  & LF & HT &
---           "mfence"                      & LF & HT &
+           MFENCE                        & LF & HT &
            "movl %2, %%eax"              & LF & HT &
-           "lock"                        & LF & HT &
-           "cmpxchg %3, (%1)"            & LF & HT &   -- Compare & swap
+           "lock cmpxchg %3, (%1)"       & LF & HT &   -- Compare & swap
            "movl %%eax, %0"              & LF & HT &
---           "mfence"                      & LF & HT &
+           MFENCE                        & LF & HT &
            "#END Compare_And_Swap_32",
          Outputs  => Element'Asm_Output ("=g", Tmp),       -- %0 = Tmp
          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
@@ -153,11 +161,10 @@ package body Primitives is
       System.Machine_Code.Asm
         (Template =>
            "#BEGIN Void_Compare_And_Swap_32" & LF & HT &
---           "mfence"                          & LF & HT &
+           MFENCE                            & LF & HT &
            "movl %1, %%eax"                  & LF & HT &
-           "lock"                            & LF & HT &
-           "cmpxchg %2, (%0)"                & LF & HT &   -- Compare & swap
---           "mfence"                          & LF & HT &
+           "lock cmpxchg %2, (%0)"           & LF & HT &   -- Compare & swap
+           MFENCE                            & LF & HT &
           "#END Void_Compare_And_Swap_32",
          Inputs   => (Element_Access'Asm_Input ("r",       -- %0 = Target
                                                 Element_Access (Target)),
@@ -169,7 +176,6 @@ package body Primitives is
 
    ----------------------------------------------------------------------------
    --  The newer IA32 CPUs supports atomic operations on 64 bit objects.
-   --  However, I have not implememented or tested this yet.
    ----------------------------------------------------------------------------
 
    ----------------------------------------------------------------------------
@@ -180,8 +186,42 @@ package body Primitives is
       type Element_Access is access all Element;
 
       A1 : Assertion (Assert => Element'Object_Size = 64);
+
+      type Unsigned_32_Array is array (1 .. 2) of aliased Unsigned_32;
+      for Unsigned_32_Array'Size use 64;
+      type Unsigned_32_Array_Access is access all Unsigned_32_Array;
+
+      function To_UA is new
+        Ada.Unchecked_Conversion (Element_Access, Unsigned_32_Array_Access);
+
+      Tmp_Old : aliased Element := Old_Value;  --  In edx:eax
+      Tmp_New : aliased Element := New_Value;  --  In ecx:ebx
    begin
-      raise Not_Implemented;
+      System.Machine_Code.Asm
+        (Template =>
+           "#BEGIN Compare_And_Swap_64"  & LF & HT &
+           "movl %2, %%edi"              & LF & HT &
+           MFENCE                        & LF & HT &
+           "lock cmpxchg8b (%%edi)"      & LF & HT &   -- Compare & swap
+           MFENCE                        & LF & HT &
+           "#END Compare_And_Swap_64",
+         Outputs  => (Unsigned_32'Asm_Output   ("=a",       -- %0 old[1] = eax
+                                                To_UA (Tmp_Old'Access)(1)),
+                      Unsigned_32'Asm_Output   ("=d",       -- %1 old[2] = edx
+                                                To_UA (Tmp_Old'Access)(2))),
+         Inputs   => (Element_Access'Asm_Input ("m",        -- %2 = Target
+                                                Element_Access (Target)),
+                      Unsigned_32'Asm_Input    ("a",        -- %3 eax = old[1]
+                                                To_UA (Tmp_Old'Access)(1)),
+                      Unsigned_32'Asm_Input    ("d",        -- %4 edx = old[2]
+                                                To_UA (Tmp_Old'Access)(2)),
+                      Unsigned_32'Asm_Input    ("b",        -- %5 ebx = new[1]
+                                                To_UA (Tmp_New'Access)(1)),
+                      Unsigned_32'Asm_Input    ("c",        -- %6 ecx = new[2]
+                                                To_UA (Tmp_New'Access)(2))),
+         Clobber  => "edi",
+         Volatile => True);
+      New_Value := Tmp_Old;
    end Compare_And_Swap_64;
 
    ----------------------------------------------------------------------------
@@ -193,11 +233,42 @@ package body Primitives is
       type Element_Access is access all Element;
 
       A1 : Assertion (Assert => Element'Object_Size = 64);
-      Tmp : Element;
-      pragma Unreferenced (Tmp);
+
+      type Unsigned_32_Array is array (1 .. 2) of aliased Unsigned_32;
+      for Unsigned_32_Array'Size use 64;
+      type Unsigned_32_Array_Access is access all Unsigned_32_Array;
+
+      function To_UA is new
+        Ada.Unchecked_Conversion (Element_Access, Unsigned_32_Array_Access);
+
+      Tmp_Old : aliased Element := Old_Value;  --  In edx:eax
+      Tmp_New : aliased Element := New_Value;  --  In ecx:ebx
    begin
-      raise Not_Implemented;
-      return False;
+      System.Machine_Code.Asm
+        (Template =>
+           "#BEGIN Compare_And_Swap_64"  & LF & HT &
+           "movl %2, %%edi"              & LF & HT &
+           MFENCE                        & LF & HT &
+           "lock cmpxchg8b (%%edi)"      & LF & HT &   -- Compare & swap
+           MFENCE                        & LF & HT &
+           "#END Compare_And_Swap_64",
+         Outputs  => (Unsigned_32'Asm_Output   ("=a",       -- %0 old[1] = eax
+                                                To_UA (Tmp_Old'Access)(1)),
+                      Unsigned_32'Asm_Output   ("=d",       -- %1 old[2] = edx
+                                                To_UA (Tmp_Old'Access)(2))),
+         Inputs   => (Element_Access'Asm_Input ("m",        -- %2 = Target
+                                                Element_Access (Target)),
+                      Unsigned_32'Asm_Input    ("a",        -- %3 eax = old[1]
+                                                To_UA (Tmp_Old'Access)(1)),
+                      Unsigned_32'Asm_Input    ("d",        -- %4 edx = old[2]
+                                                To_UA (Tmp_Old'Access)(2)),
+                      Unsigned_32'Asm_Input    ("b",        -- %5 ebx = new[1]
+                                                To_UA (Tmp_New'Access)(1)),
+                      Unsigned_32'Asm_Input    ("c",        -- %6 ecx = new[2]
+                                                To_UA (Tmp_New'Access)(2))),
+         Clobber  => "edi",
+         Volatile => True);
+      return Old_Value = Tmp_Old;
    end Boolean_Compare_And_Swap_64;
 
    ----------------------------------------------------------------------------
@@ -208,8 +279,36 @@ package body Primitives is
       type Element_Access is access all Element;
 
       A1 : Assertion (Assert => Element'Object_Size = 64);
+      type Unsigned_32_Array is array (1 .. 2) of aliased Unsigned_32;
+      for Unsigned_32_Array'Size use 64;
+      type Unsigned_32_Array_Access is access all Unsigned_32_Array;
+
+      function To_UA is new
+        Ada.Unchecked_Conversion (Element_Access, Unsigned_32_Array_Access);
+
+      Tmp_Old : aliased Element := Old_Value;  --  In edx:eax
+      Tmp_New : aliased Element := New_Value;  --  In ecx:ebx
    begin
-      raise Not_Implemented;
+      System.Machine_Code.Asm
+        (Template =>
+           "#BEGIN Compare_And_Swap_64"  & LF & HT &
+           "movl %0, %%edi"              & LF & HT &
+           MFENCE                        & LF & HT &
+           "lock cmpxchg8b (%%edi)"      & LF & HT &   -- Compare & swap
+           MFENCE                        & LF & HT &
+           "#END Compare_And_Swap_64",
+         Inputs   => (Element_Access'Asm_Input ("m",        -- %0 = Target
+                                                Element_Access (Target)),
+                      Unsigned_32'Asm_Input    ("a",        -- %1 eax = old[1]
+                                                To_UA (Tmp_Old'Access)(1)),
+                      Unsigned_32'Asm_Input    ("d",        -- %2 edx = old[2]
+                                                To_UA (Tmp_Old'Access)(2)),
+                      Unsigned_32'Asm_Input    ("b",        -- %3 ebx = new[1]
+                                                To_UA (Tmp_New'Access)(1)),
+                      Unsigned_32'Asm_Input    ("c",        -- %4 ecx = new[2]
+                                                To_UA (Tmp_New'Access)(2))),
+         Clobber  => "edi",
+         Volatile => True);
    end Void_Compare_And_Swap_64;
 
    ----------------------------------------------------------------------------
@@ -237,11 +336,10 @@ package body Primitives is
          System.Machine_Code.Asm
            (Template =>
               "#BEGIN Fetch_And_Add_32"      & LF & HT &
-            --           "mfence"                       & LF & HT &
-            "lock"                         & LF & HT &
-            "xaddl %1, (%0)"               & LF & HT &        -- Fetch & add
-            --           "mfence"                       & LF & HT &
-            "#END Fetch_And_Add_32",
+              MFENCE                         & LF & HT &
+              "lock xaddl %1, (%0)"          & LF & HT &   -- Fetch & add
+              MFENCE                         & LF & HT &
+              "#END Fetch_And_Add_32",
             Inputs   => (Unsigned_32_Access'Asm_Input         -- %0 = Target
                          ("r", Unsigned_32_Access (Target)),
                          Unsigned_32'Asm_Input ("r",          -- %1 = Increment
@@ -273,12 +371,11 @@ package body Primitives is
          System.Machine_Code.Asm
            (Template =>
               "#BEGIN Fetch_And_Add_32"      & LF & HT &
-            --           "mfence"                       & LF & HT &
-            "lock"                         & LF & HT &
-            "xaddl %2, (%1)"               & LF & HT &        -- Fetch & add
-            "movl %2, %0"                  & LF & HT &
-            --           "mfence"                       & LF & HT &
-            "#END Fetch_And_Add_32",
+              MFENCE                         & LF & HT &
+              "lock xaddl %2, (%1)"          & LF & HT &   -- Fetch & add
+              "movl %2, %0"                  & LF & HT &
+              MFENCE                         & LF & HT &
+              "#END Fetch_And_Add_32",
             Outputs  => Unsigned_32'Asm_Output ("=r", Tmp),   -- %0 = Tmp
             Inputs   => (Unsigned_32_Access'Asm_Input         -- %1 = Target
                          ("r", Unsigned_32_Access (Target)),
@@ -296,7 +393,7 @@ package body Primitives is
       System.Machine_Code.Asm
         (Template =>
            "#BEGIN Membar" & LF & HT &
---           "mfence"        & LF & HT &
+           MFENCE          & LF & HT &
            "#END Membar");
    end Membar;
 
