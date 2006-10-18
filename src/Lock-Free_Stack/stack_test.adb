@@ -29,7 +29,7 @@
 --  Description     : Test of the lock-free stack.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 18:54:53 2005
---  $Id: stack_test.adb,v 1.4 2006/10/18 18:02:27 andersg Exp $
+--  $Id: stack_test.adb,v 1.5 2006/10/18 18:27:02 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -51,7 +51,7 @@ with Ada.Command_Line;
 procedure Stack_Test is
 
    package PID is
-      new Process_Identification (Max_Number_Of_Processes => 32);
+      new Process_Identification (Max_Number_Of_Processes => 65);
 
 
    type Value_Type is
@@ -74,8 +74,10 @@ procedure Stack_Test is
      Ada.Text_IO.Standard_Output;
 --     Ada.Text_IO.Standard_Error;
 
+
    function Pinned_Task return System.Task_Info.Task_Info_Type;
    procedure Print_Usage;
+   procedure Put_Line (S : in String);
 
    task type Pusher is
       pragma Task_Info (Pinned_Task);
@@ -153,8 +155,7 @@ procedure Stack_Test is
          Primitives.Fetch_And_Add (Push_Count'Access, No_Pushes);
          Primitives.Fetch_And_Add (No_Pushers_Running'Access, -1);
       end;
-      Ada.Text_IO.Put_Line (Output_File,
-                            "Pusher (?): exited.");
+      Put_Line ("Pusher (?): exited.");
 
    exception
       when E : others =>
@@ -236,8 +237,7 @@ procedure Stack_Test is
          Primitives.Fetch_And_Add (No_Poppers_Running'Access, -1);
       end;
 
-      Ada.Text_IO.Put_Line (Output_File,
-                            "Popper (?): exited.");
+      Put_Line ("Popper (?): exited.");
    exception
       when E : others =>
          Ada.Text_IO.New_Line (Output_File);
@@ -262,7 +262,19 @@ procedure Stack_Test is
         ("  -o <#threads>  Set the number of popper threads.");
       Ada.Text_IO.Put_Line
         ("  -u <#threads>  Set the number of pusher threads.");
+      Ada.Text_IO.Put_Line
+        ("  -s             Single line output.");
    end Print_Usage;
+
+   ----------------------------------------------------------------------
+   Silent : Boolean := False;
+   procedure Put_Line (S : in String) is
+   begin
+      if not Silent then
+         Ada.Text_IO.Put_Line (S);
+      end if;
+   end Put_Line;
+
 
    use type Ada.Real_Time.Time;
    T1, T2 : Ada.Real_Time.Time;
@@ -297,6 +309,8 @@ begin
                T := Integer'Value (Ada.Command_Line.Argument (N));
                No_Pushers := T;
             end;
+         elsif Ada.Command_Line.Argument (N) = "-s" then
+            Silent := True;
          else
             Ada.Text_IO.Put_Line ("Unknown option.");
             Ada.Text_IO.New_Line;
@@ -308,9 +322,9 @@ begin
       end loop;
    end;
 
-   Ada.Text_IO.Put_Line ("Testing with " &
-                         Integer'Image (No_Pushers) & " pusher and " &
-                         Integer'Image (No_Poppers) & " popper tasks.");
+   Put_Line ("Testing with " &
+             Integer'Image (No_Pushers) & " pusher and " &
+             Integer'Image (No_Poppers) & " popper tasks.");
    declare
       use type Primitives.Unsigned_32;
       Pusher_Array : array (1 .. No_Pushers) of Pusher;
@@ -325,14 +339,23 @@ begin
 
 
    delay 1.0;
-   Ada.Text_IO.Put_Line ("Push count: " &
-                         Primitives.Unsigned_32'Image (Push_Count));
-   Ada.Text_IO.Put_Line ("Pop count: " &
-                         Primitives.Unsigned_32'Image (Pop_Count));
-   Ada.Text_IO.Put_Line ("Elapsed time:" &
-                         Duration'Image (Ada.Real_Time.To_Duration (T2 - T1)));
+   Put_Line ("Push count: " &
+             Primitives.Unsigned_32'Image (Push_Count));
+   Put_Line ("Pop count: " &
+             Primitives.Unsigned_32'Image (Pop_Count));
+   Put_Line ("Elapsed time:" &
+             Duration'Image (Ada.Real_Time.To_Duration (T2 - T1)));
 
-   Ada.Text_IO.Put_Line ("Emptying stack.");
+   if Silent then
+      Ada.Text_IO.Put (Integer'Image (No_Pushers)  & "  " &
+                       Integer'Image (No_Poppers)  & "  " &
+                       Primitives.Unsigned_32'Image (Push_Count) & "  " &
+                       Primitives.Unsigned_32'Image (Pop_Count)  & "  " &
+                       Duration'Image (Ada.Real_Time.To_Duration (T2 - T1)) &
+                       "  ");
+   end if;
+
+   Put_Line ("Emptying stack.");
    delay 5.0;
 
    declare
@@ -340,13 +363,14 @@ begin
    begin
       loop
          V := Pop (Stack'Access);
-         Ada.Text_IO.Put_Line (Output_File,
-                               "Pop() = (" &
-                               PID.Process_ID_Type'Image (V.Creator) & ", " &
-                               Integer'Image (V.Index) & ")");
+         Put_Line ("Pop() = (" &
+                   PID.Process_ID_Type'Image (V.Creator) & ", " &
+                   Integer'Image (V.Index) & ")");
          Primitives.Fetch_And_Add (Pop_Count'Access, 1);
       end loop;
    exception
+      when Stacks.Stack_Empty =>
+         null;
       when E : others =>
          Ada.Text_IO.New_Line (Output_File);
          Ada.Text_IO.Put_Line (Output_File,
@@ -355,11 +379,18 @@ begin
                                " : " &
                                Ada.Exceptions.Exception_Message (E));
          Ada.Text_IO.New_Line (Output_File);
-
-         Ada.Text_IO.Put_Line ("Final push count: " &
-                               Primitives.Unsigned_32'Image (Push_Count));
-         Ada.Text_IO.Put_Line ("Final pop count: " &
-                               Primitives.Unsigned_32'Image (Pop_Count));
    end;
+
+   Put_Line ("Final push count: " &
+             Primitives.Unsigned_32'Image (Push_Count));
+   Put_Line ("Final pop count: " &
+             Primitives.Unsigned_32'Image (Pop_Count));
+
+   if Silent then
+      Ada.Text_IO.Put (Primitives.Unsigned_32'Image (Push_Count) & "  " &
+                       Primitives.Unsigned_32'Image (Pop_Count));
+      Ada.Text_IO.New_Line;
+   end if;
+
 --   HP.Print_Statistics;
 end Stack_Test;
