@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
---  Large Primitives - An implementation of Maged Michael's LL/SC primitives.
---  Copyright (C) 2005  Anders Gidenstam
+--  Stack test - A small test benchmark for concurrent stack data-structures.
+--  Copyright (C) 2005 - 2006  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -26,10 +26,10 @@
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : stack_test.adb
---  Description     : Test of the lock-free example stack.
+--  Description     : Test of the lock-free stack.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 18:54:53 2005
---  $Id: stack_test.adb,v 1.2 2006/03/09 17:39:19 anders Exp $
+--  $Id: stack_test.adb,v 1.3 2006/10/18 17:20:03 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -44,7 +44,7 @@ with Ada.Real_Time;
 
 with System.Task_Info;
 
-with Example_Stack;
+with Test_Stack;
 
 procedure Stack_Test is
 
@@ -57,8 +57,8 @@ procedure Stack_Test is
          Creator : PID.Process_ID_Type;
          Index   : Integer;
       end record;
-   package Stacks is new Example_Stack (Element_Type => Value_Type,
-                                        Process_Ids  => PID);
+   package Stacks is new Test_Stack (Element_Type => Value_Type,
+                                     Process_Ids  => PID);
    use Stacks;
 
    ----------------------------------------------------------------------------
@@ -201,7 +201,7 @@ procedure Stack_Test is
 
             exception
                when Stacks.Stack_Empty =>
-                  Ada.Text_IO.Put (".");
+--                  Ada.Text_IO.Put (".");
                   declare
                      use type Primitives.Unsigned_32;
                   begin
@@ -254,8 +254,6 @@ begin
    Ada.Text_IO.Put_Line ("Testing with pusher/popper tasks.");
    declare
       use type Primitives.Unsigned_32;
---      P1, P2, P3, P4 : Pusher;
---      C1, C2, C3, C4 : Popper;
       P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
         : Pusher;
       C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
@@ -306,5 +304,5 @@ begin
          Ada.Text_IO.Put_Line ("Final pop count: " &
                                Primitives.Unsigned_32'Image (Pop_Count));
    end;
-   HP.Print_Statistics;
+--   HP.Print_Statistics;
 end Stack_Test;
