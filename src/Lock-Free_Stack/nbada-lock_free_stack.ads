@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
---  Lock-free Stack - A lock-free stack using hazard pointers.
+--  Lock-free Stack - A lock-free stack using lock-free memory reclamation.
 --  Copyright (C) 2005 - 2006  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
@@ -26,24 +26,26 @@
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : lock_free_stack.ads
---  Description     : A lock-free stack using hazard pointers for
---                    memory management and ABA prevention.
+--  Description     : A lock-free stack using lock-free memory reclamation.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 17:55:38 2005
---  $Id: nbada-lock_free_stack.ads,v 1.2 2006/10/18 17:19:51 andersg Exp $
+--  $Id: nbada-lock_free_stack.ads,v 1.3 2006/10/18 21:38:44 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
 
 with Process_Identification;
-with Hazard_Pointers;
+with Lock_Free_Memory_Reclamation;
 
 generic
+
    type Element_Type is private;
    --  Element type.
+
    with package Process_Ids is
      new Process_Identification (<>);
    --  Process identification.
+
 package Lock_Free_Stack is
 
    ----------------------------------------------------------------------------
@@ -63,20 +65,20 @@ package Lock_Free_Stack is
    function  Top  (From    : access Stack_Type)
                   return Element_Type;
 
-   --  private
+private
 
-   package HP is new Hazard_Pointers
+   package MR is new Lock_Free_Memory_Reclamation
      (Max_Number_Of_Dereferences => 1,
       --  Each operation on the stack only accesses one element on the stack.
+      Epoch_Update_Threshold     => 100,
+      --  Suitable number for epoch-based reclamation.
       Process_Ids         => Process_Ids);
-
-private
 
    type Stack_Node;
    type Stack_Node_No_Access is access all Stack_Node;
 
    type Stack_Node is
-     new HP.Managed_Node_Base with
+     new MR.Managed_Node_Base with
       record
          Element : Element_Type;
          Next    : aliased Stack_Node_No_Access;
@@ -86,9 +88,9 @@ private
 
    procedure Free (Node : access Stack_Node);
 
-   package HP_Ops is new HP.Operations (Managed_Node => Stack_Node);
+   package MR_Ops is new MR.Operations (Managed_Node => Stack_Node);
 
-   subtype Stack_Node_Reference is HP_Ops.Shared_Reference;
+   subtype Stack_Node_Reference is MR_Ops.Shared_Reference;
 
    type Stack_Type is
      limited record
