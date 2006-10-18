@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Large Primitives - An implementation of Maged Michael's LL/SC primitives.
---  Copyright (C) 2005  Anders Gidenstam
+--  Copyright (C) 2005 - 2006  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 24 10:25:44 2005
---  $Id: large_primitives.adb,v 1.10 2005/09/23 17:27:35 anders Exp $
+--  $Id: large_primitives.adb,v 1.11 2006/10/18 11:42:37 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -83,7 +83,7 @@ package body Large_Primitives is
       -------------------------------------------------------------------------
       --  Types and static variables.
       -------------------------------------------------------------------------
-      type Shared_Element_Access is access all Shared_Element;
+      type Shared_Element_Access is access all Shared_Reference;
       subtype Object_Value_Access is Object_Value_Operations.Node_Access;
       use type Object_Value_Access;
 
@@ -114,6 +114,14 @@ package body Large_Primitives is
       for New_Object_Value_Access'Storage_Pool use Node_Pool;
 
       -------------------------------------------------------------------------
+      function  Load_Linked (Target : Shared_Element) return Element is
+         --  Unrestricted access is safe here since Shared_Element is
+         --  a by-reference type.
+      begin
+         return Load_Linked (Target'Unrestricted_Access);
+      end Load_Linked;
+
+      -------------------------------------------------------------------------
       function Load_Linked (Target : access Shared_Element) return Element is
          ID : constant Processes := Process_Ids.Process_ID;
          use HP;
@@ -122,7 +130,7 @@ package body Large_Primitives is
          Exp (ID, Next (ID)).Source := Target.all'Address;
          HP.Release (Exp (ID, Next (ID)).Target);
          Exp (ID, Next (ID)).Target :=
-           Managed_Node_Access (Dereference (Target));
+           Managed_Node_Access (Dereference (Target.Reference'Access));
 
          if
            Exp (ID, Next (ID)).Target /= null and then
@@ -148,6 +156,13 @@ package body Large_Primitives is
       end Load_Linked;
 
       -------------------------------------------------------------------------
+      function Store_Conditional (Target : Shared_Element;
+                                  Value  : Element) return Boolean is
+      begin
+         return Store_Conditional (Target'Unrestricted_Access, Value);
+      end Store_Conditional;
+
+      -------------------------------------------------------------------------
       function Store_Conditional (Target : access Shared_Element;
                                   Value  : in     Element) return Boolean is
          ID : constant Processes := Process_Ids.Process_ID;
@@ -168,9 +183,10 @@ package body Large_Primitives is
                   Exp (ID, I).Source := System.Null_Address;
                   Exp (ID, I).Target := null;
 
-                  if Boolean_Compare_And_Swap (Shared    => Target,
-                                               Old_Value => Old,
-                                               New_Value => Node_Access (Val))
+                  if Boolean_Compare_And_Swap
+                    (Shared    => Target.Reference'Access,
+                     Old_Value => Old,
+                     New_Value => Node_Access (Val))
                   then
                      Delete (Old);
                      return True;
@@ -186,12 +202,26 @@ package body Large_Primitives is
       end Store_Conditional;
 
       -------------------------------------------------------------------------
+      procedure Store_Conditional (Target : in out Shared_Element;
+                                   Value  : in     Element) is
+         Tmp : Boolean;
+      begin
+         Tmp := Store_Conditional (Target'Unrestricted_Access, Value);
+      end Store_Conditional;
+
+      -------------------------------------------------------------------------
       procedure Store_Conditional (Target : access Shared_Element;
                                    Value  : in     Element) is
          Tmp : Boolean;
       begin
          Tmp := Store_Conditional (Target, Value);
       end Store_Conditional;
+
+      -------------------------------------------------------------------------
+      function Verify_Link (Target : in Shared_Element) return Boolean is
+      begin
+         return Verify_Link (Target'Unrestricted_Access);
+      end Verify_Link;
 
       -------------------------------------------------------------------------
       function Verify_Link (Target : access Shared_Element) return Boolean is
@@ -204,7 +234,8 @@ package body Large_Primitives is
             if Exp (ID, I).Source =  Target.all'Address then
                declare
                   Tmp : constant Managed_Node_Access :=
-                    Managed_Node_Access (Dereference (Target));
+                    Managed_Node_Access
+                    (Dereference (Target.Reference'Access));
                begin
                   Release (Tmp);
                   return Tmp = Exp (ID, I).Target;
@@ -213,6 +244,13 @@ package body Large_Primitives is
          end loop;
          return False;
       end Verify_Link;
+
+      -------------------------------------------------------------------------
+      procedure Initialize (Target : in out Shared_Element;
+                            Value  : in     Element) is
+      begin
+         Initialize (Target'Access, Value);
+      end Initialize;
 
       -------------------------------------------------------------------------
       procedure Initialize (Target : access Shared_Element;
@@ -229,7 +267,7 @@ package body Large_Primitives is
       begin
          Val.Value := Value;
          Object_Value_Operations.Initialize
-           (To_Shared_Reference (Target.all'Unchecked_Access),
+           (To_Shared_Reference (Target.Reference'Access),
             Val);
       end Initialize;
 

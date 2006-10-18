@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Large Primitives - An implementation of Maged Michael's LL/SC primitives.
---  Copyright (C) 2005  Anders Gidenstam
+--  Copyright (C) 2005 - 2006   Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 23 17:59:44 2005
---  $Id: large_primitives.ads,v 1.6 2005/09/23 17:27:35 anders Exp $
+--  $Id: large_primitives.ads,v 1.7 2006/10/18 11:42:38 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -58,18 +58,26 @@ package Large_Primitives is
 
       type Shared_Element is limited private;
 
+      function  Load_Linked (Target : in Shared_Element) return Element;
       function  Load_Linked (Target : access Shared_Element) return Element;
 
+      function  Store_Conditional (Target : in     Shared_Element;
+                                   Value  : in     Element) return Boolean;
       function  Store_Conditional (Target : access Shared_Element;
                                    Value  : in     Element) return Boolean;
 
+      procedure Store_Conditional (Target : in out Shared_Element;
+                                   Value  : in     Element);
       procedure Store_Conditional (Target : access Shared_Element;
                                    Value  : in     Element);
 
 
+      function  Verify_Link (Target : in Shared_Element) return Boolean;
       function  Verify_Link (Target : access Shared_Element) return Boolean;
 
 
+      procedure Initialize (Target : in out Shared_Element;
+                            Value  : in     Element);
       procedure Initialize (Target : access Shared_Element;
                             Value  : in     Element);
       --  Note: Initialize is only safe to use when there are no
@@ -85,7 +93,13 @@ package Large_Primitives is
 
       package Object_Value_Operations is new HP.Operations (Object_Value);
 
-      type Shared_Element is new Object_Value_Operations.Shared_Reference;
+      type Shared_Reference is new Object_Value_Operations.Shared_Reference;
+
+      type Shared_Element is tagged limited
+         record
+            Reference : aliased Shared_Reference;
+            pragma Atomic (Reference);
+         end record;
 
    end Load_Linked_Store_Conditional;
 
