@@ -29,7 +29,7 @@
 --  Description     : Test of the lock-free stack.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 18:54:53 2005
---  $Id: stack_test.adb,v 1.3 2006/10/18 17:20:03 andersg Exp $
+--  $Id: stack_test.adb,v 1.4 2006/10/18 18:02:27 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -45,6 +45,8 @@ with Ada.Real_Time;
 with System.Task_Info;
 
 with Test_Stack;
+
+with Ada.Command_Line;
 
 procedure Stack_Test is
 
@@ -73,6 +75,7 @@ procedure Stack_Test is
 --     Ada.Text_IO.Standard_Error;
 
    function Pinned_Task return System.Task_Info.Task_Info_Type;
+   procedure Print_Usage;
 
    task type Pusher is
       pragma Task_Info (Pinned_Task);
@@ -246,18 +249,72 @@ procedure Stack_Test is
          Ada.Text_IO.New_Line (Output_File);
    end Popper;
 
+   ----------------------------------------------------------------------
+   procedure Print_Usage is
+   begin
+      Ada.Text_IO.Put_Line
+        ("Usage: " &
+         Ada.Command_Line.Command_Name &
+         " [OPTION] ");
+      Ada.Text_IO.Put_Line
+        ("  -h             Print this message.");
+      Ada.Text_IO.Put_Line
+        ("  -o <#threads>  Set the number of popper threads.");
+      Ada.Text_IO.Put_Line
+        ("  -u <#threads>  Set the number of pusher threads.");
+   end Print_Usage;
+
    use type Ada.Real_Time.Time;
    T1, T2 : Ada.Real_Time.Time;
+
+   No_Pushers : Natural := 4;
+   No_Poppers : Natural := 4;
 begin
    PID.Register;
 
-   Ada.Text_IO.Put_Line ("Testing with pusher/popper tasks.");
+   --  Parse command line.
+   declare
+      N : Natural := 1;
+   begin
+      while N <= Ada.Command_Line.Argument_Count loop
+
+         if Ada.Command_Line.Argument (N) = "-h" then
+            Print_Usage;
+            return;
+         elsif Ada.Command_Line.Argument (N) = "-o" then
+            declare
+               T : Natural;
+            begin
+               N := N + 1;
+               T := Integer'Value (Ada.Command_Line.Argument (N));
+               No_Poppers := T;
+            end;
+         elsif Ada.Command_Line.Argument (N) = "-u" then
+            declare
+               T : Natural;
+            begin
+               N := N + 1;
+               T := Integer'Value (Ada.Command_Line.Argument (N));
+               No_Pushers := T;
+            end;
+         else
+            Ada.Text_IO.Put_Line ("Unknown option.");
+            Ada.Text_IO.New_Line;
+            Print_Usage;
+            return;
+         end if;
+
+         N := N + 1;
+      end loop;
+   end;
+
+   Ada.Text_IO.Put_Line ("Testing with " &
+                         Integer'Image (No_Pushers) & " pusher and " &
+                         Integer'Image (No_Poppers) & " popper tasks.");
    declare
       use type Primitives.Unsigned_32;
-      P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
-        : Pusher;
-      C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
-        : Popper;
+      Pusher_Array : array (1 .. No_Pushers) of Pusher;
+      Popper_Array : array (1 .. No_Poppers) of Popper;
    begin
       delay 5.0;
       T1 := Ada.Real_Time.Clock;
