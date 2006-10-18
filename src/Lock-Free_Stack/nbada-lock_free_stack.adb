@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
---  Example Stack - A lock-free stack using hazard pointers.
---  Copyright (C) 2005  Anders Gidenstam
+--  Lock-free Stack - A lock-free stack using hazard pointers.
+--  Copyright (C) 2005 - 2006  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -25,12 +25,12 @@
 --
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
---  Filename        : example_stack.adb
+--  Filename        : lock_free_stack.adb
 --  Description     : A lock-free stack using hazard pointers for
 --                    memory management and ABA prevention.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 18:15:38 2005
---  $Id: nbada-lock_free_stack.adb,v 1.2 2006/03/03 16:59:53 anders Exp $
+--  $Id: nbada-lock_free_stack.adb,v 1.3 2006/10/18 17:19:51 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -40,7 +40,7 @@ with Ada.Unchecked_Conversion;
 
 with Lock_Free_Growing_Storage_Pools;
 
-package body Example_Stack is
+package body Lock_Free_Stack is
 
    -------------------------------------------------------------------------
    --  Storage pool for the nodes.
@@ -168,4 +168,4 @@ package body Example_Stack is
       Reclaim (X);
    end Free;
 
-end Example_Stack;
+end Lock_Free_Stack;

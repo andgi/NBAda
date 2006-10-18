@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
---  Example Stack - A lock-free stack using hazard pointers.
---  Copyright (C) 2005  Anders Gidenstam
+--  Lock-free Stack - A lock-free stack using hazard pointers.
+--  Copyright (C) 2005 - 2006  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -25,12 +25,12 @@
 --
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
---  Filename        : example_stack.ads
+--  Filename        : lock_free_stack.ads
 --  Description     : A lock-free stack using hazard pointers for
 --                    memory management and ABA prevention.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 17:55:38 2005
---  $Id: nbada-lock_free_stack.ads,v 1.1 2005/09/23 17:28:44 anders Exp $
+--  $Id: nbada-lock_free_stack.ads,v 1.2 2006/10/18 17:19:51 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -44,7 +44,7 @@ generic
    with package Process_Ids is
      new Process_Identification (<>);
    --  Process identification.
-package Example_Stack is
+package Lock_Free_Stack is
 
    ----------------------------------------------------------------------------
    --  Lock-free Stack.
@@ -96,4 +96,4 @@ private
         pragma Atomic (Head);
      end record;
 
-end Example_Stack;
+end Lock_Free_Stack;
