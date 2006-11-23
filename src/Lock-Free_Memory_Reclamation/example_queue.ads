@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
---  Lock-Free Reference Counting - An implementation of the lock-free
+--  Lock-Free Memory Reclamation - An implementation of the lock-free
 --  garbage reclamation scheme by A. Gidenstam, M. Papatriantafilou, H. Sundell
 --  and P. Tsigas.
 --
@@ -26,15 +26,15 @@
 --                    scheme.
 --  Author          : Anders Gidenstam
 --  Created On      : Sat May  7 20:54:49 2005
---  $Id: example_queue.ads,v 1.8 2006/02/15 17:11:02 anders Exp $
+--  $Id: example_queue.ads,v 1.9 2006/11/23 19:02:50 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Lock_Free_Reference_Counting;
+with Lock_Free_Memory_Reclamation;
 with Process_Identification;
 
-pragma Elaborate_All (Lock_Free_Reference_Counting);
+pragma Elaborate_All (Lock_Free_Memory_Reclamation);
 
 generic
    type Value_Type is private;
@@ -58,7 +58,7 @@ package Example_Queue is
 
 private
 
-   package LFRC is new Lock_Free_Reference_Counting
+   package LFMR is new Lock_Free_Memory_Reclamation
      (Max_Number_Of_Dereferences   => 4,
       --  Remember to account for the dereferences in the
       --  callbacks Clean_Up and Dispose (which are invoked by Delete).
@@ -74,9 +74,9 @@ private
       --  Clean up and scan often.
       Process_Ids                  => Process_Ids);
 
-   type Queue_Node_Reference is new LFRC.Shared_Reference_Base;
+   type Queue_Node_Reference is new LFMR.Shared_Reference_Base;
 
-   type Queue_Node is new LFRC.Managed_Node_Base with
+   type Queue_Node is new LFMR.Managed_Node_Base with
       record
          Next  : aliased Queue_Node_Reference;
          pragma Atomic (Next);
@@ -88,10 +88,10 @@ private
    procedure Clean_Up (Node : access Queue_Node);
    procedure Free     (Node : access Queue_Node);
 
-   package LFRC_Ops is new LFRC.Operations (Queue_Node,
+   package LFMR_Ops is new LFMR.Operations (Queue_Node,
                                             Queue_Node_Reference);
 
-   subtype Queue_Node_Access is LFRC_Ops.Private_Reference;
+   subtype Queue_Node_Access is LFMR_Ops.Private_Reference;
 
    type Queue_Type is limited
       record

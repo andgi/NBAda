@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
---  Lock-Free Reference Counting - An implementation of the lock-free
+--  Lock-Free Memory Reclamation - An implementation of the lock-free
 --  garbage reclamation scheme by A. Gidenstam, M. Papatriantafilou, H. Sundell
 --  and P. Tsigas.
 --
@@ -21,7 +21,7 @@
 --
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
---  Filename        : lock_free_reference_counting.ads
+--  Filename        : lock_free_memory_reclamation.ads
 --  Description     : Ada implementation of the lock-free garbage reclamation
 --                    Scheme from "Efficient and Reliable Lock-Free Memory
 --                    Reclamation Based on Reference Counting",
@@ -32,7 +32,7 @@
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 13:54:45 2004
---  $Id: nbada-lock_free_memory_reclamation.ads,v 1.1 2006/03/02 17:29:47 anders Exp $
+--  $Id: nbada-lock_free_memory_reclamation.ads,v 1.2 2006/11/23 19:02:50 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -67,7 +67,7 @@ generic
    Scan_Threshold               : Natural := Clean_Up_Threshold;
    --  The threshold on the delete list size for Scan to be done.
 
-package Lock_Free_Reference_Counting is
+package Lock_Free_Memory_Reclamation is
 
    pragma Elaborate_Body;
 
@@ -248,4 +248,4 @@ private
    Mark_Mask  : constant Shared_Reference_Base_Impl := 2 ** Mark_Bits - 1;
    Ref_Mask   : constant Shared_Reference_Base_Impl := -(2 ** Mark_Bits);
 
-end Lock_Free_Reference_Counting;
+end Lock_Free_Memory_Reclamation;

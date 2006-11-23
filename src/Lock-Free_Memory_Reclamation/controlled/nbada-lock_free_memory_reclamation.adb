@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
---  Lock-Free Reference Counting - An implementation of the lock-free
+--  Lock-Free Memory Reclamation - An implementation of the lock-free
 --  garbage reclamation scheme by A. Gidenstam, M. Papatriantafilou, H. Sundell
 --  and P. Tsigas.
 --
@@ -21,7 +21,7 @@
 --
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
---  Filename        : lock_free_reference_counting.adb
+--  Filename        : lock_free_memory_reclamation.adb
 --  Description     : Ada implementation of the lock-free garbage reclamation
 --                    Scheme from "Efficient and Reliable Lock-Free Memory
 --                    Reclamation Based on Reference Counting",
@@ -32,7 +32,7 @@
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 14:07:58 2004
---  $Id: nbada-lock_free_memory_reclamation.adb,v 1.1 2006/03/02 17:29:57 anders Exp $
+--  $Id: nbada-lock_free_memory_reclamation.adb,v 1.2 2006/11/23 19:02:50 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -44,7 +44,7 @@ with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
 
-package body Lock_Free_Reference_Counting is
+package body Lock_Free_Memory_Reclamation is
 
    ----------------------------------------------------------------------------
    --  Types.
@@ -173,7 +173,7 @@ package body Lock_Free_Reference_Counting is
          if not Found then
             Ada.Exceptions.Raise_Exception
               (Constraint_Error'Identity,
-               "lock_free_reference_counting.adb: " &
+               "lock_free_memory_reclamation.adb: " &
                "Maximum number of local dereferences exceeded!");
          else
             loop
@@ -396,7 +396,7 @@ package body Lock_Free_Reference_Counting is
          if not Found then
             Ada.Exceptions.Raise_Exception
               (Constraint_Error'Identity,
-               "lock_free_reference_counting.adb: " &
+               "lock_free_memory_reclamation.adb: " &
                "Maximum number of local dereferences exceeded!");
          else
             Hazard_Pointer (ID, Index)        := Atomic_Node_Access (Node);
@@ -509,7 +509,7 @@ package body Lock_Free_Reference_Counting is
                      if Debug_Release_Reference then
                         Ada.Exceptions.Raise_Exception
                           (Constraint_Error'Identity,
-                           "lock_free_reference_counting.adb: " &
+                           "lock_free_memory_reclamation.adb: " &
                            "An unreleased Private_Reference went out of " &
                            "scope!");
                      end if;
@@ -670,4 +670,4 @@ package body Lock_Free_Reference_Counting is
       return Natural ((To_Unsigned (Ref) / 4) mod Unsigned (Size));
    end Hash_Ref;
 
-end Lock_Free_Reference_Counting;
+end Lock_Free_Memory_Reclamation;

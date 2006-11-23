@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
---  Lock-Free Reference Counting - An implementation of the lock-free
+--  Lock-Free Memory Reclamation - An implementation of the lock-free
 --  garbage reclamation scheme by A. Gidenstam, M. Papatriantafilou, H. Sundell
 --  and P. Tsigas.
 --
@@ -26,7 +26,7 @@
 --                    scheme.
 --  Author          : Anders Gidenstam
 --  Created On      : Sat May  7 20:54:49 2005
---  $Id: example_queue.adb,v 1.8 2006/02/17 14:29:48 anders Exp $
+--  $Id: example_queue.adb,v 1.9 2006/11/23 19:02:50 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -48,12 +48,12 @@ package body Example_Queue is
    type New_Queue_Node_Access is access Queue_Node;
    for New_Queue_Node_Access'Storage_Pool use Node_Pool;
 
-   function Create_Queue_Node is new LFRC_Ops.Create (New_Queue_Node_Access);
+   function Create_Queue_Node is new LFMR_Ops.Create (New_Queue_Node_Access);
 
    ----------------------------------------------------------------------------
    procedure Dispose  (Node       : access Queue_Node;
                        Concurrent : in     Boolean) is
-      use LFRC_Ops;
+      use LFMR_Ops;
       Next : Queue_Node_Access;
    begin
       if not Concurrent then
@@ -72,7 +72,7 @@ package body Example_Queue is
 
    ----------------------------------------------------------------------------
    procedure Clean_Up (Node : access Queue_Node) is
-      use LFRC_Ops;
+      use LFMR_Ops;
       Node1, Node2 : Queue_Node_Access;
    begin
       loop
@@ -100,11 +100,11 @@ package body Example_Queue is
         Ada.Unchecked_Deallocation (Queue_Node,
                                     New_Queue_Node_Access);
       function To_New_Queue_Node_Access is new
-        Ada.Unchecked_Conversion (LFRC_Ops.Node_Access,
+        Ada.Unchecked_Conversion (LFMR_Ops.Node_Access,
                                   New_Queue_Node_Access);
 
       X : New_Queue_Node_Access :=
-        To_New_Queue_Node_Access (LFRC_Ops.Node_Access (Node));
+        To_New_Queue_Node_Access (LFMR_Ops.Node_Access (Node));
       --  This is dangerous in the general case but here we know
       --  for sure that we have allocated all the nodes of the
       --  Object_Value type from the Object_Value_Access2 pool.
@@ -114,7 +114,7 @@ package body Example_Queue is
 
    ----------------------------------------------------------------------------
    procedure Init (Queue : in out Queue_Type) is
-      use LFRC_Ops;
+      use LFMR_Ops;
       Node : constant Queue_Node_Access := Create_Queue_Node;
    begin
       Store (Queue.Head'Access, Node);
@@ -124,7 +124,7 @@ package body Example_Queue is
 
    ----------------------------------------------------------------------------
    function  Dequeue (Queue : access Queue_Type) return Value_Type is
-      use LFRC_Ops;
+      use LFMR_Ops;
       Node : Queue_Node_Access;
       Next : Queue_Node_Access;
       Res  : Value_Type;
@@ -151,7 +151,7 @@ package body Example_Queue is
    ----------------------------------------------------------------------------
    procedure Enqueue (Queue : in out Queue_Type;
                       Value : in     Value_Type) is
-      use LFRC_Ops;
+      use LFMR_Ops;
       Node : constant Queue_Node_Access := Create_Queue_Node;
       Old, Prev, Prev2 : Queue_Node_Access;
    begin
