@@ -30,6 +30,7 @@
 --                    lock-free queue algorithm.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Nov 28 14:35:35 2006
+--  $Id: nbada-lock_free_queues.adb,v 1.2 2006/11/28 16:53:02 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
