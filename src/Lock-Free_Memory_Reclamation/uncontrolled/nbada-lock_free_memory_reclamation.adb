@@ -32,7 +32,7 @@
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 14:07:58 2004
---  $Id: nbada-lock_free_memory_reclamation.adb,v 1.23 2006/11/30 20:52:44 andersg Exp $
+--  $Id: nbada-lock_free_memory_reclamation.adb,v 1.24 2006/11/30 21:15:23 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -101,15 +101,25 @@ package body Lock_Free_Memory_Reclamation is
    pragma Atomic_Components (DL_Done);
 
    --  Persistent process local variables.
-   D_List   : array (Processes) of Node_Index :=
-     (others => 0);
-   pragma Atomic_Components (D_List);
-   D_Count  : array (Processes) of Node_Count :=
-     (others => 0);
-   pragma Atomic_Components (D_Count);
-   DL_Nexts : array (Processes, Valid_Node_Index) of Node_Index :=
-     (others => (others => 0));
-   pragma Atomic_Components (DL_Nexts);
+   type DL_Nexts_Array is array (Valid_Node_Index) of Node_Index;
+   type Persistent_Local is
+     record
+        D_List   : Node_Index := 0;
+        D_Count  : Node_Count := 0;
+        DL_Nexts : DL_Nexts_Array := (others => 0);
+     end record;
+
+   Persistent_Local_Variables : array (Processes) of Persistent_Local;
+
+--     D_List   : array (Processes) of Node_Index :=
+--       (others => 0);
+--     pragma Atomic_Components (D_List);
+--     D_Count  : array (Processes) of Node_Count :=
+--       (others => 0);
+--     pragma Atomic_Components (D_Count);
+--     DL_Nexts : array (Processes, Valid_Node_Index) of Node_Index :=
+--       (others => (others => 0));
+--     pragma Atomic_Components (DL_Nexts);
 
    No_Nodes_Created   : aliased Primitives.Unsigned_32 := 0;
    pragma Atomic (No_Nodes_Created);
@@ -234,6 +244,7 @@ package body Lock_Free_Memory_Reclamation is
       procedure Delete  (Node : in Private_Reference) is
          use type Node_Count;
          ID        : constant Processes := Process_Ids.Process_ID;
+         PL        : Persistent_Local renames Persistent_Local_Variables (ID);
          Index     : Node_Index;
       begin
          Release (Node);
@@ -256,22 +267,22 @@ package body Lock_Free_Memory_Reclamation is
 
          DL_Done  (ID, Index) := False;
          DL_Nodes (ID, Index) := Atomic_Node_Access (To_Node_Access (Node));
-         DL_Nexts (ID, Index) := D_List (ID);
-         D_List  (ID) := Index;
-         D_Count (ID) := D_Count (ID) + 1;
+         PL.DL_Nexts (Index)  := PL.D_List;
+         PL.D_List  := Index;
+         PL.D_Count := PL.D_Count + 1;
 
          loop
-            if D_Count (ID) >= Clean_Up_Threshold then
+            if PL.D_Count >= Clean_Up_Threshold then
                Clean_Up_Local (ID);
             end if;
-            if D_Count (ID) >= Scan_Threshold then
+            if PL.D_Count >= Scan_Threshold then
                Scan (ID);
             end if;
-            if D_Count (ID) >= Clean_Up_Threshold then
+            if PL.D_Count >= Clean_Up_Threshold then
                Clean_Up_All (ID);
             end if;
 
-            exit when D_Count (ID) < Max_Delete_List_Size;
+            exit when PL.D_Count < Max_Delete_List_Size;
          end loop;
       end Delete;
 
@@ -502,13 +513,14 @@ package body Lock_Free_Memory_Reclamation is
 --                                Max_Number_Of_Dereferences) + 1);
 --        --  The P_Set is allocated from the heap as it can easily become
 --        --  too large to fit on the task stack.
+      PL          : Persistent_Local renames Persistent_Local_Variables (ID);
       Index       : Node_Index;
       Node        : Atomic_Node_Access;
       New_D_List  : Node_Index := 0;
       New_D_Count : Node_Count := 0;
    begin
       --  Set the trace bit on each deleted node with MM_RC = 0.
-      Index := D_List (ID);
+      Index := PL.D_List;
       while Index /= 0 loop
          Node := DL_Nodes (ID, Index);
          if Node.MM_RC = 0 then
@@ -517,7 +529,7 @@ package body Lock_Free_Memory_Reclamation is
                Node.MM_Trace := False;
             end if;
          end if;
-         Index := DL_Nexts (ID, Index);
+         Index := PL.DL_Nexts (Index);
       end loop;
 
       Clear (P_Set (ID).all);
@@ -538,10 +550,10 @@ package body Lock_Free_Memory_Reclamation is
       end loop;
 
       --  Attempt to reclaim nodes.
-      while D_List (ID) /= 0 loop
-         Index       := D_List (ID);
+      while PL.D_List /= 0 loop
+         Index       := PL.D_List;
          Node        := DL_Nodes (ID, Index);
-         D_List (ID) := DL_Nexts (ID, Index);
+         PL.D_List   := PL.DL_Nexts (Index);
 
          if Node.MM_RC = 0 and Node.MM_Trace and
            not Member (Managed_Node_Access (Node), P_Set (ID).all)
@@ -562,33 +574,34 @@ package body Lock_Free_Memory_Reclamation is
                DL_Nodes (ID, Index) := Node;
 
                --  Keep Node in D_List.
-               DL_Nexts (ID, Index) := New_D_List;
+               PL.DL_Nexts (Index) := New_D_List;
                New_D_List   := Index;
                New_D_Count  := New_D_Count + 1;
             end if;
          else
             --  Keep Node in D_List.
-            DL_Nexts (ID, Index) := New_D_List;
+            PL.DL_Nexts (Index) := New_D_List;
             New_D_List   := Index;
             New_D_Count  := New_D_Count + 1;
          end if;
       end loop;
 
-      D_List  (ID) := New_D_List;
-      D_Count (ID) := New_D_Count;
+      PL.D_List  := New_D_List;
+      PL.D_Count := New_D_Count;
 
 --        Free (P_Set);
    end Scan;
 
    ----------------------------------------------------------------------------
    procedure Clean_Up_Local (ID : in Processes) is
-      Index : Node_Index := D_List (ID);
+      PL    : Persistent_Local renames Persistent_Local_Variables (ID);
+      Index : Node_Index := PL.D_List;
       Node  : Atomic_Node_Access;
    begin
       while Index /= 0 loop
          Node  := DL_Nodes (ID, Index);
          Clean_Up (Managed_Node_Access (Node));
-         Index := DL_Nexts (ID, Index);
+         Index := PL.DL_Nexts (Index);
       end loop;
    end Clean_Up_Local;
 
