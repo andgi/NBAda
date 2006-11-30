@@ -26,7 +26,7 @@
 --                    scheme.
 --  Author          : Anders Gidenstam
 --  Created On      : Sat May  7 20:54:49 2005
---  $Id: example_queue.ads,v 1.9 2006/11/23 19:02:50 andersg Exp $
+--  $Id: example_queue.ads,v 1.10 2006/11/30 20:02:10 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -56,8 +56,6 @@ package Example_Queue is
    procedure Enqueue (Queue : in out Queue_Type;
                       Value : in     Value_Type);
 
-private
-
    package LFMR is new Lock_Free_Memory_Reclamation
      (Max_Number_Of_Dereferences   => 4,
       --  Remember to account for the dereferences in the
@@ -72,7 +70,10 @@ private
       Max_Number_Of_Links_Per_Node => 1,
       Clean_Up_Threshold           => 256,
       --  Clean up and scan often.
-      Process_Ids                  => Process_Ids);
+      Process_Ids                  => Process_Ids,
+      Debug                        => True);
+
+private
 
    type Queue_Node_Reference is new LFMR.Shared_Reference_Base;
 

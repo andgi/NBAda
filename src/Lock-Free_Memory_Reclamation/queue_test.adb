@@ -25,7 +25,7 @@
 -- Description     : Example application for lock-free reference counting.
 -- Author          : Anders Gidenstam
 -- Created On      : Wed Apr 13 22:09:40 2005
--- $Id: queue_test.adb,v 1.11 2006/03/03 17:55:45 anders Exp $
+-- $Id: queue_test.adb,v 1.12 2006/11/30 20:02:10 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -297,5 +297,6 @@ begin
                                Primitives.Unsigned_32'Image (Enqueue_Count));
          Ada.Text_IO.Put_Line ("Final dequeue count: " &
                                Primitives.Unsigned_32'Image (Dequeue_Count));
+         My_Queue.Queues.LFMR.Print_Statistics;
    end;
 end Queue_Test;

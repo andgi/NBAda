@@ -32,7 +32,7 @@
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 13:54:45 2004
---  $Id: nbada-lock_free_memory_reclamation.ads,v 1.15 2006/11/23 19:02:50 andersg Exp $
+--  $Id: nbada-lock_free_memory_reclamation.ads,v 1.16 2006/11/30 20:02:10 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -64,6 +64,9 @@ generic
 
    Scan_Threshold               : Natural := Clean_Up_Threshold;
    --  The threshold on the delete list size for Scan to be done.
+
+   Debug : Boolean := False;
+   --  Enables some profiling.
 
 package Lock_Free_Memory_Reclamation is
 
@@ -200,6 +203,8 @@ package Lock_Free_Memory_Reclamation is
       Null_Reference : constant Private_Reference := 0;
 
    end Operations;
+
+   procedure Print_Statistics;
 
 private
 

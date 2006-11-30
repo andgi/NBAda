@@ -32,7 +32,7 @@
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 14:07:58 2004
---  $Id: nbada-lock_free_memory_reclamation.adb,v 1.20 2006/11/23 19:02:50 andersg Exp $
+--  $Id: nbada-lock_free_memory_reclamation.adb,v 1.21 2006/11/30 20:02:10 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -43,6 +43,8 @@ with Hash_Tables;
 with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
+
+with Ada.Text_IO;
 
 package body Lock_Free_Memory_Reclamation is
 
@@ -109,6 +111,11 @@ package body Lock_Free_Memory_Reclamation is
    DL_Nexts : array (Processes, Valid_Node_Index) of Node_Index :=
      (others => (others => 0));
    pragma Atomic_Components (DL_Nexts);
+
+   No_Nodes_Created   : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (No_Nodes_Created);
+   No_Nodes_Reclaimed : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (No_Nodes_Reclaimed);
 
    ----------------------------------------------------------------------------
    --  Operations.
@@ -375,6 +382,10 @@ package body Lock_Free_Memory_Reclamation is
             Hazard_Pointer (ID, Index) := Atomic_Node_Access (Node);
          end if;
 
+         if Debug then
+            Fetch_And_Add (No_Nodes_Created'Access, 1);
+         end if;
+
          return To_Private_Reference (Node);
       end Create;
 
@@ -447,6 +458,16 @@ package body Lock_Free_Memory_Reclamation is
       ----------------------------------------------------------------------
    end Operations;
 
+   ----------------------------------------------------------------------------
+   procedure Print_Statistics is
+   begin
+      Ada.Text_IO.Put_Line ("Lock_Free_Memory_Reclamation.Print_Statistics:");
+      Ada.Text_IO.Put_Line ("  #Created = " &
+                            Primitives.Unsigned_32'Image (No_Nodes_Created));
+      Ada.Text_IO.Put_Line ("  #Reclaimed = " &
+                            Primitives.Unsigned_32'Image (No_Nodes_Reclaimed));
+
+   end Print_Statistics;
 
    ----------------------------------------------------------------------------
    --  Internal operations.
@@ -513,6 +534,10 @@ package body Lock_Free_Memory_Reclamation is
                Dispose (Managed_Node_Access (Node),
                         Concurrent => False);
                Free (Managed_Node_Access (Node));
+
+               if Debug then
+                  Fetch_And_Add (No_Nodes_Reclaimed'Access, 1);
+               end if;
             else
                Dispose (Managed_Node_Access (Node),
                         Concurrent => True);
