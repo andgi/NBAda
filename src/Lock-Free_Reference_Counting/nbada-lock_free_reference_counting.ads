@@ -34,7 +34,7 @@
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:42:38 2006
---  $Id: nbada-lock_free_reference_counting.ads,v 1.1 2006/11/30 18:04:18 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.ads,v 1.2 2006/11/30 23:59:42 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -79,6 +79,13 @@ package Lock_Free_Reference_Counting is
    --  Shared_Reference_Base and instantiate the memory management
    --  operation package below for each of them.
 
+   type Shared_Reference_Base_Access is access all Shared_Reference_Base;
+   type Reference_Set is array (Integer range <>) of
+     Shared_Reference_Base_Access;
+
+   function All_References (Node : access Managed_Node_Base)
+                           return Reference_Set is abstract;
+
    ----------------------------------------------------------------------------
    generic
 
@@ -98,6 +105,7 @@ package Lock_Free_Reference_Counting is
       type Private_Reference is private;
       --  Note: There SHOULD NOT be any shared variables of type
       --        Private_Reference.
+
       Null_Reference : constant Private_Reference;
 
       ----------------------------------------------------------------------

@@ -34,7 +34,7 @@
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:55:18 2006
---  $Id: nbada-lock_free_reference_counting.adb,v 1.1 2006/11/30 18:04:18 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.adb,v 1.2 2006/11/30 23:58:56 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -63,6 +63,8 @@ package body Lock_Free_Reference_Counting is
                            Increment : in     Primitives.Unsigned_32)
                           return Primitives.Unsigned_32
      renames Primitives.Fetch_And_Add;
+
+   procedure Clean_And_Liberate (Node : in Managed_Node_Access);
 
    package PTB is new Pass_The_Buck
      (Max_Number_Of_Guards => Max_Number_Of_Guards,
@@ -163,20 +165,21 @@ package body Lock_Free_Reference_Counting is
                if Fetch_And_Add (Target    => Node_Base.MM_RC'Access,
                                  Increment => -1) = 1
                then
-                  Dispose (Node_Base);
-                  declare
-                     Old : constant PTB.Value_Set (1 .. 1)
-                       := (Node_Base, others => null);
-                     VS  : constant PTB.Value_Set
-                       := PTB.Liberate (Old);
-                  begin
-                     for I in VS'Range loop
-                        Free    (VS (I));
-                     end loop;
-                     if Debug then
-                        Fetch_And_Add (No_Nodes_Reclaimed'Access, VS'Length);
-                     end if;
-                  end;
+                  Clean_And_Liberate (Node_Base);
+--                    Dispose (Node_Base);
+--                    declare
+--                       Old : constant PTB.Value_Set (1 .. 1)
+--                         := (Node_Base, others => null);
+--                       VS  : constant PTB.Value_Set
+--                         := PTB.Liberate (Old);
+--                    begin
+--                       for I in VS'Range loop
+--                          Free    (VS (I));
+--                       end loop;
+--                       if Debug then
+--                          Fetch_And_Add (No_Nodes_Reclaimed'Access, VS'Length);
+--                       end if;
+--                    end;
                end if;
             end;
          end if;
@@ -227,21 +230,22 @@ package body Lock_Free_Reference_Counting is
                   if Fetch_And_Add (Target    => Old_Value_Base.MM_RC'Access,
                                     Increment => -1) = 1
                   then
-                     Dispose (Old_Value_Base);
-                     declare
-                        Old : constant PTB.Value_Set (1 .. 1)
-                          := (Old_Value_Base, others => null);
-                        VS  : constant PTB.Value_Set
-                          := PTB.Liberate (Old);
-                     begin
-                        for I in VS'Range loop
-                           Free    (VS (I));
-                        end loop;
-                        if Debug then
-                           Fetch_And_Add (No_Nodes_Reclaimed'Access,
-                                          VS'Length);
-                        end if;
-                     end;
+                     Clean_And_Liberate (Old_Value_Base);
+--                       Dispose (Old_Value_Base);
+--                       declare
+--                          Old : constant PTB.Value_Set (1 .. 1)
+--                            := (Old_Value_Base, others => null);
+--                          VS  : constant PTB.Value_Set
+--                            := PTB.Liberate (Old);
+--                       begin
+--                          for I in VS'Range loop
+--                             Free    (VS (I));
+--                          end loop;
+--                          if Debug then
+--                             Fetch_And_Add (No_Nodes_Reclaimed'Access,
+--                                            VS'Length);
+--                          end if;
+--                       end;
                   end if;
                end;
             end if;
@@ -296,20 +300,24 @@ package body Lock_Free_Reference_Counting is
                if Fetch_And_Add (Target    => Old_Base.MM_RC'Access,
                                  Increment => -1) = 1
                then
-                  Dispose (Old_Base);
-                  declare
-                     Old : constant PTB.Value_Set (1 .. 1)
-                       := (Old_Base, others => null);
-                     VS  : constant PTB.Value_Set
-                       := PTB.Liberate (Old);
-                  begin
-                     for I in VS'Range loop
-                        Free    (VS (I));
-                     end loop;
-                     if Debug then
-                        Fetch_And_Add (No_Nodes_Reclaimed'Access, VS'Length);
-                     end if;
-                  end;
+                  --  NOTE: We cannot allow recusrion here as it will easily
+                  --        overflow the stack.
+
+                  Clean_And_Liberate (Old_Base);
+--                    Dispose (Old_Base);
+--                    declare
+--                       Old : constant PTB.Value_Set (1 .. 1)
+--                         := (Old_Base, others => null);
+--                       VS  : constant PTB.Value_Set
+--                         := PTB.Liberate (Old);
+--                    begin
+--                       for I in VS'Range loop
+--                          Free    (VS (I));
+--                       end loop;
+--                       if Debug then
+--                          Fetch_And_Add (No_Nodes_Reclaimed'Access, VS'Length);
+--                       end if;
+--                    end;
                end if;
             end;
          end if;
@@ -418,5 +426,73 @@ package body Lock_Free_Reference_Counting is
                             Primitives.Unsigned_32'Image (No_Nodes_Reclaimed));
 
    end Print_Statistics;
+
+   ----------------------------------------------------------------------------
+   procedure Clean_And_Liberate (Node : in Managed_Node_Access) is
+
+      function To_Managed_Node_Access (X : Shared_Reference_Base)
+                                      return Managed_Node_Access;
+      function To_Managed_Node_Access (X : Shared_Reference_Base)
+                                      return Managed_Node_Access is
+
+         function To_Managed_Node_Access is new
+           Ada.Unchecked_Conversion (Shared_Reference_Base_Impl,
+                                     Managed_Node_Access);
+
+      begin
+         return To_Managed_Node_Access (X.Ref and Ref_Mask);
+      end To_Managed_Node_Access;
+
+      use type Reference_Count;
+      Refs : constant Reference_Set := All_References (Node);
+   begin
+      loop
+         declare
+            All_Null : Boolean := True;
+         begin
+            for I in Refs'Range loop
+               declare
+                  Next : constant Managed_Node_Access :=
+                    To_Managed_Node_Access (Refs (I).all);
+               begin
+                  if Next /= null then
+                     --  Lower the Next's RC.
+                     if Fetch_And_Add (Target    => Next.MM_RC'Access,
+                                       Increment => -1) = 1
+                     then
+                        declare
+                           Next_Refs : constant Reference_Set :=
+                             All_References (Next);
+                        begin
+                           All_Null              := False;
+                           Refs (I).all          := Next_Refs (I).all;
+                           Next_Refs (I).all.Ref := 0;
+                           Clean_And_Liberate (Next);
+                        end;
+                     else
+                        Refs (I).all.Ref := 0;
+                     end if;
+                  end if;
+               end;
+            end loop;
+
+            exit when All_Null;
+         end;
+      end loop;
+
+      declare
+         Old : constant PTB.Value_Set (1 .. 1)
+           := (1 => Node);
+         VS  : constant PTB.Value_Set
+           := PTB.Liberate (Old);
+      begin
+         for I in VS'Range loop
+            Free    (VS (I));
+         end loop;
+         if Debug then
+            Fetch_And_Add (No_Nodes_Reclaimed'Access, VS'Length);
+         end if;
+      end;
+   end Clean_And_Liberate;
 
 end Lock_Free_Reference_Counting;
