@@ -29,7 +29,7 @@
 --  Description     : A simple closed hash table.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 21:56:38 2004
---  $Id: hash_tables.adb,v 1.3 2005/09/23 17:27:35 anders Exp $
+--  $Id: hash_tables.adb,v 1.4 2006/11/30 18:23:09 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -109,6 +109,21 @@ package body Hash_Tables is
       end if;
       raise Item_Not_Found;
    end Find;
+
+   ----------------------------------------------------------------------------
+   function To_Array (Table : in Hash_Table) return Element_Array is
+      Result : Element_Array (1 .. Table.Size);
+      N      : Natural := 0;
+   begin
+      for I in Table.Table'Range loop
+         if Table.Table (I).Status = Valid then
+            N := N + 1;
+            Result (N) :=  Table.Table (I).Element;
+         end if;
+      end loop;
+      return Result (1 .. N);
+   end To_Array;
+
 
    ----------------------------------------------------------------------------
    --  Private operations.

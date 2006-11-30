@@ -29,7 +29,7 @@
 --  Description     : A simple closed hash table.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 21:51:42 2004
---  $Id: nbada-internals-hash_tables.ads,v 1.5 2005/09/23 17:27:35 anders Exp $
+--  $Id: nbada-internals-hash_tables.ads,v 1.6 2006/11/30 18:23:09 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -70,6 +70,9 @@ package Hash_Tables is
    --  Find an element.
 
    Item_Not_Found : exception;
+
+   type Element_Array is array (Natural range <>) of Element_Type;
+   function To_Array (Table : in Hash_Table) return Element_Array;
 
 private
 
