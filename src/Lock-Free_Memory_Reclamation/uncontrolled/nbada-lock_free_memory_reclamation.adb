@@ -32,7 +32,7 @@
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 14:07:58 2004
---  $Id: nbada-lock_free_memory_reclamation.adb,v 1.22 2006/11/30 20:22:49 andersg Exp $
+--  $Id: nbada-lock_free_memory_reclamation.adb,v 1.23 2006/11/30 20:52:44 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -142,10 +142,10 @@ package body Lock_Free_Memory_Reclamation is
       ----------------------------------------------------------------------
       function To_Private_Reference is
          new Ada.Unchecked_Conversion (Shared_Reference,
-                                       Private_Reference);
+                                       Private_Reference_Impl);
       function To_Private_Reference is
          new Ada.Unchecked_Conversion (Node_Access,
-                                       Private_Reference);
+                                       Private_Reference_Impl);
 
       function To_Node_Access (X : Private_Reference)
                               return Node_Access;
@@ -160,8 +160,8 @@ package body Lock_Free_Memory_Reclamation is
       function Compare_And_Swap_32 is
          new Primitives.Boolean_Compare_And_Swap_32 (Shared_Reference_Base);
 
-      Mark_Mask  : constant Private_Reference := 2 ** Mark_Bits - 1;
-      Ref_Mask   : constant Private_Reference := -(2 ** Mark_Bits);
+      Mark_Mask  : constant Private_Reference_Impl := 2 ** Mark_Bits - 1;
+      Ref_Mask   : constant Private_Reference_Impl := -(2 ** Mark_Bits);
 
       ----------------------------------------------------------------------
       function  Dereference (Link : access Shared_Reference)
@@ -174,8 +174,9 @@ package body Lock_Free_Memory_Reclamation is
          --  Find a free hazard pointer.
          for I in Hazard_Pointer'Range (2) loop
             if Hazard_Pointer (ID, I) = null then
-               Index := I;
-               Found := True;
+               Index       := I;
+               Node_Ref.HP := Natural (I);
+               Found       := True;
                exit;
             end if;
          end loop;
@@ -187,14 +188,14 @@ package body Lock_Free_Memory_Reclamation is
                "Maximum number of local dereferences exceeded!");
          else
             loop
-               Node_Ref := To_Private_Reference (Link.all);
+               Node_Ref.Ref := To_Private_Reference (Link.all);
                Hazard_Pointer (ID, Index) :=
                  Atomic_Node_Access (To_Node_Access (Node_Ref));
 
                Primitives.Membar;
                --  The write to the hazard pointer must be visible before
                --  Link is read again.
-               exit when To_Private_Reference (Link.all) = Node_Ref;
+               exit when To_Private_Reference (Link.all) = Node_Ref.Ref;
             end loop;
          end if;
 
@@ -206,17 +207,19 @@ package body Lock_Free_Memory_Reclamation is
          ID : constant Processes := Process_Ids.Process_ID;
       begin
          --  Find and clear hazard pointer.
+         Primitives.Membar;
+         Hazard_Pointer (ID, HP_Index (Node.HP)) := null;
          --  If we have dereferenced the same node several time, there are
          --  several hazard pointers to it. Release removes one.
-         for I in Hazard_Pointer'Range (2) loop
-            if
-              Hazard_Pointer (ID, I) =
-              Atomic_Node_Access (To_Node_Access (Node))
-            then
-               Hazard_Pointer (ID, I) := null;
-               exit;
-            end if;
-         end loop;
+--           for I in Hazard_Pointer'Range (2) loop
+--              if
+--                Hazard_Pointer (ID, I) =
+--                Atomic_Node_Access (To_Node_Access (Node))
+--              then
+--                 Hazard_Pointer (ID, I) := null;
+--                 exit;
+--              end if;
+--           end loop;
       end Release;
 
       ----------------------------------------------------------------------
@@ -283,8 +286,8 @@ package body Lock_Free_Memory_Reclamation is
            Compare_And_Swap_32
            (Target    =>
               To_Shared_Reference_Base_Access (Link.all'Unchecked_Access),
-            Old_Value => (Ref => Shared_Reference_Base_Impl (Old_Value)),
-            New_Value => (Ref => Shared_Reference_Base_Impl (New_Value)))
+            Old_Value => (Ref => Shared_Reference_Base_Impl (Old_Value.Ref)),
+            New_Value => (Ref => Shared_Reference_Base_Impl (New_Value.Ref)))
          then
             if To_Node_Access (New_Value) /= null then
                declare
@@ -334,10 +337,10 @@ package body Lock_Free_Memory_Reclamation is
          use type Reference_Count;
 
          Old : constant Node_Access :=
-           To_Node_Access (To_Private_Reference (Link.all));
+           To_Node_Access ((To_Private_Reference (Link.all), 0));
       begin
          To_Shared_Reference_Base_Access (Link.all'Unchecked_Access).all :=
-           (Ref => Shared_Reference_Base_Impl (Node));
+           (Ref => Shared_Reference_Base_Impl (Node.Ref));
 
          if To_Node_Access (Node) /= null then
             declare
@@ -391,40 +394,40 @@ package body Lock_Free_Memory_Reclamation is
             Fetch_And_Add (No_Nodes_Created'Access, 1);
          end if;
 
-         return To_Private_Reference (Node);
+         return (To_Private_Reference (Node), Natural (Index));
       end Create;
 
       ----------------------------------------------------------------------
       procedure Mark      (Node : in out Private_Reference) is
       begin
-         Node := Node or 1;
+         Node.Ref := Node.Ref or 1;
       end Mark;
 
       ----------------------------------------------------------------------
       function  Mark      (Node : in     Private_Reference)
                           return Private_Reference is
       begin
-         return Node or 1;
+         return (Node.Ref or 1, Node.HP);
       end Mark;
 
       ----------------------------------------------------------------------
       procedure Unmark    (Node : in out Private_Reference) is
       begin
-         Node := Node and Ref_Mask;
+         Node.Ref := Node.Ref and Ref_Mask;
       end Unmark;
 
       ----------------------------------------------------------------------
       function  Unmark    (Node : in     Private_Reference)
                           return Private_Reference is
       begin
-         return Node and Ref_Mask;
+         return (Node.Ref and Ref_Mask, Node.HP);
       end Unmark;
 
       ----------------------------------------------------------------------
       function  Is_Marked (Node : in     Private_Reference)
                           return Boolean is
       begin
-         return (Node and Mark_Mask) = 1;
+         return (Node.Ref and Mark_Mask) = 1;
       end Is_Marked;
 
       ----------------------------------------------------------------------
@@ -435,29 +438,36 @@ package body Lock_Free_Memory_Reclamation is
       end Is_Marked;
 
       ----------------------------------------------------------------------
+      function "=" (Left  : in     Private_Reference;
+                    Right : in     Private_Reference) return Boolean is
+      begin
+         return Left.Ref = Right.Ref;
+      end "=";
+
+      ----------------------------------------------------------------------
       function "=" (Link : in     Shared_Reference;
                     Ref  : in     Private_Reference) return Boolean is
       begin
-         return To_Private_Reference (Link) = Ref;
+         return To_Private_Reference (Link) = Ref.Ref;
       end "=";
 
       ----------------------------------------------------------------------
       function "=" (Ref  : in     Private_Reference;
                     Link : in     Shared_Reference) return Boolean is
       begin
-         return To_Private_Reference (Link) = Ref;
+         return To_Private_Reference (Link) = Ref.Ref;
       end "=";
 
       ----------------------------------------------------------------------
       function To_Node_Access (X : Private_Reference)
-                                     return Node_Access is
+                              return Node_Access is
 
          function To_Node_Access is
-            new Ada.Unchecked_Conversion (Private_Reference,
+            new Ada.Unchecked_Conversion (Private_Reference_Impl,
                                           Node_Access);
 
       begin
-         return To_Node_Access (X and Ref_Mask);
+         return To_Node_Access (X.Ref and Ref_Mask);
       end To_Node_Access;
 
       ----------------------------------------------------------------------

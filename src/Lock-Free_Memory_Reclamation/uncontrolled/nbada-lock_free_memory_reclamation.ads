@@ -32,7 +32,7 @@
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 13:54:45 2004
---  $Id: nbada-lock_free_memory_reclamation.ads,v 1.16 2006/11/30 20:02:10 andersg Exp $
+--  $Id: nbada-lock_free_memory_reclamation.ads,v 1.17 2006/11/30 20:52:28 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -168,8 +168,7 @@ package Lock_Free_Memory_Reclamation is
       --  Creates a new User_Node and returns a safe reference to it.
 
       --  Private (and shared) references can be tagged with a mark.
-      --  NOTE: A private reference with the value Null_Reference always loses
-      --        its mark.
+      --  NOTE: A marked Null_Reference is not equal (=) to an unmarked.
       procedure Mark      (Node : in out Private_Reference);
       pragma Inline_Always (Mark);
       function  Mark      (Node : in     Private_Reference)
@@ -188,6 +187,9 @@ package Lock_Free_Memory_Reclamation is
                           return Boolean;
       pragma Inline_Always (Is_Marked);
 
+      function "=" (Left  : in     Private_Reference;
+                    Right : in     Private_Reference) return Boolean;
+      pragma Inline_Always ("=");
       function "=" (Link : in     Shared_Reference;
                     Ref  : in     Private_Reference) return Boolean;
       pragma Inline_Always ("=");
@@ -198,9 +200,16 @@ package Lock_Free_Memory_Reclamation is
 
    private
 
-      type Private_Reference is mod 2 ** 32;
+      type Private_Reference_Impl is mod 2 ** 32;
 
-      Null_Reference : constant Private_Reference := 0;
+      subtype Index is Natural range 0 .. Max_Number_Of_Dereferences;
+      type Private_Reference is
+         record
+            Ref : Private_Reference_Impl := 0;
+            HP  : Index := 0;
+         end record;
+
+      Null_Reference : constant Private_Reference := (0, 0);
 
    end Operations;
 
