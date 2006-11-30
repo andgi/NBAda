@@ -30,7 +30,7 @@
 --                    lock-free queue algorithm.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Nov 28 10:55:38 2006
---  $Id: nbada-lock_free_queues.ads,v 1.1 2006/11/28 16:52:09 andersg Exp $
+--  $Id: nbada-lock_free_queues.ads,v 1.2 2006/11/30 19:52:45 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -61,12 +61,13 @@ package Lock_Free_Queues is
    procedure Enqueue (On      : in out Queue_Type;
                       Element : in     Element_Type);
 
-private
 
    package MR is new Epoch_Based_Memory_Reclamation
      (Epoch_Update_Threshold     => 100,
       --  Suitable number for epoch-based reclamation.
       Process_Ids                => Process_Ids);
+
+private
 
    type Queue_Node_Reference is new MR.Shared_Reference_Base;
 
