@@ -32,15 +32,14 @@
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 14:07:58 2004
---  $Id: nbada-lock_free_memory_reclamation.adb,v 1.21 2006/11/30 20:02:10 andersg Exp $
+--  $Id: nbada-lock_free_memory_reclamation.adb,v 1.22 2006/11/30 20:22:49 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Primitives;
 with Hash_Tables;
 
-with Ada.Unchecked_Deallocation;
+--  with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
 
@@ -117,6 +116,15 @@ package body Lock_Free_Memory_Reclamation is
    No_Nodes_Reclaimed : aliased Primitives.Unsigned_32 := 0;
    pragma Atomic (No_Nodes_Reclaimed);
 
+
+   --  The P_Sets are preallocated from the heap as it can easily become
+   --  too large to fit on the task stack.
+   type HP_Set_Access is access HP_Sets.Hash_Table;
+   P_Set : constant array (Processes) of HP_Set_Access :=
+     (others => new HP_Sets.Hash_Table
+      (Size => 2 * Natural (Process_Ids.Max_Number_Of_Processes *
+                            Max_Number_Of_Dereferences) + 1));
+
    ----------------------------------------------------------------------------
    --  Operations.
    ----------------------------------------------------------------------------
@@ -189,11 +197,8 @@ package body Lock_Free_Memory_Reclamation is
                exit when To_Private_Reference (Link.all) = Node_Ref;
             end loop;
          end if;
-         if To_Node_Access (Node_Ref) /= null then
-            return Node_Ref;
-         else
-            return Null_Reference;
-         end if;
+
+         return Node_Ref;
       end Dereference;
 
       ----------------------------------------------------------------------
@@ -478,15 +483,15 @@ package body Lock_Free_Memory_Reclamation is
       use type Reference_Count;
       use HP_Sets;
 
-      type HP_Set_Access is access HP_Sets.Hash_Table;
-      procedure Free is new Ada.Unchecked_Deallocation (HP_Sets.Hash_Table,
-                                                        HP_Set_Access);
-      P_Set : HP_Set_Access :=
-        new HP_Sets.Hash_Table
-        (Size => 2 * Natural (Process_Ids.Max_Number_Of_Processes *
-                              Max_Number_Of_Dereferences) + 1);
-      --  The P_Set is allocated from the heap as it can easily become
-      --  too large to fit on the task stack.
+--        type HP_Set_Access is access HP_Sets.Hash_Table;
+--        procedure Free is new Ada.Unchecked_Deallocation (HP_Sets.Hash_Table,
+--                                                          HP_Set_Access);
+--        P_Set : HP_Set_Access :=
+--          new HP_Sets.Hash_Table
+--          (Size => 2 * Natural (Process_Ids.Max_Number_Of_Processes *
+--                                Max_Number_Of_Dereferences) + 1);
+--        --  The P_Set is allocated from the heap as it can easily become
+--        --  too large to fit on the task stack.
       Index       : Node_Index;
       Node        : Atomic_Node_Access;
       New_D_List  : Node_Index := 0;
@@ -505,6 +510,8 @@ package body Lock_Free_Memory_Reclamation is
          Index := DL_Nexts (ID, Index);
       end loop;
 
+      Clear (P_Set (ID).all);
+
       --  Read all hazard pointers.
       for P in Hazard_Pointer'Range (1) loop
          for I in Hazard_Pointer'Range (2) loop
@@ -514,7 +521,7 @@ package body Lock_Free_Memory_Reclamation is
                   N : constant Managed_Node_Access :=
                     Managed_Node_Access (Node);
                begin
-                  Insert (N, P_Set.all);
+                  Insert (N, P_Set (ID).all);
                end;
             end if;
          end loop;
@@ -527,7 +534,7 @@ package body Lock_Free_Memory_Reclamation is
          D_List (ID) := DL_Nexts (ID, Index);
 
          if Node.MM_RC = 0 and Node.MM_Trace and
-           not Member (Managed_Node_Access (Node), P_Set.all)
+           not Member (Managed_Node_Access (Node), P_Set (ID).all)
          then
             DL_Nodes (ID, Index) := null;
             if DL_Claims (ID, Index) = 0 then
@@ -560,7 +567,7 @@ package body Lock_Free_Memory_Reclamation is
       D_List  (ID) := New_D_List;
       D_Count (ID) := New_D_Count;
 
-      Free (P_Set);
+--        Free (P_Set);
    end Scan;
 
    ----------------------------------------------------------------------------
