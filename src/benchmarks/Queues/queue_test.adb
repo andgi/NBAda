@@ -1,7 +1,5 @@
 -------------------------------------------------------------------------------
---  Lock-Free Reference Counting - An implementation of the lock-free
---  garbage reclamation scheme by A. Gidenstam, M. Papatriantafilou, H. Sundell
---  and P. Tsigas.
+--  Lock-free Queue Test - Test benchmark for lock-free queues.
 --
 --  Copyright (C) 2004 - 2006  Anders Gidenstam
 --
@@ -19,17 +17,25 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
+--  As a special exception, if other files instantiate generics from this
+--  unit, or you link this unit with other files to produce an executable,
+--  this unit does not by itself cause the resulting executable to be
+--  covered by the GNU General Public License. This exception does not
+--  however invalidate any other reasons why the executable file might be
+--  covered by the GNU Public License.
+--
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
--- Filename        : queue_test.adb
--- Description     : Example application for lock-free reference counting.
--- Author          : Anders Gidenstam
--- Created On      : Wed Apr 13 22:09:40 2005
--- $Id: queue_test.adb,v 1.11 2006/03/03 17:55:45 anders Exp $
+--  Filename        : queue_test.adb
+--  Description     : Benchmark application for lock-free queues.
+--  Author          : Anders Gidenstam
+--  Created On      : Wed Apr 13 22:09:40 2005
+--  $Id: queue_test.adb,v 1.12 2006/11/30 19:48:59 andersg Exp $
 -------------------------------------------------------------------------------
 
-pragma License (GPL);
+pragma License (Modified_GPL);
 
+with Process_Identification;
 with Primitives;
 
 with Ada.Text_IO;
@@ -39,12 +45,23 @@ with Ada.Real_Time;
 
 with System.Task_Info;
 
-with My_Queue;
+with Test_Queues;
+
+with Ada.Command_Line;
 
 procedure Queue_Test is
 
-   use My_Queue;
-   use My_Queue.Queues;
+   package PID is
+      new Process_Identification (Max_Number_Of_Processes => 31);
+
+   type Value_Type is
+      record
+         Creator : PID.Process_ID_Type;
+         Index   : Integer;
+      end record;
+   package Queues is new Test_Queues (Element_Type  => Value_Type,
+                                      Process_Ids   => PID);
+   use Queues;
 
    ----------------------------------------------------------------------------
    --  Test application.
@@ -58,6 +75,8 @@ procedure Queue_Test is
 --     Ada.Text_IO.Standard_Error;
 
    function Pinned_Task return System.Task_Info.Task_Info_Type;
+   procedure Print_Usage;
+   procedure Put_Line (S : in String);
 
    task type Producer is
       pragma Task_Info (Pinned_Task);
@@ -231,45 +250,115 @@ procedure Queue_Test is
             Ada.Text_IO.New_Line (Output_File);
    end Consumer;
 
+   ----------------------------------------------------------------------
+   procedure Print_Usage is
+   begin
+      Ada.Text_IO.Put_Line
+        ("Usage: " &
+         Ada.Command_Line.Command_Name &
+         " [OPTION] ");
+      Ada.Text_IO.Put_Line
+        ("  -h             Print this message.");
+      Ada.Text_IO.Put_Line
+        ("  -p <#threads>  Set the number of producer threads.");
+      Ada.Text_IO.Put_Line
+        ("  -c <#threads>  Set the number of consumer threads.");
+      Ada.Text_IO.Put_Line
+        ("  -s             Single line output.");
+   end Print_Usage;
+
+   ----------------------------------------------------------------------
+   Silent : Boolean := False;
+   procedure Put_Line (S : in String) is
+   begin
+      if not Silent then
+         Ada.Text_IO.Put_Line (S);
+      end if;
+   end Put_Line;
+
+
    use type Ada.Real_Time.Time;
    T1, T2 : Ada.Real_Time.Time;
+
+   No_Producers : Natural := 4;
+   No_Consumers : Natural := 4;
 begin
    PID.Register;
+
+   --  Parse command line.
+   declare
+      N : Natural := 1;
+   begin
+      while N <= Ada.Command_Line.Argument_Count loop
+
+         if Ada.Command_Line.Argument (N) = "-h" then
+            Print_Usage;
+            return;
+         elsif Ada.Command_Line.Argument (N) = "-p" then
+            declare
+               T : Natural;
+            begin
+               N := N + 1;
+               T := Integer'Value (Ada.Command_Line.Argument (N));
+               No_Producers := T;
+            end;
+         elsif Ada.Command_Line.Argument (N) = "-c" then
+            declare
+               T : Natural;
+            begin
+               N := N + 1;
+               T := Integer'Value (Ada.Command_Line.Argument (N));
+               No_Consumers := T;
+            end;
+         elsif Ada.Command_Line.Argument (N) = "-s" then
+            Silent := True;
+         else
+            Ada.Text_IO.Put_Line ("Unknown option.");
+            Ada.Text_IO.New_Line;
+            Print_Usage;
+            return;
+         end if;
+
+         N := N + 1;
+      end loop;
+   end;
 
    Ada.Text_IO.Put ("Initializing: ");
    Init (Queue);
    Ada.Text_IO.Put_Line (" Queue ");
 
-   Ada.Text_IO.Put_Line ("Testing with producer/consumer tasks.");
+   Ada.Text_IO.Put_Line ("Testing with " &
+                         Integer'Image (No_Producers) & " producer and " &
+                         Integer'Image (No_Consumers) & " consumer tasks.");
    declare
       use type Primitives.Unsigned_32;
---      P1, P2, P3, P4 : Producer;
---      C1, C2, C3, C4 : Consumer;
-      P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
-        : Producer;
-      C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
-        : Consumer;
+      Producer_Array : array (1 .. No_Producers) of Producer;
+      Consumer_Array : array (1 .. No_Consumers) of Consumer;
    begin
       delay 5.0;
       T1 := Ada.Real_Time.Clock;
       Primitives.Fetch_And_Add (Start'Access, 1);
    end;
---     declare
---        C1 : Consumer;
---     begin
---        null;
---     end;
    T2 := Ada.Real_Time.Clock;
 
    delay 1.0;
-   Ada.Text_IO.Put_Line ("Enqueue count: " &
-                         Primitives.Unsigned_32'Image (Enqueue_Count));
-   Ada.Text_IO.Put_Line ("Dequeue count: " &
-                         Primitives.Unsigned_32'Image (Dequeue_Count));
-   Ada.Text_IO.Put_Line ("Elapsed time:" &
-                         Duration'Image (Ada.Real_Time.To_Duration (T2 - T1)));
+   Put_Line ("Enqueue count: " &
+             Primitives.Unsigned_32'Image (Enqueue_Count));
+   Put_Line ("Dequeue count: " &
+             Primitives.Unsigned_32'Image (Dequeue_Count));
+   Put_Line ("Elapsed time:" &
+             Duration'Image (Ada.Real_Time.To_Duration (T2 - T1)));
 
-   Ada.Text_IO.Put_Line ("Emptying queue.");
+   if Silent then
+      Ada.Text_IO.Put (Integer'Image (No_Producers)  & "  " &
+                       Integer'Image (No_Consumers)  & "  " &
+                       Primitives.Unsigned_32'Image (Enqueue_Count) & "  " &
+                       Primitives.Unsigned_32'Image (Dequeue_Count)  & "  " &
+                       Duration'Image (Ada.Real_Time.To_Duration (T2 - T1)) &
+                       "  ");
+   end if;
+
+   Put_Line ("Emptying queue.");
    delay 5.0;
 
    declare
@@ -277,13 +366,14 @@ begin
    begin
       loop
          V := Dequeue (Queue'Access);
-         Ada.Text_IO.Put_Line (Output_File,
-                               "Dequeue() = (" &
-                               PID.Process_ID_Type'Image (V.Creator) & ", " &
-                               Integer'Image (V.Index) & ")");
+         Put_Line ("Dequeue() = (" &
+                   PID.Process_ID_Type'Image (V.Creator) & ", " &
+                   Integer'Image (V.Index) & ")");
          Primitives.Fetch_And_Add (Dequeue_Count'Access, 1);
       end loop;
    exception
+      when Queues.Queue_Empty =>
+         null;
       when E : others =>
          Ada.Text_IO.New_Line (Output_File);
          Ada.Text_IO.Put_Line (Output_File,
@@ -292,10 +382,19 @@ begin
                                " : " &
                                Ada.Exceptions.Exception_Message (E));
          Ada.Text_IO.New_Line (Output_File);
-
-         Ada.Text_IO.Put_Line ("Final enqueue count: " &
-                               Primitives.Unsigned_32'Image (Enqueue_Count));
-         Ada.Text_IO.Put_Line ("Final dequeue count: " &
-                               Primitives.Unsigned_32'Image (Dequeue_Count));
    end;
+
+   Put_Line ("Final enqueue count: " &
+             Primitives.Unsigned_32'Image (Enqueue_Count));
+   Put_Line ("Final dequeue count: " &
+             Primitives.Unsigned_32'Image (Dequeue_Count));
+
+   if Silent then
+      Ada.Text_IO.Put (Primitives.Unsigned_32'Image (Enqueue_Count) & "  " &
+                       Primitives.Unsigned_32'Image (Dequeue_Count));
+      Ada.Text_IO.New_Line;
+   end if;
+
+   Queues.Print_Statistics;
+
 end Queue_Test;
