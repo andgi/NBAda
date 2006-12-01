@@ -30,7 +30,7 @@
 --                    schemes.
 --  Author          : Anders Gidenstam
 --  Created On      : Sat May  7 20:54:49 2005
---  $Id: example_queue.adb,v 1.1 2006/11/30 18:04:18 andersg Exp $
+--  $Id: example_queue.adb,v 1.2 2006/12/01 10:40:10 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -61,7 +61,7 @@ package body Example_Queue is
       Store (Node.Next'Access, Null_Reference);
    end Dispose;
 
-   -------------------------------------------------------------------------
+   ----------------------------------------------------------------------------
    procedure Free (Node : access Queue_Node) is
       procedure Reclaim is new
         Ada.Unchecked_Deallocation (Queue_Node,
@@ -78,6 +78,22 @@ package body Example_Queue is
    begin
       Reclaim (X);
    end Free;
+
+   ----------------------------------------------------------------------------
+   function All_References (Node : access Queue_Node)
+                           return LFMR.Reference_Set is
+      type Link_Access is access all Queue_Node_Reference;
+      function To_Shared_Reference_Access is new
+        Ada.Unchecked_Conversion (Link_Access,
+                                  LFMR.Shared_Reference_Base_Access);
+
+      Link : constant Link_Access :=
+        Node.Next'Access;
+      Result : constant LFMR.Reference_Set (1 .. 1) :=
+        (1 => To_Shared_Reference_Access (Link));
+   begin
+      return Result;
+   end All_References;
 
    ----------------------------------------------------------------------------
    procedure Init (Queue : in out Queue_Type) is

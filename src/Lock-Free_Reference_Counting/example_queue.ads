@@ -30,7 +30,7 @@
 --                    schemes.
 --  Author          : Anders Gidenstam
 --  Created On      : Sat May  7 20:54:49 2005
---  $Id: example_queue.ads,v 1.1 2006/11/30 18:04:18 andersg Exp $
+--  $Id: example_queue.ads,v 1.2 2006/12/01 10:40:10 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -76,6 +76,8 @@ private
 
    procedure Dispose  (Node : access Queue_Node);
    procedure Free     (Node : access Queue_Node);
+   function All_References (Node : access Queue_Node)
+                           return LFMR.Reference_Set;
 
    package LFMR_Ops is new LFMR.Operations (Queue_Node,
                                             Queue_Node_Reference);
