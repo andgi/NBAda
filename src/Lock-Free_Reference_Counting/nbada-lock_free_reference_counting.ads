@@ -34,7 +34,7 @@
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:42:38 2006
---  $Id: nbada-lock_free_reference_counting.ads,v 1.3 2006/12/01 00:09:24 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.ads,v 1.4 2006/12/01 10:41:58 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -190,7 +190,7 @@ private
 
    type Managed_Node_Base is abstract tagged limited
       record
-         MM_RC    : aliased Reference_Count := 0;
+         MM_RC    : aliased Reference_Count := 1;
          pragma Atomic (MM_RC);
       end record;
 

@@ -34,7 +34,7 @@
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:55:18 2006
---  $Id: nbada-lock_free_reference_counting.adb,v 1.2 2006/11/30 23:58:56 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.adb,v 1.3 2006/12/01 10:41:58 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -337,8 +337,6 @@ package body Lock_Free_Reference_Counting is
          UNode : constant User_Node_Access := new Managed_Node;
          Node  : constant Node_Access      := UNode.all'Unchecked_Access;
       begin
-         Node.all.MM_RC := 1;
-
          if Debug then
             Fetch_And_Add (No_Nodes_Created'Access, 1);
          end if;
