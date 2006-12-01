@@ -34,7 +34,7 @@
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:42:38 2006
---  $Id: nbada-lock_free_reference_counting.ads,v 1.2 2006/11/30 23:59:42 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.ads,v 1.3 2006/12/01 00:09:24 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -58,7 +58,7 @@ package Lock_Free_Reference_Counting is
    type Managed_Node_Base is abstract tagged limited private;
    --  Inherit from this base type to create your own managed types.
 
-   procedure Dispose  (Node       : access Managed_Node_Base) is abstract;
+--   procedure Dispose  (Node       : access Managed_Node_Base) is abstract;
    --  Dispose should set all shared references inside the node to null.
 
    procedure Free (Object : access Managed_Node_Base) is abstract;
