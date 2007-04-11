@@ -28,7 +28,7 @@
 --  Description     : Synchronization primitives.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Jul  5 14:53:50 2002
---  $Id: nbada-primitives.adb,v 1.10 2007/04/11 17:12:47 andersg Exp $
+--  $Id: nbada-primitives.adb,v 1.11 2007/04/11 17:15:50 andersg Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
@@ -297,7 +297,8 @@ package body Primitives is
         (Template =>
            "!#BEGIN Membar"      & LF & HT &
            "membar #LoadLoad | #StoreStore | #LoadStore | #StoreLoad" &LF &HT&
-           "!#END Membar");
+           "!#END Membar",
+         Volatile => True);
    end Membar;
 
 end Primitives;
