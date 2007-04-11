@@ -28,7 +28,7 @@
 --  Description     : Test of synchronization primitives package.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Jul  9 14:07:11 2002
---  $Id: faa_test.adb,v 1.6 2006/02/15 13:41:47 anders Exp $
+--  $Id: faa_test.adb,v 1.7 2007/04/11 17:12:47 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -68,8 +68,10 @@ procedure FAA_Test is
 --             --System.Task_Info.ANY_CPU
 --             Integer (Primitives.Fetch_And_Add (Task_Count'Access, 1))
 --           );
-      --  GNAT/Linux and GNAT/Solaris
-      return System.Task_Info.System_Scope;
+--  GNAT/Linux
+--      return System.Task_Info.System_Scope;
+--  GNAT/Solaris
+      return System.Task_Info.New_Bound_Thread_Attributes;
    end System_Scope_Task;
 
    task body Counter is
