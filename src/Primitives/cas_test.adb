@@ -28,7 +28,7 @@
 --  Description     : Test of synchronization primitives package.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Jul  5 16:09:25 2002
---  $Id: cas_test.adb,v 1.8 2006/10/17 18:46:37 andersg Exp $
+--  $Id: cas_test.adb,v 1.9 2007/04/17 17:10:00 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Text_IO;
@@ -40,6 +40,20 @@ with Ada.Unchecked_Conversion;
 
 procedure CAS_Test is
 
+   generic
+      type Element_Type is limited private;
+   function Address_Image (Element : access Element_Type) return String;
+
+   function Address_Image (Element : access Element_Type) return String is
+      type Element_Access is access all Element_Type;
+      function To_Unsigned is
+         new Ada.Unchecked_Conversion (Element_Access,
+                                       Primitives.Standard_Unsigned);
+   begin
+      return Primitives.Standard_Unsigned'Image
+        (To_Unsigned (Element_Access (Element)));
+   end Address_Image;
+
 begin
 
    ----------------------------------------------------------------------------
@@ -49,10 +63,7 @@ begin
       procedure CAS is new
         Primitives.Compare_And_Swap_32 (Element => Integer);
       Operation : constant String := "Compare_And_Swap_32";
-
-      type Int_Access is access all Integer;
-      function To_Int is new Ada.Unchecked_Conversion (Int_Access,
-                                                       Integer);
+      function Image is new Address_Image (Integer);
 
       A : aliased Integer := 77;
    begin
@@ -60,7 +71,7 @@ begin
       Ada.Text_IO.Put_Line ("-----------------------------------------------");
       Ada.Text_IO.Put_Line ("Integer'Object_Size: " &
                             Integer'Image (Integer'Object_Size));
-      Ada.Text_IO.Put_Line ("A'access: " & Integer'Image (To_Int (A'Access)));
+      Ada.Text_IO.Put_Line ("A'access: " & Image (A'Access));
 
       --  Test 1.
       declare
@@ -114,10 +125,7 @@ begin
       function  CAS is new
         Primitives.Boolean_Compare_And_Swap_32 (Element => Integer);
       Operation : constant String := "Boolean_Compare_And_Swap_32";
-
-      type Int_Access is access all Integer;
-      function To_Int is new Ada.Unchecked_Conversion (Int_Access,
-                                                       Integer);
+      function Image is new Address_Image (Integer);
 
       A : aliased Integer := 2;
    begin
@@ -125,7 +133,7 @@ begin
       Ada.Text_IO.Put_Line ("-----------------------------------------------");
       Ada.Text_IO.Put_Line ("Integer'Object_Size: " &
                             Integer'Image (Integer'Object_Size));
-      Ada.Text_IO.Put_Line ("A'access: " & Integer'Image (To_Int (A'Access)));
+      Ada.Text_IO.Put_Line ("A'access: " & Image (A'Access));
 
       --  Test 1.
       declare
@@ -196,10 +204,7 @@ begin
       procedure CAS is new
         Primitives.Void_Compare_And_Swap_32 (Element => Integer);
       Operation : constant String := "Void_Compare_And_Swap_32";
-
-      type Int_Access is access all Integer;
-      function To_Int is new Ada.Unchecked_Conversion (Int_Access,
-                                                       Integer);
+      function Image is new Address_Image (Integer);
 
       A : aliased Integer := 77;
    begin
@@ -207,7 +212,7 @@ begin
       Ada.Text_IO.Put_Line ("-----------------------------------------------");
       Ada.Text_IO.Put_Line ("Integer'Object_Size: " &
                             Integer'Image (Integer'Object_Size));
-      Ada.Text_IO.Put_Line ("A'access: " & Integer'Image (To_Int (A'Access)));
+      Ada.Text_IO.Put_Line ("A'access: " & Image (A'Access));
 
       --  Test 1.
       declare
@@ -281,10 +286,7 @@ begin
       procedure CAS is new
         Primitives.Compare_And_Swap_64 (Element => My_Float);
       Operation : constant String := "Compare_And_Swap_64";
-
-      type My_Float_Access is access all My_Float;
-      function To_Int is new Ada.Unchecked_Conversion (My_Float_Access,
-                                                       Integer);
+      function Image is new Address_Image (My_Float);
 
       LA : aliased My_Float := -2.0;
    begin
@@ -292,7 +294,7 @@ begin
       Ada.Text_IO.Put_Line ("My_Float'Object_Size: " &
                             Natural'Image (My_Float'Object_Size));
       Ada.Text_IO.Put_Line ("LA'access: " &
-                            Integer'Image (To_Int (LA'Access)));
+                            Image (LA'Access));
 
       --  Test 1.
       declare
@@ -367,10 +369,7 @@ begin
       function CAS is new
         Primitives.Boolean_Compare_And_Swap_64 (Element => My_Float);
       Operation : constant String := "Boolean_Compare_And_Swap_64";
-
-      type My_Float_Access is access all My_Float;
-      function To_Int is new Ada.Unchecked_Conversion (My_Float_Access,
-                                                       Integer);
+      function Image is new Address_Image (My_Float);
 
       LA : aliased My_Float := -45.0;
    begin
@@ -378,7 +377,7 @@ begin
       Ada.Text_IO.Put_Line ("My_Float'Object_Size: " &
                             Natural'Image (My_Float'Object_Size));
       Ada.Text_IO.Put_Line ("LA'access: " &
-                            Integer'Image (To_Int (LA'Access)));
+                            Image (LA'Access));
 
       --  Test 1.
       declare
@@ -455,10 +454,7 @@ begin
       procedure CAS is new
         Primitives.Void_Compare_And_Swap_64 (Element => My_Float);
       Operation : constant String := "Void_Compare_And_Swap_64";
-
-      type My_Float_Access is access all My_Float;
-      function To_Int is new Ada.Unchecked_Conversion (My_Float_Access,
-                                                       Integer);
+      function Image is new Address_Image (My_Float);
 
       LA : aliased My_Float := -2.0;
    begin
@@ -466,7 +462,7 @@ begin
       Ada.Text_IO.Put_Line ("My_Float'Object_Size: " &
                             Natural'Image (My_Float'Object_Size));
       Ada.Text_IO.Put_Line ("LA'access: " &
-                            Integer'Image (To_Int (LA'Access)));
+                            Image (LA'Access));
 
       --  Test 1.
       declare

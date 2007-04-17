@@ -28,7 +28,7 @@
 --  Description     : Test of synchronization primitives package.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Jul  9 14:07:11 2002
---  $Id: faa_test.adb,v 1.7 2007/04/11 17:12:47 andersg Exp $
+--  $Id: faa_test.adb,v 1.8 2007/04/17 17:10:00 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -41,9 +41,9 @@ with System.Task_Info;
 
 procedure FAA_Test is
 
-   Count : aliased Primitives.Unsigned_32 := 0;
+   Count : aliased Primitives.Standard_Unsigned := 0;
    pragma Atomic (Count);
-   Count_CAS : aliased Primitives.Unsigned_32 := 0;
+   Count_CAS : aliased Primitives.Standard_Unsigned := 0;
    pragma Atomic (Count_CAS);
 
    function System_Scope_Task return System.Task_Info.Task_Info_Type;
@@ -89,9 +89,9 @@ procedure FAA_Test is
 --           end loop;
       end loop;
       Ada.Text_IO.Put_Line ("Count: " &
-                            Primitives.Unsigned_32'Image (Count) &
+                            Primitives.Standard_Unsigned'Image (Count) &
                             "  Count_CAS: " &
-                            Primitives.Unsigned_32'Image (Count_CAS));
+                            Primitives.Standard_Unsigned'Image (Count_CAS));
    exception
       when E : others =>
          Ada.Text_IO.Put_Line (Ada.Exceptions.Exception_Information (E));
@@ -103,15 +103,15 @@ procedure FAA_Test is
    Counters : Counter_Array (1 .. 10);
 begin
    declare
-      use type Primitives.Unsigned_32;
-      Test : aliased Primitives.Unsigned_32 := 0;
+      use type Primitives.Standard_Unsigned;
+      Test : aliased Primitives.Standard_Unsigned := 0;
    begin
       Ada.Text_IO.Put_Line ("Test 1: 10 x FAA(Test'Access, 2)." &
                             "Expected outcome: 0, 2, 4, .. , 18.");
       for I in 1 .. 10 loop
          Ada.Text_IO.Put_Line
            ("FAA(Test'Access, 2):" &
-            Primitives.Unsigned_32'Image
+            Primitives.Standard_Unsigned'Image
             (Primitives.Fetch_And_Add (Target    => Test'Access,
                                        Increment => 2)));
       end loop;
