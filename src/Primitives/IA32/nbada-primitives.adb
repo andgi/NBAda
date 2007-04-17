@@ -28,7 +28,7 @@
 --  Description     : Synchronization primitives.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Jul  5 14:53:50 2002
---  $Id: nbada-primitives.adb,v 1.13 2007/04/17 17:57:28 andersg Exp $
+--  $Id: nbada-primitives.adb,v 1.14 2007/04/17 17:59:20 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -511,7 +511,7 @@ package body Primitives is
            "#BEGIN Membar" & LF & HT &
            MFENCE          & LF & HT &
            "#END Membar",
-        Volatile => True );
+        Volatile => True);
    end Membar;
 
 end Primitives;
