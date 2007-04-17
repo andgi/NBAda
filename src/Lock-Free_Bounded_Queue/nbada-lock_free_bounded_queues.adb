@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  An implementation of P. Tsigas and Y. Zhangs's lock-free FIFO queue.
---  Copyright (C) 2005  Anders Gidenstam
+--  Copyright (C) 2005 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@
 --                    architectures (SPAA), 134--143, ACM, July 2001.
 --  Author          : Anders Gidenstam
 --  Created On      : Mon Jun 27 17:55:38 2005
---  $Id: nbada-lock_free_bounded_queues.adb,v 1.5 2005/11/18 10:19:56 anders Exp $
+--  $Id: nbada-lock_free_bounded_queues.adb,v 1.6 2007/04/17 17:56:38 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -45,10 +45,13 @@ with Primitives;
 package body Lock_Free_Bounded_Queues is
 
    ----------------------------------------------------------------------------
-   procedure CAS is new Primitives.Void_Compare_And_Swap_32 (Element_Type);
-   function  CAS is new Primitives.Boolean_Compare_And_Swap_32 (Element_Type);
+   procedure CAS is
+      new Primitives.Standard_Void_Compare_And_Swap (Element_Type);
+   function  CAS is
+      new Primitives.Standard_Boolean_Compare_And_Swap (Element_Type);
 
-   procedure CAS is new Primitives.Void_Compare_And_Swap_32 (Queue_Index);
+   procedure CAS is
+      new Primitives.Void_Compare_And_Swap_32 (Queue_Index);
 
    ----------------------------------------------------------------------------
    procedure Enqueue (Queue   : in out Lock_Free_Queue;

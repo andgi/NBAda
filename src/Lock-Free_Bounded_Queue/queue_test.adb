@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  A small test application for the lock-free FIFO queue.
---  Copyright (C) 2005  Anders Gidenstam
+--  Copyright (C) 2005 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@
 --  Description     : Example application for lock-free FIFO queue.
 --  Author          : Anders Gidenstam
 --  Created On      : Mon Jun 27 19:09:40 2005
---  $Id: queue_test.adb,v 1.4 2005/09/23 15:48:47 anders Exp $
+--  $Id: queue_test.adb,v 1.5 2007/04/17 17:56:38 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -60,7 +60,7 @@ procedure Queue_Test is
          Creator at 0 range  0 ..  9;
          Index   at 0 range 10 .. 31;
       end record;
-   for Value_Type'Size use 32;
+   for Value_Type'Size use Primitives.Standard_Unsigned'Size;
    pragma Atomic (Value_Type);
 
    Null_0 : constant Value_Type := (Process_Id'Last, Index_Type'Last);
@@ -117,14 +117,17 @@ procedure Queue_Test is
 --           Integer (Primitives.Fetch_And_Add (Task_Count'Access, 1))
 --         );
       --  GNAT/Linux
-      return System.Task_Info.System_Scope;
+--      return System.Task_Info.System_Scope;
+      --  GNAT/Solaris
+      return System.Task_Info.New_Bound_Thread_Attributes;
    end Pinned_Task;
 
    ----------------------------------------------------------------------------
    task body Producer is
       No_Enqueues : Primitives.Unsigned_32 := 0;
       ID          : constant Process_Id    :=
-        Process_Id (Primitives.Fetch_And_Add (No_Producers_Running'Access, 1));
+        Process_Id (Primitives.Fetch_And_Add_32
+                    (No_Producers_Running'Access, 1));
    begin
       declare
          use type Primitives.Unsigned_32;
@@ -155,8 +158,8 @@ procedure Queue_Test is
       declare
          use type Primitives.Unsigned_32;
       begin
-         Primitives.Fetch_And_Add (Enqueue_Count'Access, No_Enqueues);
-         Primitives.Fetch_And_Add (No_Producers_Running'Access, -1);
+         Primitives.Fetch_And_Add_32 (Enqueue_Count'Access, No_Enqueues);
+         Primitives.Fetch_And_Add_32 (No_Producers_Running'Access, -1);
       end;
       Ada.Text_IO.Put_Line (Output_File,
                             "Producer (?): exited.");
@@ -176,7 +179,8 @@ procedure Queue_Test is
    task body Consumer is
       No_Dequeues : Primitives.Unsigned_32 := 0;
       ID          : constant Process_Id :=
-        Process_Id (Primitives.Fetch_And_Add (No_Consumers_Running'Access, 1));
+        Process_Id (Primitives.Fetch_And_Add_32
+                    (No_Consumers_Running'Access, 1));
    begin
       declare
          Last : array (Process_Id) of Index_Type := (others => 0);
@@ -235,8 +239,8 @@ procedure Queue_Test is
       declare
          use type Primitives.Unsigned_32;
       begin
-         Primitives.Fetch_And_Add (Dequeue_Count'Access, No_Dequeues);
-         Primitives.Fetch_And_Add (No_Consumers_Running'Access, -1);
+         Primitives.Fetch_And_Add_32 (Dequeue_Count'Access, No_Dequeues);
+         Primitives.Fetch_And_Add_32 (No_Consumers_Running'Access, -1);
       end;
 
       Ada.Text_IO.Put_Line (Output_File,
@@ -269,7 +273,7 @@ begin
    begin
       delay 5.0;
       T1 := Ada.Real_Time.Clock;
-      Primitives.Fetch_And_Add (Start'Access, 1);
+      Primitives.Fetch_And_Add_32 (Start'Access, 1);
    end;
 --     declare
 --        C1 : Consumer;
@@ -298,7 +302,7 @@ begin
                                "Dequeue() = (" &
                                Process_Id'Image (V.Creator) & ", " &
                                Index_Type'Image (V.Index) & ")");
-         Primitives.Fetch_And_Add (Dequeue_Count'Access, 1);
+         Primitives.Fetch_And_Add_32 (Dequeue_Count'Access, 1);
       end loop;
    exception
       when E : others =>
