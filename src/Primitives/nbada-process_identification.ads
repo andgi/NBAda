@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Primitives - A binding to the synchronization primitives of the hardware.
---  Copyright (C) 2004 - 2005  Anders Gidenstam
+--  Copyright (C) 2004 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 --  Description     : Process IDs.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 15:56:51 2004
---  $Id: nbada-process_identification.ads,v 1.4 2005/06/09 14:45:27 anders Exp $
+--  $Id: nbada-process_identification.ads,v 1.5 2007/04/18 13:43:20 andersg Exp $
 -------------------------------------------------------------------------------
 
 generic

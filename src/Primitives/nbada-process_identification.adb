@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Primitives - A binding to the synchronization primitives of the hardware.
---  Copyright (C) 2004 - 2005  Anders Gidenstam
+--  Copyright (C) 2004 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 --  Description     : Process IDs.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 16:06:16 2004
---  $Id: nbada-process_identification.adb,v 1.4 2005/06/09 14:46:41 anders Exp $
+--  $Id: nbada-process_identification.adb,v 1.5 2007/04/18 13:43:20 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Task_Attributes;
@@ -36,7 +36,7 @@ with Primitives;
 
 package body Process_Identification is
 
-   subtype Process_ID_Base is Primitives.Unsigned_32;
+   subtype Process_ID_Base is Primitives.Standard_Unsigned;
 
    package Process_IDs is
       new Ada.Task_Attributes (Attribute     => Process_ID_Base,
