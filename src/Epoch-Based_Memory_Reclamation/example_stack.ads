@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Example Stack - A lock-free stack using epoch-based memory reclamation.
---  Copyright (C) 2005 - 2006  Anders Gidenstam
+--  Copyright (C) 2005 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@
 --                    memory management and ABA prevention.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 17:55:38 2005
---  $Id: example_stack.ads,v 1.2 2006/03/09 17:23:44 anders Exp $
+--  $Id: example_stack.ads,v 1.3 2007/04/18 13:38:08 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);

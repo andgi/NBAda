@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Epoch-based memory reclamation.
---  Copyright (C) 2006  Anders Gidenstam
+--  Copyright (C) 2006 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ pragma Style_Checks (Off);
 --                    University of Cambridge, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Mar  8 12:28:31 2006
---  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.5 2006/03/10 18:45:48 anders Exp $
+--  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.6 2007/04/18 13:38:08 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -55,18 +55,18 @@ package body Epoch_Based_Memory_Reclamation is
 
    subtype Processes is Process_Ids.Process_ID_Type;
 
-   type Epoch_ID is mod 2**31;
-   for Epoch_ID'Size use 31;
+   type Epoch_ID is mod 2**(Primitives.Standard_Unsigned'Size - 1);
+   for Epoch_ID'Size use Primitives.Standard_Unsigned'Size - 1;
    type Epoch is
       record
          ID     : Epoch_ID;
          Active : Boolean;
       end record;
    pragma Pack (Epoch);
-   for Epoch'Size use 32;
+   for Epoch'Size use Primitives.Standard_Unsigned'Size;
    pragma Atomic (Epoch);
 
-   type Node_Count   is new Primitives.Unsigned_32;
+   type Node_Count   is new Primitives.Standard_Unsigned;
 
    procedure Enter_Critical_Section (ID : in Processes);
    procedure Exit_Critical_Section  (ID : in Processes);
@@ -75,7 +75,7 @@ package body Epoch_Based_Memory_Reclamation is
    procedure Cleanup (ID    : in Processes;
                       Epoch : in Epoch_ID);
    procedure CAS is
-      new Primitives.Void_Compare_And_Swap_32 (Epoch);
+      new Primitives.Standard_Void_Compare_And_Swap (Epoch);
 
    ----------------------------------------------------------------------------
    --  Internal data structures.
@@ -98,7 +98,7 @@ package body Epoch_Based_Memory_Reclamation is
    CS_Count           : array (Processes) of Node_Count := (others => 0);
 
    --  Shared statistics.
-   Reclaimed : aliased Primitives.Unsigned_32 := 0;
+   Reclaimed : aliased Primitives.Standard_Unsigned := 0;
    pragma Atomic (Reclaimed);
 
    ----------------------------------------------------------------------------
@@ -110,11 +110,11 @@ package body Epoch_Based_Memory_Reclamation is
 
       ----------------------------------------------------------------------
       function Boolean_Compare_And_Swap is
-         new Primitives.Boolean_Compare_And_Swap_32 (Shared_Reference);
+         new Primitives.Standard_Boolean_Compare_And_Swap (Shared_Reference);
       procedure Value_Compare_And_Swap is
-         new Primitives.Compare_And_Swap_32 (Shared_Reference);
+         new Primitives.Standard_Compare_And_Swap (Shared_Reference);
       procedure Void_Compare_And_Swap is
-         new Primitives.Void_Compare_And_Swap_32 (Shared_Reference);
+         new Primitives.Standard_Void_Compare_And_Swap (Shared_Reference);
 
       ----------------------------------------------------------------------
       function  Dereference (Shared : access Shared_Reference)
@@ -227,11 +227,11 @@ package body Epoch_Based_Memory_Reclamation is
 
       ----------------------------------------------------------------------
       function Boolean_Compare_And_Swap is
-         new Primitives.Boolean_Compare_And_Swap_32 (Private_Reference);
+         new Primitives.Standard_Boolean_Compare_And_Swap (Private_Reference);
       procedure Value_Compare_And_Swap is
-         new Primitives.Compare_And_Swap_32 (Private_Reference);
+         new Primitives.Standard_Compare_And_Swap (Private_Reference);
       procedure Void_Compare_And_Swap is
-         new Primitives.Void_Compare_And_Swap_32 (Private_Reference);
+         new Primitives.Standard_Void_Compare_And_Swap (Private_Reference);
 
       ----------------------------------------------------------------------
       function  Dereference (Link : access Shared_Reference)
@@ -435,7 +435,7 @@ package body Epoch_Based_Memory_Reclamation is
         ("Epoch_Based_Memory_Reclamation.Print_Statistics:");
       Ada.Text_IO.Put_Line
         ("  #Reclaimed = " &
-         Primitives.Unsigned_32'Image (Reclaimed));
+         Primitives.Standard_Unsigned'Image (Reclaimed));
       Ada.Text_IO.Put_Line
         ("  #Epochs = " &
          Epoch_ID'Image (Global_Epoch.ID));

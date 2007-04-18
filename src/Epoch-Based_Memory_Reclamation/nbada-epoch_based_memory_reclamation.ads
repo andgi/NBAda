@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Epoch-based memory reclamation.
---  Copyright (C) 2006  Anders Gidenstam
+--  Copyright (C) 2006 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -35,13 +35,14 @@ pragma Style_Checks (Off);
 --                    University of Cambridge, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Mar  8 12:04:29 2006
---  $Id: nbada-epoch_based_memory_reclamation.ads,v 1.5 2006/03/10 18:45:48 anders Exp $
+--  $Id: nbada-epoch_based_memory_reclamation.ads,v 1.6 2007/04/18 13:38:08 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
 pragma License (Modified_GPL);
 
 with Process_Identification;
+with Primitives;
 
 generic
 
@@ -239,7 +240,7 @@ package Epoch_Based_Memory_Reclamation is
 
    private
 
-      type Private_Reference is mod 2 ** 32;
+      type Private_Reference is new Primitives.Standard_Unsigned;
 
       Null_Reference : constant Private_Reference := 0;
 
