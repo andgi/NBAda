@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Lock-free growing storage pool for fixed sized blocks.
---  Copyright (C) 2005  Anders Gidenstam
+--  Copyright (C) 2005 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@ pragma Style_Checks (OFF);
 --  Description     : A lock-free fixed storage pool implementation.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Jun 14 17:46:13 2005
---  $Id: nbada-lock_free_growing_storage_pools.adb,v 1.3 2006/03/03 17:43:22 anders Exp $
+--  $Id: nbada-lock_free_growing_storage_pools.adb,v 1.4 2007/04/18 13:01:08 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (ALL_CHECKS);
 
@@ -45,7 +45,7 @@ package body Lock_Free_Growing_Storage_Pools is
    package LFFSSP renames Lock_Free_Fixed_Size_Storage_Pools;
 
    function CAS is
-      new Primitives.Boolean_Compare_And_Swap_32 (Element_Pool_Access);
+      new Primitives.Standard_Boolean_Compare_And_Swap (Element_Pool_Access);
 
    ----------------------------------------------------------------------------
    procedure Allocate
