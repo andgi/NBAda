@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --  Lock-Free Reference Counting - Lock-Free Reference Counting based on the
 --  algorithm by Herlihy et al.
---  Copyright (C) 2006  Anders Gidenstam
+--  Copyright (C) 2006 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -25,6 +25,8 @@
 --  covered by the GNU Public License.
 --
 -------------------------------------------------------------------------------
+pragma Style_Checks (Off);
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : lock_free_reference_counting.ads
 --  Description     : Ada implementation of lock-free reference counting.
@@ -34,8 +36,9 @@
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:42:38 2006
---  $Id: nbada-lock_free_reference_counting.ads,v 1.4 2006/12/01 10:41:58 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.ads,v 1.5 2007/04/19 15:40:50 andersg Exp $
 -------------------------------------------------------------------------------
+pragma Style_Checks (All_Checks);
 
 pragma License (Modified_GPL);
 
@@ -176,7 +179,7 @@ package Lock_Free_Reference_Counting is
 
    private
 
-      type Private_Reference is mod 2 ** 32;
+      type Private_Reference is new Primitives.Standard_Unsigned;
 
       Null_Reference : constant Private_Reference := 0;
 
@@ -197,12 +200,12 @@ private
    type Managed_Node_Access is
      access all Managed_Node_Base'Class;
 
-   type Shared_Reference_Base_Impl is mod 2 ** 32;
+   type Shared_Reference_Base_Impl is new Primitives.Standard_Unsigned;
    type Shared_Reference_Base is
       record
          Ref : Shared_Reference_Base_Impl := 0;
       end record;
-   for Shared_Reference_Base'Size use 32;
+   for Shared_Reference_Base'Size use Shared_Reference_Base_Impl'Size;
    pragma Atomic (Shared_Reference_Base);
 
    Null_Reference : constant Shared_Reference_Base := (Ref => 0);

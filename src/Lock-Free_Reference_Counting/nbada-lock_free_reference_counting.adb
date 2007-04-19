@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --  Lock-Free Reference Counting - Lock-Free Reference Counting based on the
 --  algorithm by Herlihy et al.
---  Copyright (C) 2006  Anders Gidenstam
+--  Copyright (C) 2006 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -25,6 +25,8 @@
 --  covered by the GNU Public License.
 --
 -------------------------------------------------------------------------------
+pragma Style_Checks (Off);
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : lock_free_reference_counting.adb
 --  Description     : Ada implementation of lock-free reference counting.
@@ -34,8 +36,9 @@
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:55:18 2006
---  $Id: nbada-lock_free_reference_counting.adb,v 1.3 2006/12/01 10:41:58 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.adb,v 1.4 2007/04/19 15:40:50 andersg Exp $
 -------------------------------------------------------------------------------
+pragma Style_Checks (All_Checks);
 
 pragma License (Modified_GPL);
 
@@ -57,12 +60,12 @@ package body Lock_Free_Reference_Counting is
 
    procedure Fetch_And_Add (Target    : access Primitives.Unsigned_32;
                             Increment : in     Primitives.Unsigned_32)
-     renames Primitives.Fetch_And_Add;
+     renames Primitives.Fetch_And_Add_32;
 
    function Fetch_And_Add (Target    : access Primitives.Unsigned_32;
                            Increment : in     Primitives.Unsigned_32)
                           return Primitives.Unsigned_32
-     renames Primitives.Fetch_And_Add;
+     renames Primitives.Fetch_And_Add_32;
 
    procedure Clean_And_Liberate (Node : in Managed_Node_Access);
 
@@ -106,8 +109,8 @@ package body Lock_Free_Reference_Counting is
          new Ada.Unchecked_Conversion (Shared_Reference_Access,
                                        Shared_Reference_Base_Access);
 
-      function Compare_And_Swap_32 is
-         new Primitives.Boolean_Compare_And_Swap_32 (Shared_Reference_Base);
+      function Compare_And_Swap is new
+        Primitives.Standard_Boolean_Compare_And_Swap (Shared_Reference_Base);
 
       Mark_Mask  : constant Private_Reference := 2 ** Mark_Bits - 1;
       Ref_Mask   : constant Private_Reference := -(2 ** Mark_Bits);
@@ -177,7 +180,7 @@ package body Lock_Free_Reference_Counting is
 --                          Free    (VS (I));
 --                       end loop;
 --                       if Debug then
---                          Fetch_And_Add (No_Nodes_Reclaimed'Access, VS'Length);
+--                        Fetch_And_Add (No_Nodes_Reclaimed'Access, VS'Length);
 --                       end if;
 --                    end;
                end if;
@@ -205,7 +208,7 @@ package body Lock_Free_Reference_Counting is
          --  are guaranteed to have positive reference counts, regardless
          --  how the CAS goes.
          if
-           Compare_And_Swap_32
+           Compare_And_Swap
            (Target    =>
               To_Shared_Reference_Base_Access (Link.all'Unchecked_Access),
             Old_Value => (Ref => Shared_Reference_Base_Impl (Old_Value)),
@@ -315,7 +318,7 @@ package body Lock_Free_Reference_Counting is
 --                          Free    (VS (I));
 --                       end loop;
 --                       if Debug then
---                          Fetch_And_Add (No_Nodes_Reclaimed'Access, VS'Length);
+--                        Fetch_And_Add (No_Nodes_Reclaimed'Access, VS'Length);
 --                       end if;
 --                    end;
                end if;
