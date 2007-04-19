@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Lock-free Stack - A lock-free stack using lock-free memory reclamation.
---  Copyright (C) 2005 - 2006  Anders Gidenstam
+--  Copyright (C) 2005 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -29,12 +29,13 @@
 --  Description     : A lock-free stack using lock-free memory reclamation.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 17:55:38 2005
---  $Id: lock_free_stack.ads,v 1.1 2006/11/30 18:18:47 andersg Exp $
+--  $Id: lock_free_stack.ads,v 1.2 2007/04/19 12:18:16 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
 
 with Pass_The_Buck;
+with Primitives;
 
 generic
 
@@ -64,7 +65,7 @@ private
 
    type Stack_Node;
    type Stack_Node_Access is access all Stack_Node;
-   for Stack_Node_Access'Size use 32;
+   for Stack_Node_Access'Size use Primitives.Standard_Unsigned'Size;
    pragma Atomic (Stack_Node_Access);
 
    type Stack_Node is

@@ -34,7 +34,7 @@
 --                    Computer Systems, 23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 23 17:13:55 2006
---  $Id: nbada-pass_the_buck.ads,v 1.1 2006/11/30 18:18:47 andersg Exp $
+--  $Id: nbada-pass_the_buck.ads,v 1.2 2007/04/19 12:18:16 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -47,7 +47,7 @@ generic
 
    type Value_Type is private;
    --  Value_Type must be atomic.
-   --  Value_Type'Object_Size MUST be 32.
+   --  Value_Type'Object_Size MUST equal System.Word_Size.
 
    Null_Value : Value_Type;
 
@@ -70,6 +70,7 @@ package Pass_The_Buck is
 private
 
    type Guard_Type is new Natural range 0 .. Max_Number_Of_Guards;
+   for Guard_Type'Size use 32;
    pragma Atomic (Guard_Type);
 
 end Pass_The_Buck;

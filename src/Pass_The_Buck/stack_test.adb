@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Stack test - A small test benchmark for concurrent stack data-structures.
---  Copyright (C) 2005 - 2006  Anders Gidenstam
+--  Copyright (C) 2005 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@
 --  Description     : Test of the lock-free stack.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 18:54:53 2005
---  $Id: stack_test.adb,v 1.1 2006/11/30 18:18:47 andersg Exp $
+--  $Id: stack_test.adb,v 1.2 2007/04/19 12:18:16 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -107,10 +107,12 @@ procedure Stack_Test is
 --           Priority    => System.Task_Info.No_Specified_Priority,
 --           Runon_CPU   =>
 --             --System.Task_Info.ANY_CPU
---             Integer (Primitives.Fetch_And_Add (Task_Count'Access, 1))
+--             Integer (Primitives.Fetch_And_Add_32 (Task_Count'Access, 1))
 --           );
       --  GNAT/Linux
-      return System.Task_Info.System_Scope;
+--      return System.Task_Info.System_Scope;
+      --  GNAT/Solaris
+      return System.Task_Info.New_Bound_Thread_Attributes;
    end Pinned_Task;
 
    ----------------------------------------------------------------------------
@@ -118,7 +120,7 @@ procedure Stack_Test is
       No_Pushes : Primitives.Unsigned_32 := 0;
    begin
       PID.Register;
-      Primitives.Fetch_And_Add (No_Pushers_Running'Access, 1);
+      Primitives.Fetch_And_Add_32 (No_Pushers_Running'Access, 1);
 
       declare
          use type Primitives.Unsigned_32;
@@ -151,8 +153,8 @@ procedure Stack_Test is
       declare
          use type Primitives.Unsigned_32;
       begin
-         Primitives.Fetch_And_Add (Push_Count'Access, No_Pushes);
-         Primitives.Fetch_And_Add (No_Pushers_Running'Access, -1);
+         Primitives.Fetch_And_Add_32 (Push_Count'Access, No_Pushes);
+         Primitives.Fetch_And_Add_32 (No_Pushers_Running'Access, -1);
       end;
       Put_Line ("Pusher (?): exited.");
 
@@ -172,7 +174,7 @@ procedure Stack_Test is
       No_Pops : Primitives.Unsigned_32 := 0;
    begin
       PID.Register;
-      Primitives.Fetch_And_Add (No_Poppers_Running'Access, 1);
+      Primitives.Fetch_And_Add_32 (No_Poppers_Running'Access, 1);
 
       declare
          ID   : constant PID.Process_ID_Type := PID.Process_ID;
@@ -232,8 +234,8 @@ procedure Stack_Test is
       declare
          use type Primitives.Unsigned_32;
       begin
-         Primitives.Fetch_And_Add (Pop_Count'Access, No_Pops);
-         Primitives.Fetch_And_Add (No_Poppers_Running'Access, -1);
+         Primitives.Fetch_And_Add_32 (Pop_Count'Access, No_Pops);
+         Primitives.Fetch_And_Add_32 (No_Poppers_Running'Access, -1);
       end;
 
       Put_Line ("Popper (?): exited.");
@@ -331,7 +333,7 @@ begin
    begin
       delay 5.0;
       T1 := Ada.Real_Time.Clock;
-      Primitives.Fetch_And_Add (Start'Access, 1);
+      Primitives.Fetch_And_Add_32 (Start'Access, 1);
    end;
 
    T2 := Ada.Real_Time.Clock;
@@ -365,7 +367,7 @@ begin
          Put_Line ("Pop() = (" &
                    PID.Process_ID_Type'Image (V.Creator) & ", " &
                    Integer'Image (V.Index) & ")");
-         Primitives.Fetch_And_Add (Pop_Count'Access, 1);
+         Primitives.Fetch_And_Add_32 (Pop_Count'Access, 1);
       end loop;
    exception
       when Stacks.Stack_Empty =>

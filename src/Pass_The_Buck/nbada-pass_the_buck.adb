@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Pass-the-buck - An implementation of Herlihy et. al.'s algorithm.
---  Copyright (C) 2006  Anders Gidenstam
+--  Copyright (C) 2006 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@
 --                    Computer Systems, 23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 23 17:30:49 2006
---  $Id: nbada-pass_the_buck.adb,v 1.1 2006/11/30 18:18:47 andersg Exp $
+--  $Id: nbada-pass_the_buck.adb,v 1.2 2007/04/19 12:18:16 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -48,9 +48,7 @@ with Ada.Unchecked_Conversion;
 package body Pass_The_Buck is
 
    ----------------------------------------------------------------------
-   type Atomic_Boolean is mod 2**32;
-   for  Atomic_Boolean'Size use 32;
-   pragma Atomic (Atomic_Boolean);
+   type Atomic_Boolean is new Primitives.Unsigned_32;
 
    ----------------------------------------------------------------------
    function Hash_Value (Value : in Value_Type;
@@ -80,7 +78,7 @@ package body Pass_The_Buck is
    procedure Compare_And_Swap is
       new Primitives.Void_Compare_And_Swap_32 (Guard_Type);
    function  Compare_And_Swap is
-      new Primitives.Boolean_Compare_And_Swap_32 (Value_Type);
+      new Primitives.Standard_Boolean_Compare_And_Swap (Value_Type);
 
 
    ----------------------------------------------------------------------
@@ -183,12 +181,13 @@ package body Pass_The_Buck is
    ----------------------------------------------------------------------
    function Hash_Value (Value : in Value_Type;
                         Size  : in Natural) return Natural is
-      type Unsigned is mod 2**32;
       function To_Unsigned is
          new Ada.Unchecked_Conversion (Value_Type,
-                                       Unsigned);
+                                       Primitives.Standard_Unsigned);
+      use type Primitives.Standard_Unsigned;
    begin
-      return Natural ((To_Unsigned (Value) / 4) mod Unsigned (Size));
+      return Natural ((To_Unsigned (Value) / 4) mod
+                      Primitives.Standard_Unsigned (Size));
    end Hash_Value;
 
 end Pass_The_Buck;

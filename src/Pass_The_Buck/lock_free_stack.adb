@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Lock-free Stack - A lock-free stack using lock-free memory reclamation.
---  Copyright (C) 2005 - 2006  Anders Gidenstam
+--  Copyright (C) 2005 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@
 --                    memory management and ABA prevention.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 18:15:38 2005
---  $Id: lock_free_stack.adb,v 1.1 2006/11/30 18:18:47 andersg Exp $
+--  $Id: lock_free_stack.adb,v 1.2 2007/04/19 12:18:16 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -39,8 +39,6 @@ with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
 
 with Lock_Free_Growing_Storage_Pools;
-
-with Primitives;
 
 package body Lock_Free_Stack is
 
@@ -55,7 +53,7 @@ package body Lock_Free_Stack is
    for New_Stack_Node_Access'Storage_Pool use Node_Pool;
 
    function Boolean_Compare_And_Swap is
-      new Primitives.Boolean_Compare_And_Swap_32 (Node_Access);
+      new Primitives.Standard_Boolean_Compare_And_Swap (Node_Access);
 
    ----------------------------------------------------------------------------
    procedure Push (On      : in out Stack_Type;
