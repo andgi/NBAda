@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Large Primitives - An implementation of Maged Michael's LL/SC primitives.
---  Copyright (C) 2005  Anders Gidenstam
+--  Copyright (C) 2005 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@
 --  Description     : Test of large word LL/SC/VL and hazard pointers.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 24 15:00:10 2005
---  $Id: large_primitives_test.adb,v 1.4 2005/09/23 17:27:35 anders Exp $
+--  $Id: large_primitives_test.adb,v 1.5 2007/04/19 09:28:44 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -85,7 +85,7 @@ procedure Large_Primitives_Test is
 --                                    ": LL(A) -> " &
 --                                    String (Load_Linked (A'Access)));
             Tmp := Load_Linked (A'Access);
-            Primitives.Fetch_And_Add (Loaded'Access, 1);
+            Primitives.Fetch_And_Add_32 (Loaded'Access, 1);
 
             --  Work.
             for J in 1 .. 1_000 loop
@@ -99,9 +99,9 @@ procedure Large_Primitives_Test is
 --                 (Store_Conditional (A'Access, "CepaDepa  ")));
             B := Store_Conditional (A'Access, "CepaDepa  ");
             if B then
-               Primitives.Fetch_And_Add (SC_Succeeded'Access, 1);
+               Primitives.Fetch_And_Add_32 (SC_Succeeded'Access, 1);
             else
-               Primitives.Fetch_And_Add (SC_Failed'Access, 1);
+               Primitives.Fetch_And_Add_32 (SC_Failed'Access, 1);
             end if;
 
          end loop;
@@ -128,7 +128,7 @@ procedure Large_Primitives_Test is
       begin
          for I in 1 .. 100_000 loop
             Tmp := Load_Linked (A'Access);
-            Primitives.Fetch_And_Add (Loaded'Access, 1);
+            Primitives.Fetch_And_Add_32 (Loaded'Access, 1);
 
 --            B := Store_Conditional (A'Access, "CepaDepa  ");
          end loop;

@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Large Primitives - An implementation of Maged Michael's LL/SC primitives.
---  Copyright (C) 2005 - 2006   Anders Gidenstam
+--  Copyright (C) 2005 - 2007   Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 23 17:59:44 2005
---  $Id: nbada-large_primitives.ads,v 1.7 2006/10/18 11:42:38 andersg Exp $
+--  $Id: nbada-large_primitives.ads,v 1.8 2007/04/19 09:28:44 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);

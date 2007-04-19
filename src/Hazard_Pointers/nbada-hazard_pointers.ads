@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Hazard Pointers - An implementation of Maged Michael's hazard pointers.
---  Copyright (C) 2004 - 2006  Anders Gidenstam
+--  Copyright (C) 2004 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:10:15 2004
---  $Id: nbada-hazard_pointers.ads,v 1.11 2006/03/08 11:18:21 anders Exp $
+--  $Id: nbada-hazard_pointers.ads,v 1.12 2007/04/19 09:28:44 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);

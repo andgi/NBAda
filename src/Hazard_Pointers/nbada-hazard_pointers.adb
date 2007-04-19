@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Hazard Pointers - An implementation of Maged Michael's hazard pointers.
---  Copyright (C) 2004 - 2006  Anders Gidenstam
+--  Copyright (C) 2004 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:35:09 2004
---  $Id: nbada-hazard_pointers.adb,v 1.11 2006/03/02 13:58:11 anders Exp $
+--  $Id: nbada-hazard_pointers.adb,v 1.12 2007/04/19 09:28:44 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -55,7 +55,7 @@ package body Hazard_Pointers is
    subtype Processes is Process_Ids.Process_ID_Type;
    type    HP_Index  is new Integer range 1 .. Max_Number_Of_Dereferences;
 
-   type Node_Count   is new Primitives.Unsigned_32;
+   type Node_Count   is new Primitives.Standard_Unsigned;
 
    procedure Scan (ID : in Processes);
    function Hash_Ref (Ref  : in Managed_Node_Access;
@@ -78,7 +78,7 @@ package body Hazard_Pointers is
    D_Count : array (Processes) of Node_Count := (others => 0);
 
    --  Shared statistics.
-   Reclaimed : aliased Primitives.Unsigned_32 := 0;
+   Reclaimed : aliased Primitives.Standard_Unsigned := 0;
    pragma Atomic (Reclaimed);
 
    ----------------------------------------------------------------------------
@@ -103,11 +103,11 @@ package body Hazard_Pointers is
 
       ----------------------------------------------------------------------
       function Boolean_Compare_And_Swap is
-         new Primitives.Boolean_Compare_And_Swap_32 (Shared_Reference);
+         new Primitives.Standard_Boolean_Compare_And_Swap (Shared_Reference);
       procedure Value_Compare_And_Swap is
-         new Primitives.Compare_And_Swap_32 (Shared_Reference);
+         new Primitives.Standard_Compare_And_Swap (Shared_Reference);
       procedure Void_Compare_And_Swap is
-         new Primitives.Void_Compare_And_Swap_32 (Shared_Reference);
+         new Primitives.Standard_Void_Compare_And_Swap (Shared_Reference);
 
       ----------------------------------------------------------------------
       function  Dereference (Shared : access Shared_Reference)
@@ -216,7 +216,7 @@ package body Hazard_Pointers is
    begin
       Ada.Text_IO.Put_Line ("Hazard_Pointers.Print_Statistics:");
       Ada.Text_IO.Put_Line ("  #Reclaimed = " &
-                            Primitives.Unsigned_32'Image (Reclaimed));
+                            Primitives.Standard_Unsigned'Image (Reclaimed));
    end Print_Statistics;
 
    ----------------------------------------------------------------------------
@@ -267,12 +267,13 @@ package body Hazard_Pointers is
    ----------------------------------------------------------------------------
    function Hash_Ref (Ref  : in Managed_Node_Access;
                       Size : in Natural) return Natural is
-      type Unsigned is mod 2**32;
       function To_Unsigned is
          new Ada.Unchecked_Conversion (Managed_Node_Access,
-                                       Unsigned);
+                                       Primitives.Standard_Unsigned);
+      use type Primitives.Standard_Unsigned;
    begin
-      return Natural ((To_Unsigned (Ref) / 4) mod Unsigned (Size));
+      return Natural ((To_Unsigned (Ref) / 4) mod
+                      Primitives.Standard_Unsigned (Size));
    end Hash_Ref;
 
 end Hazard_Pointers;

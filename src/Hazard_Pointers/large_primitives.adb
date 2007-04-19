@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Large Primitives - An implementation of Maged Michael's LL/SC primitives.
---  Copyright (C) 2005 - 2006  Anders Gidenstam
+--  Copyright (C) 2005 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 24 10:25:44 2005
---  $Id: large_primitives.adb,v 1.11 2006/10/18 11:42:37 andersg Exp $
+--  $Id: large_primitives.adb,v 1.12 2007/04/19 09:28:44 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -71,7 +71,7 @@ package body Large_Primitives is
    Next : array (Processes) of Exp_Index := (others => 1);
 
    --  Shared statistics.
-   Allocated : aliased Primitives.Unsigned_32 := 0;
+   Allocated : aliased Primitives.Standard_Unsigned := 0;
    pragma Atomic (Allocated);
 
    ----------------------------------------------------------------------------
@@ -321,7 +321,7 @@ package body Large_Primitives is
    begin
       Ada.Text_IO.Put_Line ("Large_Primitives.Print_Statistics:");
       Ada.Text_IO.Put_Line ("  #Allocated = " &
-                            Primitives.Unsigned_32'Image (Allocated));
+                            Primitives.Standard_Unsigned'Image (Allocated));
    end Print_Statistics;
 
 
