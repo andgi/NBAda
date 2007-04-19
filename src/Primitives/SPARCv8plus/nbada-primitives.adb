@@ -28,7 +28,7 @@
 --  Description     : Synchronization primitives.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Jul  5 14:53:50 2002
---  $Id: nbada-primitives.adb,v 1.12 2007/04/17 17:14:28 andersg Exp $
+--  $Id: nbada-primitives.adb,v 1.13 2007/04/19 12:03:30 andersg Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
@@ -136,6 +136,8 @@ package body Primitives is
 
    ----------------------------------------------------------------------------
    function Atomic_Read_32 (Target : access Element) return Element is
+      A1 : Assertion (Assert => Element'Object_Size = 32);
+      pragma Unreferenced (A1);
    begin
       Membar;
       declare
@@ -149,6 +151,8 @@ package body Primitives is
    ----------------------------------------------------------------------------
    procedure Atomic_Write_32 (Target : access Element;
                               Value  : in     Element) is
+      A1 : Assertion (Assert => Element'Object_Size = 32);
+      pragma Unreferenced (A1);
    begin
       Membar;
       Target.all := Value;
@@ -163,6 +167,7 @@ package body Primitives is
       type Element_Access is access all Element;
 
       A1 : Assertion (Assert => Element'Object_Size = 32);
+      pragma Unreferenced (A1);
    begin
       System.Machine_Code.Asm
         (Template =>
@@ -191,6 +196,7 @@ package body Primitives is
       type Element_Access is access all Element;
 
       A1  : Assertion (Assert => Element'Object_Size = 32);
+      pragma Unreferenced (A1);
       Tmp : Element;
    begin
       System.Machine_Code.Asm
@@ -220,6 +226,7 @@ package body Primitives is
       type Element_Access is access all Element;
 
       A1 : Assertion (Assert => Element'Object_Size = 32);
+      pragma Unreferenced (A1);
    begin
       System.Machine_Code.Asm
         (Template =>
@@ -309,6 +316,8 @@ package body Primitives is
 
    ----------------------------------------------------------------------------
    function Atomic_Read_64 (Target : access Element) return Element is
+      A1 : Assertion (Assert => Element'Object_Size = 64);
+      pragma Unreferenced (A1);
    begin
       raise Not_Implemented;
    end Atomic_Read_64;
@@ -316,6 +325,8 @@ package body Primitives is
    ----------------------------------------------------------------------------
    procedure Atomic_Write_64 (Target : access Element;
                               Value  : in     Element) is
+      A1 : Assertion (Assert => Element'Object_Size = 64);
+      pragma Unreferenced (A1);
    begin
       raise Not_Implemented;
    end Atomic_Write_64;
@@ -324,10 +335,8 @@ package body Primitives is
    procedure Compare_And_Swap_64 (Target    : access Element;
                                   Old_Value : in     Element;
                                   New_Value : in out Element) is
-      use Ada.Characters.Latin_1;
-      type Element_Access is access all Element;
-
       A1 : Assertion (Assert => Element'Object_Size = 64);
+      pragma Unreferenced (A1);
    begin
       raise Not_Implemented;
    end Compare_And_Swap_64;
@@ -337,10 +346,8 @@ package body Primitives is
                                          Old_Value : in     Element;
                                          New_Value : in     Element)
                                         return Boolean is
-      use Ada.Characters.Latin_1;
-      type Element_Access is access all Element;
-
       A1 : Assertion (Assert => Element'Object_Size = 64);
+      pragma Unreferenced (A1);
    begin
       raise Not_Implemented;
       return False;
@@ -350,10 +357,8 @@ package body Primitives is
    procedure Void_Compare_And_Swap_64 (Target    : access Element;
                                        Old_Value : in     Element;
                                        New_Value : in     Element) is
-      use Ada.Characters.Latin_1;
-      type Element_Access is access all Element;
-
       A1 : Assertion (Assert => Element'Object_Size = 64);
+      pragma Unreferenced (A1);
    begin
       raise Not_Implemented;
    end Void_Compare_And_Swap_64;

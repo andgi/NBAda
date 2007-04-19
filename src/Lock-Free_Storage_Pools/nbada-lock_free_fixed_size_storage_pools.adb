@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Lock-free fixed size storage pool.
---  Copyright (C) 2003 - 2005  Anders Gidenstam
+--  Copyright (C) 2003 - 2006  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@ pragma Style_Checks (OFF);
 --  Description     : A lock-free fixed size storage pool implementation.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Apr  3 17:50:52 2003
---  $Id: nbada-lock_free_fixed_size_storage_pools.adb,v 1.8 2006/03/03 17:43:22 anders Exp $
+--  $Id: nbada-lock_free_fixed_size_storage_pools.adb,v 1.9 2007/04/19 12:06:15 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (ALL_CHECKS);
 
@@ -105,6 +105,7 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
       declare
          Head : constant Pool_Block_Access :=
            To_Block_Access (Pool.Free_List, Pool);
+         pragma Unreferenced (Head);
       begin
          null;
       end;
@@ -131,6 +132,8 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
       Size_In_Storage_Elements : in     System.Storage_Elements.Storage_Count;
       Alignment                : in     System.Storage_Elements.Storage_Count)
    is
+      pragma Unreferenced (Size_In_Storage_Elements);
+      pragma Unreferenced (Alignment);
       use type System.Address;
 
       Block : Pool_Block_Access;
@@ -170,6 +173,7 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
       declare
          Head : constant Pool_Block_Access :=
            To_Block_Access (Pool.Free_List, Pool);
+         pragma Unreferenced (Head);
       begin
          null;
       end;

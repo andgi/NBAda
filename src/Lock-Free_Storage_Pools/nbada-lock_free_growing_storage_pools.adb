@@ -30,7 +30,7 @@ pragma Style_Checks (OFF);
 --  Description     : A lock-free fixed storage pool implementation.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Jun 14 17:46:13 2005
---  $Id: nbada-lock_free_growing_storage_pools.adb,v 1.4 2007/04/18 13:01:08 andersg Exp $
+--  $Id: nbada-lock_free_growing_storage_pools.adb,v 1.5 2007/04/19 12:07:40 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (ALL_CHECKS);
 
@@ -129,6 +129,7 @@ package body Lock_Free_Growing_Storage_Pools is
    ----------------------------------------------------------------------------
    function Storage_Size (Pool : Lock_Free_Storage_Pool)
                          return System.Storage_Elements.Storage_Count is
+      pragma Unreferenced (Pool);
    begin
       return 0;
    end Storage_Size;
@@ -136,6 +137,7 @@ package body Lock_Free_Growing_Storage_Pools is
    ----------------------------------------------------------------------------
    function Validate (Pool : Lock_Free_Storage_Pool)
                      return Natural is
+      pragma Unreferenced (Pool);
    begin
       return 0;
    end Validate;
