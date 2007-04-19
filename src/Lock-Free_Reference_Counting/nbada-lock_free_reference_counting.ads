@@ -26,7 +26,6 @@
 --
 -------------------------------------------------------------------------------
 pragma Style_Checks (Off);
--------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : lock_free_reference_counting.ads
 --  Description     : Ada implementation of lock-free reference counting.
@@ -36,7 +35,7 @@ pragma Style_Checks (Off);
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:42:38 2006
---  $Id: nbada-lock_free_reference_counting.ads,v 1.5 2007/04/19 15:40:50 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.ads,v 1.6 2007/04/19 16:00:03 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -125,6 +124,10 @@ package Lock_Free_Reference_Counting is
       function  Deref   (Node : in Private_Reference)
                         return Node_Access;
 
+      function  Copy (Node : in Private_Reference) return Private_Reference;
+      --  Creates a new Private Reference to Node. Both will need to be
+      --  released.
+
       function  Compare_And_Swap (Link      : access Shared_Reference;
                                   Old_Value : in Private_Reference;
                                   New_Value : in Private_Reference)
@@ -177,9 +180,64 @@ package Lock_Free_Reference_Counting is
       pragma Inline_Always ("=");
       --  It is possible to compare a reference to the current value of a link.
 
+      ------------------------------------------------------------------------
+      --  Unsafe operations.
+      --  These SHOULD only be use when the user algorithm guarantees
+      --  the absence of ABA-problems.
+      --  In such algorithms the use of these operations in some particular
+      --  situations could allow some performance improving optimizations.
+      ------------------------------------------------------------------------
+
+      type Unsafe_Reference_Value is private;
+      --  Note: An Unsafe_Reference_Value does not keep a claim to any
+      --        node and can therefore only be used where ABA safety is
+      --        ensured by other means. It cannot be dereferenced.
+
+      function  Unsafe_Read (Link : access Shared_Reference)
+                            return Unsafe_Reference_Value;
+      pragma Inline_Always (Unsafe_Read);
+
+      function  Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in Unsafe_Reference_Value;
+                                  New_Value : in Private_Reference)
+                                 return Boolean;
+      function  Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in Unsafe_Reference_Value;
+                                  New_Value : in Unsafe_Reference_Value)
+                                 return Boolean;
+      procedure Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in     Unsafe_Reference_Value;
+                                  New_Value : in     Private_Reference);
+      procedure Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in     Unsafe_Reference_Value;
+                                  New_Value : in     Unsafe_Reference_Value);
+
+      function  Is_Marked (Node : in     Unsafe_Reference_Value)
+                          return Boolean;
+      pragma Inline_Always (Is_Marked);
+
+      function  Mark      (Node : in     Unsafe_Reference_Value)
+                          return Unsafe_Reference_Value;
+      pragma Inline_Always (Mark);
+
+      function "=" (Val : in     Unsafe_Reference_Value;
+                    Ref : in     Private_Reference) return Boolean;
+      pragma Inline_Always ("=");
+      function "=" (Ref : in     Private_Reference;
+                    Val : in     Unsafe_Reference_Value) return Boolean;
+      pragma Inline_Always ("=");
+
+      function "=" (Link : in     Shared_Reference;
+                    Ref  : in     Unsafe_Reference_Value) return Boolean;
+      pragma Inline_Always ("=");
+      function "=" (Ref  : in     Unsafe_Reference_Value;
+                    Link : in     Shared_Reference) return Boolean;
+      pragma Inline_Always ("=");
+
    private
 
       type Private_Reference is new Primitives.Standard_Unsigned;
+      type Unsafe_Reference_Value is new Private_Reference;
 
       Null_Reference : constant Private_Reference := 0;
 

@@ -36,7 +36,7 @@ pragma Style_Checks (Off);
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:55:18 2006
---  $Id: nbada-lock_free_reference_counting.adb,v 1.4 2007/04/19 15:40:50 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.adb,v 1.5 2007/04/19 16:00:03 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -169,20 +169,7 @@ package body Lock_Free_Reference_Counting is
                                  Increment => -1) = 1
                then
                   Clean_And_Liberate (Node_Base);
---                    Dispose (Node_Base);
---                    declare
---                       Old : constant PTB.Value_Set (1 .. 1)
---                         := (Node_Base, others => null);
---                       VS  : constant PTB.Value_Set
---                         := PTB.Liberate (Old);
---                    begin
---                       for I in VS'Range loop
---                          Free    (VS (I));
---                       end loop;
---                       if Debug then
---                        Fetch_And_Add (No_Nodes_Reclaimed'Access, VS'Length);
---                       end if;
---                    end;
+
                end if;
             end;
          end if;
@@ -196,6 +183,25 @@ package body Lock_Free_Reference_Counting is
       function Deref (Node : in Private_Reference)
                      return Node_Access renames To_Node_Access;
 
+
+      ----------------------------------------------------------------------
+      function  Copy (Node : in Private_Reference) return Private_Reference is
+         use type Reference_Count;
+      begin
+         if To_Node_Access (Node) /= null then
+            declare
+               Node_Base : constant Managed_Node_Access :=
+                 Managed_Node_Access (To_Node_Access (Node));
+               --  Base type view of the node.
+            begin
+               Fetch_And_Add (Target    => Node_Base.MM_RC'Access,
+                              Increment => 1);
+               return Node;
+            end;
+         else
+            return Null_Reference;
+         end if;
+      end Copy;
 
       ----------------------------------------------------------------------
       function  Compare_And_Swap (Link      : access Shared_Reference;
@@ -214,43 +220,33 @@ package body Lock_Free_Reference_Counting is
             Old_Value => (Ref => Shared_Reference_Base_Impl (Old_Value)),
             New_Value => (Ref => Shared_Reference_Base_Impl (New_Value)))
          then
-            if To_Node_Access (New_Value) /= null then
-               declare
-                  New_Value_Base : constant Managed_Node_Access :=
-                    Managed_Node_Access (To_Node_Access (New_Value));
-                  --  Base type view of the node.
-               begin
-                  Fetch_And_Add (New_Value_Base.MM_RC'Access, 1);
-               end;
-            end if;
+            if To_Node_Access (New_Value) /= To_Node_Access (Old_Value) then
 
-            if To_Node_Access (Old_Value) /= null then
-               declare
-                  Old_Value_Base : constant Managed_Node_Access :=
-                    Managed_Node_Access (To_Node_Access (Old_Value));
-                  --  Base type view of the node.
-               begin
-                  if Fetch_And_Add (Target    => Old_Value_Base.MM_RC'Access,
-                                    Increment => -1) = 1
-                  then
-                     Clean_And_Liberate (Old_Value_Base);
---                       Dispose (Old_Value_Base);
---                       declare
---                          Old : constant PTB.Value_Set (1 .. 1)
---                            := (Old_Value_Base, others => null);
---                          VS  : constant PTB.Value_Set
---                            := PTB.Liberate (Old);
---                       begin
---                          for I in VS'Range loop
---                             Free    (VS (I));
---                          end loop;
---                          if Debug then
---                             Fetch_And_Add (No_Nodes_Reclaimed'Access,
---                                            VS'Length);
---                          end if;
---                       end;
-                  end if;
-               end;
+               if To_Node_Access (New_Value) /= null then
+                  declare
+                     New_Value_Base : constant Managed_Node_Access :=
+                       Managed_Node_Access (To_Node_Access (New_Value));
+                     --  Base type view of the node.
+                  begin
+                     Fetch_And_Add (New_Value_Base.MM_RC'Access, 1);
+                  end;
+               end if;
+
+               if To_Node_Access (Old_Value) /= null then
+                  declare
+                     Old_Value_Base : constant Managed_Node_Access :=
+                       Managed_Node_Access (To_Node_Access (Old_Value));
+                     --  Base type view of the node.
+                  begin
+                     if Fetch_And_Add
+                       (Target    => Old_Value_Base.MM_RC'Access,
+                        Increment => -1) = 1
+                     then
+                        Clean_And_Liberate (Old_Value_Base);
+
+                     end if;
+                  end;
+               end if;
             end if;
 
             return True;
@@ -263,7 +259,6 @@ package body Lock_Free_Reference_Counting is
       procedure Compare_And_Swap (Link      : access Shared_Reference;
                                   Old_Value : in     Private_Reference;
                                   New_Value : in     Private_Reference) is
-         use type Reference_Count;
       begin
          if
            Compare_And_Swap (Link,
@@ -303,24 +298,11 @@ package body Lock_Free_Reference_Counting is
                if Fetch_And_Add (Target    => Old_Base.MM_RC'Access,
                                  Increment => -1) = 1
                then
-                  --  NOTE: We cannot allow recusrion here as it will easily
+                  --  NOTE: We cannot allow recursion here as it will easily
                   --        overflow the stack.
 
                   Clean_And_Liberate (Old_Base);
---                    Dispose (Old_Base);
---                    declare
---                       Old : constant PTB.Value_Set (1 .. 1)
---                         := (Old_Base, others => null);
---                       VS  : constant PTB.Value_Set
---                         := PTB.Liberate (Old);
---                    begin
---                       for I in VS'Range loop
---                          Free    (VS (I));
---                       end loop;
---                       if Debug then
---                        Fetch_And_Add (No_Nodes_Reclaimed'Access, VS'Length);
---                       end if;
---                    end;
+
                end if;
             end;
          end if;
@@ -377,14 +359,15 @@ package body Lock_Free_Reference_Counting is
       function  Is_Marked (Node : in     Private_Reference)
                           return Boolean is
       begin
-         return (Node and Mark_Mask) = 1;
+         return (Node and Mark_Mask) = Private_Reference'(1);
       end Is_Marked;
 
       ----------------------------------------------------------------------
       function  Is_Marked (Node : in     Shared_Reference)
                           return Boolean is
       begin
-         return (To_Private_Reference (Node) and Mark_Mask) = 1;
+         return (To_Private_Reference (Node) and Mark_Mask) =
+           Private_Reference'(1);
       end Is_Marked;
 
       ----------------------------------------------------------------------
@@ -401,7 +384,125 @@ package body Lock_Free_Reference_Counting is
          return To_Private_Reference (Link) = Ref;
       end "=";
 
+      ----------------------------------------------------------------------
+      ----------------------------------------------------------------------
+      function Unsafe_Read (Link : access Shared_Reference)
+                           return Unsafe_Reference_Value is
+      begin
+         return Unsafe_Reference_Value (To_Private_Reference (Link.all));
+      end Unsafe_Read;
 
+      ----------------------------------------------------------------------
+      function  Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in Unsafe_Reference_Value;
+                                  New_Value : in Private_Reference)
+                                 return Boolean is
+      begin
+         --  Since we have not dereferenced Old_Value it is not
+         --  guaranteed to have a positive reference count.
+         --  However, since we just successfully removed a link to that
+         --  node it's reference count certainly should not be zero.
+         return Compare_And_Swap (Link      => Link,
+                                  Old_Value => Private_Reference (Old_Value),
+                                  New_Value => New_Value);
+      end Compare_And_Swap;
+
+      ----------------------------------------------------------------------
+      procedure Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in     Unsafe_Reference_Value;
+                                  New_Value : in     Private_Reference) is
+      begin
+         --  Since we have not dereferenced Old_Value it is not
+         --  guaranteed to have a positive reference count.
+         --  However, since we just successfully removed a link to that
+         --  node it's reference count certainly should not be zero.
+         if
+           Compare_And_Swap (Link,
+                             Private_Reference (Old_Value),
+                             New_Value)
+         then
+            null;
+         end if;
+      end Compare_And_Swap;
+
+      ----------------------------------------------------------------------
+      function  Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in Unsafe_Reference_Value;
+                                  New_Value : in Unsafe_Reference_Value)
+                                 return Boolean is
+      begin
+         --  Since we have not dereferenced Old_Value it is not
+         --  guaranteed to have a positive reference count.
+         --  However, since we just successfully removed a link to that
+         --  node it's reference count certainly should not be zero.
+         return Compare_And_Swap (Link      => Link,
+                                  Old_Value => Private_Reference (Old_Value),
+                                  New_Value => Private_Reference (New_Value));
+      end Compare_And_Swap;
+
+      ----------------------------------------------------------------------
+      procedure Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in     Unsafe_Reference_Value;
+                                  New_Value : in     Unsafe_Reference_Value) is
+      begin
+         --  Since we have not dereferenced Old_Value it is not
+         --  guaranteed to have a positive reference count.
+         --  However, since we just successfully removed a link to that
+         --  node it's reference count certainly should not be zero.
+         if
+           Compare_And_Swap (Link,
+                             Private_Reference (Old_Value),
+                             Private_Reference (New_Value))
+         then
+            null;
+         end if;
+      end Compare_And_Swap;
+
+      ----------------------------------------------------------------------
+      function  Is_Marked (Node : in     Unsafe_Reference_Value)
+                          return Boolean is
+      begin
+         return (Private_Reference (Node) and Mark_Mask) =
+           Private_Reference'(1);
+      end Is_Marked;
+
+      ----------------------------------------------------------------------
+      function  Mark      (Node : in     Unsafe_Reference_Value)
+                          return Unsafe_Reference_Value is
+      begin
+         return Node or 1;
+      end Mark;
+
+      ----------------------------------------------------------------------
+      function "=" (Val : in     Unsafe_Reference_Value;
+                    Ref : in     Private_Reference) return Boolean is
+      begin
+         return Ref = Private_Reference (Val);
+      end "=";
+
+
+      ----------------------------------------------------------------------
+      function "=" (Ref : in     Private_Reference;
+                    Val : in     Unsafe_Reference_Value) return Boolean is
+      begin
+         return Ref = Private_Reference (Val);
+      end "=";
+
+      ----------------------------------------------------------------------
+      function "=" (Link : in     Shared_Reference;
+                    Ref  : in     Unsafe_Reference_Value) return Boolean is
+      begin
+         return To_Private_Reference (Link) = Private_Reference (Ref);
+      end "=";
+
+      ----------------------------------------------------------------------
+      function "=" (Ref  : in     Unsafe_Reference_Value;
+                    Link : in     Shared_Reference) return Boolean is
+      begin
+         return To_Private_Reference (Link) = Private_Reference (Ref);
+      end "=";
+
+      ----------------------------------------------------------------------
       ----------------------------------------------------------------------
       function To_Node_Access (X : Private_Reference)
                                      return Node_Access is
