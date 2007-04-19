@@ -28,7 +28,7 @@
 --  Description     : Synchronization primitives.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Jul  5 14:53:50 2002
---  $Id: nbada-primitives.adb,v 1.12 2007/04/17 17:12:23 andersg Exp $
+--  $Id: nbada-primitives.adb,v 1.13 2007/04/19 12:16:16 andersg Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
@@ -135,6 +135,8 @@ package body Primitives is
 
    ----------------------------------------------------------------------------
    function Atomic_Read_32 (Target : access Element) return Element is
+      A1 : Assertion (Assert => Element'Object_Size = 32);
+      pragma Unreferenced (A1);
    begin
       Membar;
       declare
@@ -148,6 +150,8 @@ package body Primitives is
    ----------------------------------------------------------------------------
    procedure Atomic_Write_32 (Target : access Element;
                               Value  : in     Element) is
+      A1 : Assertion (Assert => Element'Object_Size = 32);
+      pragma Unreferenced (A1);
    begin
       Membar;
       Target.all := Value;
@@ -162,6 +166,7 @@ package body Primitives is
       type Element_Access is access all Element;
 
       A1 : Assertion (Assert => Element'Object_Size = 32);
+      pragma Unreferenced (A1);
    begin
       System.Machine_Code.Asm
         (Template =>
@@ -190,6 +195,7 @@ package body Primitives is
       type Element_Access is access all Element;
 
       A1  : Assertion (Assert => Element'Object_Size = 32);
+      pragma Unreferenced (A1);
       Tmp : Element;
    begin
       System.Machine_Code.Asm
@@ -219,6 +225,7 @@ package body Primitives is
       type Element_Access is access all Element;
 
       A1 : Assertion (Assert => Element'Object_Size = 32);
+      pragma Unreferenced (A1);
    begin
       System.Machine_Code.Asm
         (Template =>
@@ -330,6 +337,7 @@ package body Primitives is
       type Element_Access is access all Element;
 
       A1 : Assertion (Assert => Element'Object_Size = 64);
+      pragma Unreferenced (A1);
    begin
       System.Machine_Code.Asm
         (Template =>
@@ -358,6 +366,7 @@ package body Primitives is
       type Element_Access is access all Element;
 
       A1 : Assertion (Assert => Element'Object_Size = 64);
+      pragma Unreferenced (A1);
       Tmp : Element;
    begin
       System.Machine_Code.Asm
@@ -387,6 +396,7 @@ package body Primitives is
       type Element_Access is access all Element;
 
       A1 : Assertion (Assert => Element'Object_Size = 64);
+      pragma Unreferenced (A1);
    begin
       System.Machine_Code.Asm
         (Template =>
