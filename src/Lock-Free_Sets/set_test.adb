@@ -4,7 +4,7 @@
 --  Description     : Test application for the lock-free sets.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Mar 10 17:51:23 2006
---  $Id: set_test.adb,v 1.2 2006/03/23 09:57:23 anders Exp $
+--  $Id: set_test.adb,v 1.3 2007/04/20 13:42:56 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -64,7 +64,7 @@ procedure Set_Test is
    No_Inserters_Running   : aliased Primitives.Unsigned_32 := 0;
    No_Removers_Running    : aliased Primitives.Unsigned_32 := 0;
 
-   Task_Count : aliased Primitives.Unsigned_32 := 0;
+--   Task_Count : aliased Primitives.Unsigned_32 := 0;
 
    function Pinned_Task return System.Task_Info.Task_Info_Type is
    begin
@@ -76,10 +76,12 @@ procedure Set_Test is
 --           Priority    => System.Task_Info.No_Specified_Priority,
 --           Runon_CPU   =>
 --             --System.Task_Info.ANY_CPU
---             Integer (Primitives.Fetch_And_Add (Task_Count'Access, 1))
+--             Integer (Primitives.Fetch_And_Add_32 (Task_Count'Access, 1))
 --           );
       --  GNAT/Linux
-      return System.Task_Info.System_Scope;
+--      return System.Task_Info.System_Scope;
+      --  GNAT/Solaris
+      return System.Task_Info.New_Bound_Thread_Attributes;
    end Pinned_Task;
 
    ----------------------------------------------------------------------------
@@ -88,9 +90,9 @@ procedure Set_Test is
       Gen : Random.Generator;
    begin
       PID.Register;
---      Primitives.Fetch_And_Add (No_Inserters_Running'Access, 1);
+--      Primitives.Fetch_And_Add_32 (No_Inserters_Running'Access, 1);
       Random.Reset (Gen,
-                    Integer (Primitives.Fetch_And_Add
+                    Integer (Primitives.Fetch_And_Add_32
                              (No_Inserters_Running'Access, 1)));
 
       declare
@@ -133,8 +135,8 @@ procedure Set_Test is
       declare
          use type Primitives.Unsigned_32;
       begin
-         Primitives.Fetch_And_Add (Insert_Count'Access, No_Inserts);
-         Primitives.Fetch_And_Add (No_Inserters_Running'Access, -1);
+         Primitives.Fetch_And_Add_32 (Insert_Count'Access, No_Inserts);
+         Primitives.Fetch_And_Add_32 (No_Inserters_Running'Access, -1);
       end;
       Ada.Text_IO.Put_Line (Output_File,
                             "Inserter (?): exited.");
@@ -155,7 +157,7 @@ procedure Set_Test is
       No_Removes : Primitives.Unsigned_32 := 0;
    begin
       PID.Register;
-      Primitives.Fetch_And_Add (No_Removers_Running'Access, 1);
+      Primitives.Fetch_And_Add_32 (No_Removers_Running'Access, 1);
 
       declare
          ID   : constant PID.Process_ID_Type := PID.Process_ID;
@@ -213,8 +215,8 @@ procedure Set_Test is
       declare
          use type Primitives.Unsigned_32;
       begin
-         Primitives.Fetch_And_Add (Delete_Count'Access, No_Removes);
-         Primitives.Fetch_And_Add (No_Removers_Running'Access, -1);
+         Primitives.Fetch_And_Add_32 (Delete_Count'Access, No_Removes);
+         Primitives.Fetch_And_Add_32 (No_Removers_Running'Access, -1);
       end;
 
       Ada.Text_IO.Put_Line (Output_File,
@@ -243,14 +245,14 @@ begin
      ("Testing with Inserters / Removers tasks.");
    declare
       use type Primitives.Unsigned_32;
-      P0--, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
+      P0, P1--, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
         : Inserter;
-      C0--, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
+      C0, C1--, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
         : Remover;
    begin
       delay 5.0;
       T1 := Ada.Real_Time.Clock;
-      Primitives.Fetch_And_Add (Start'Access, 1);
+      Primitives.Fetch_And_Add_32 (Start'Access, 1);
    end;
    T2 := Ada.Real_Time.Clock;
 
@@ -274,7 +276,7 @@ begin
             Ada.Text_IO.Put_Line (Output_File,
                                   "Deleted " &
                                   Key_Universe'Image (K));
-            Primitives.Fetch_And_Add (Delete_Count'Access, 1);
+            Primitives.Fetch_And_Add_32 (Delete_Count'Access, 1);
 
          exception
             when Sets.Not_Found =>
