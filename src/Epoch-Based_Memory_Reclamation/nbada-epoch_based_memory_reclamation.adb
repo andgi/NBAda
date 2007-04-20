@@ -35,13 +35,11 @@ pragma Style_Checks (Off);
 --                    University of Cambridge, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Mar  8 12:28:31 2006
---  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.6 2007/04/18 13:38:08 andersg Exp $
+--  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.7 2007/04/20 12:40:14 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
 pragma License (Modified_GPL);
-
-with Primitives;
 
 with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
@@ -222,14 +220,14 @@ package body Epoch_Based_Memory_Reclamation is
          new Ada.Unchecked_Conversion (Node_Access, Private_Reference);
 
       ----------------------------------------------------------------------
-      function To_Shared_Reference is
-         new Ada.Unchecked_Conversion (Private_Reference, Shared_Reference);
+--       function To_Shared_Reference is
+--          new Ada.Unchecked_Conversion (Private_Reference, Shared_Reference);
 
       ----------------------------------------------------------------------
       function Boolean_Compare_And_Swap is
          new Primitives.Standard_Boolean_Compare_And_Swap (Private_Reference);
-      procedure Value_Compare_And_Swap is
-         new Primitives.Standard_Compare_And_Swap (Private_Reference);
+--       procedure Value_Compare_And_Swap is
+--          new Primitives.Standard_Compare_And_Swap (Private_Reference);
       procedure Void_Compare_And_Swap is
          new Primitives.Standard_Void_Compare_And_Swap (Private_Reference);
 
