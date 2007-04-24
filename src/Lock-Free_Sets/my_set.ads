@@ -1,13 +1,33 @@
 -------------------------------------------------------------------------------
+--  Lock-Free Sets - An implementation of the lock-free set algorithm by
+--                   M. Michael.
+--
+--  Copyright (C) 2006 - 2007  Anders Gidenstam
+--
+--  This program is free software; you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation; either version 2 of the License, or
+--  (at your option) any later version.
+--
+--  This program is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : my_set.ads
 --  Description     : Test of the lock-free set.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Mar 10 17:48:33 2006
---  $Id: my_set.ads,v 1.1 2006/03/10 18:43:50 anders Exp $
+--  $Id: my_set.ads,v 1.2 2007/04/24 15:45:36 andersg Exp $
 -------------------------------------------------------------------------------
 
-pragma License (Modified_GPL);
+pragma License (GPL);
 
 with Process_Identification;
 with Lock_Free_Sets;

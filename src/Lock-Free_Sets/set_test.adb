@@ -1,13 +1,33 @@
 -------------------------------------------------------------------------------
+--  Lock-Free Sets - An implementation of the lock-free set algorithm by
+--                   M. Michael.
+--
+--  Copyright (C) 2006 - 2007  Anders Gidenstam
+--
+--  This program is free software; you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation; either version 2 of the License, or
+--  (at your option) any later version.
+--
+--  This program is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : set_test.adb
 --  Description     : Test application for the lock-free sets.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Mar 10 17:51:23 2006
---  $Id: set_test.adb,v 1.3 2007/04/20 13:42:56 andersg Exp $
+--  $Id: set_test.adb,v 1.4 2007/04/24 15:45:36 andersg Exp $
 -------------------------------------------------------------------------------
 
-pragma License (Modified_GPL);
+pragma License (GPL);
 
 with Primitives;
 
@@ -31,7 +51,7 @@ procedure Set_Test is
    --  Test application.
    ----------------------------------------------------------------------------
 
-   No_Of_Elements : constant := 1000;
+   No_Of_Elements : constant := 1_000;
    subtype Key_Universe is My_Set.Key_Type range 0 .. No_Of_Elements * 100;
 
    Output_File : Ada.Text_IO.File_Type renames
@@ -42,17 +62,19 @@ procedure Set_Test is
 
    function Pinned_Task return System.Task_Info.Task_Info_Type;
 
+   Default_Stack_Size : constant := 1 * 1024 * 1024;
+
    task type Inserter is
       pragma Task_Info (Pinned_Task);
-      pragma Storage_Size (1 * 1024 * 1024);
+      pragma Storage_Size (Default_Stack_Size);
    end Inserter;
    task type Remover is
       pragma Task_Info (Pinned_Task);
-      pragma Storage_Size (1 * 1024 * 1024);
+      pragma Storage_Size (Default_Stack_Size);
    end Remover;
 --   task type Finder is
 --      pragma Task_Info (Pinned_Task);
---      pragma Storage_Size (1 * 1024 * 1024);
+--      pragma Storage_Size (Default_Stack_Size);
 --   end Finder;
 
    Set                    : aliased Sets.Set_Type;
@@ -79,9 +101,9 @@ procedure Set_Test is
 --             Integer (Primitives.Fetch_And_Add_32 (Task_Count'Access, 1))
 --           );
       --  GNAT/Linux
---      return System.Task_Info.System_Scope;
+      return System.Task_Info.System_Scope;
       --  GNAT/Solaris
-      return System.Task_Info.New_Bound_Thread_Attributes;
+--      return System.Task_Info.New_Bound_Thread_Attributes;
    end Pinned_Task;
 
    ----------------------------------------------------------------------------
@@ -245,9 +267,9 @@ begin
      ("Testing with Inserters / Removers tasks.");
    declare
       use type Primitives.Unsigned_32;
-      P0, P1--, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
+      P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
         : Inserter;
-      C0, C1--, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
+      C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
         : Remover;
    begin
       delay 5.0;
