@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Primitives - A binding to the synchronization primitives of the hardware.
---  Copyright (C) 2004 - 2005  Anders Gidenstam
+--  Copyright (C) 2004 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 --  Description     : Synchronization primitives.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Apr 26 23:49:50 2005
---  $Id: nbada-primitives.adb,v 1.8 2006/02/15 13:33:58 anders Exp $
+--  $Id: nbada-primitives.adb,v 1.9 2007/04/24 12:44:52 andersg Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
@@ -53,15 +53,13 @@ package body Primitives is
    --  Backend functions containing the inline assembler.
    --  Labels in assembler code inside a generic function causes
    --  name space problems when the generic is instantiated several times.
+   ----------------------------------------------------------------------------
+
    procedure Compare_And_Swap_Unsigned_32 (Target    : access Unsigned_32;
                                            Old_Value : in     Unsigned_32;
                                            New_Value : in out Unsigned_32);
 --   pragma Inline (Compare_And_Swap_Unsigned_32);
 --   pragma Inline_Always (Compare_And_Swap_Unsigned_32);
-
-   type Unsigned_64 is mod 2**64;
-   for Unsigned_64'Size use 64;
-   pragma Atomic (Unsigned_64);
 
    procedure Compare_And_Swap_Unsigned_64 (Target    : access Unsigned_64;
                                            Old_Value : in     Unsigned_64;
@@ -71,7 +69,92 @@ package body Primitives is
 
 
    ----------------------------------------------------------------------------
+   --  Primitives for the platform's standard word size.
+   ----------------------------------------------------------------------------
+
+   ----------------------------------------------------------------------------
+   function Standard_Atomic_Read (Target : access Element) return Element is
+      function Atomic_Read is new Atomic_Read_32 (Element);
+   begin
+      return Atomic_Read (Target);
+   end Standard_Atomic_Read;
+
+   ----------------------------------------------------------------------------
+   procedure Standard_Atomic_Write (Target : access Element;
+                                    Value  : in     Element) is
+      procedure Atomic_Write is new Atomic_Write_32 (Element);
+   begin
+      Atomic_Write (Target, Value);
+   end Standard_Atomic_Write;
+
+   ----------------------------------------------------------------------------
+   procedure Standard_Compare_And_Swap (Target    : access Element;
+                                        Old_Value : in     Element;
+                                        New_Value : in out Element) is
+      procedure Compare_And_Swap is new Compare_And_Swap_32 (Element);
+   begin
+      Compare_And_Swap (Target, Old_Value, New_Value);
+   end Standard_Compare_And_Swap;
+
+   ----------------------------------------------------------------------------
+   function Standard_Boolean_Compare_And_Swap (Target    : access Element;
+                                               Old_Value : in     Element;
+                                               New_Value : in     Element)
+                                              return Boolean is
+      function Compare_And_Swap is new Boolean_Compare_And_Swap_32 (Element);
+   begin
+      return Compare_And_Swap (Target, Old_Value, New_Value);
+   end Standard_Boolean_Compare_And_Swap;
+
+   ----------------------------------------------------------------------------
+   procedure Standard_Void_Compare_And_Swap (Target    : access Element;
+                                             Old_Value : in     Element;
+                                             New_Value : in     Element) is
+      procedure Compare_And_Swap is new Void_Compare_And_Swap_32 (Element);
+   begin
+      Compare_And_Swap (Target, Old_Value, New_Value);
+   end Standard_Void_Compare_And_Swap;
+
+   ----------------------------------------------------------------------------
+   procedure Fetch_And_Add (Target    : access Standard_Unsigned;
+                            Increment : in     Standard_Unsigned) is
+      function To_U32 is
+         new Ada.Unchecked_Conversion (Standard_Unsigned, Unsigned_32);
+      type SU_Access is access all Standard_Unsigned;
+      type U32_Access is access all Unsigned_32;
+      function To_U32_Access is
+         new Ada.Unchecked_Conversion (SU_Access, U32_Access);
+   begin
+      Fetch_And_Add_32 (To_U32_Access (SU_Access (Target)),
+                        To_U32 (Increment));
+   end Fetch_And_Add;
+
+   ----------------------------------------------------------------------------
+   function  Fetch_And_Add (Target    : access Standard_Unsigned;
+                            Increment : in     Standard_Unsigned)
+                           return Standard_Unsigned is
+      function To_U32 is
+         new Ada.Unchecked_Conversion (Standard_Unsigned, Unsigned_32);
+      function To_SU is
+         new Ada.Unchecked_Conversion (Unsigned_32, Standard_Unsigned);
+      type SU_Access is access all Standard_Unsigned;
+      type U32_Access is access all Unsigned_32;
+      function To_U32_Access is
+         new Ada.Unchecked_Conversion (SU_Access, U32_Access);
+   begin
+      return To_SU (Fetch_And_Add_32 (To_U32_Access (SU_Access (Target)),
+                                      To_U32 (Increment)));
+   end Fetch_And_Add;
+
+
+   ----------------------------------------------------------------------------
+   --  32-bit primitives.
+   ----------------------------------------------------------------------------
+
+   ----------------------------------------------------------------------------
    function Atomic_Read_32 (Target : access Element) return Element is
+      A1 : Assertion (Assert => Element'Object_Size = 32);
+      pragma Unreferenced (A1);
    begin
       Membar;
       declare
@@ -85,6 +168,8 @@ package body Primitives is
    ----------------------------------------------------------------------------
    procedure Atomic_Write_32 (Target : access Element;
                               Value  : in     Element) is
+      A1 : Assertion (Assert => Element'Object_Size = 32);
+      pragma Unreferenced (A1);
    begin
       Membar;
       Target.all := Value;
@@ -174,8 +259,91 @@ package body Primitives is
    end Void_Compare_And_Swap_32;
 
    ----------------------------------------------------------------------------
+   procedure Fetch_And_Add_32 (Target    : access Unsigned_32;
+                               Increment : in     Unsigned_32) is
+      use Ada.Characters.Latin_1;
+      type Unsigned_32_Access is access all Unsigned_32;
+   begin
+      System.Machine_Code.Asm
+        (Template =>
+           "# BEGIN Fetch_And_Add_32"        & LF & HT &
+           ".set nomove"                     & LF & HT &
+           "$FAA1:"                          & LF & HT &
+           "ll    $12, 0(%0)"                & LF & HT &
+           "add   $12, $12, %1"              & LF & HT &
+           "sc    $12, 0(%0)"                & LF & HT &
+           "beqz  $12, $FAA1"                & LF & HT &
+           "# END Fetch_And_Add_32",
+         Inputs   => (Unsigned_32_Access'Asm_Input         -- %0 = Target
+                      ("r", Unsigned_32_Access (Target)),
+                      Unsigned_32'Asm_Input ("r",          -- %1 = Increment
+                                             Increment)),
+         Clobber  => "$12",
+         Volatile => True);
+   end Fetch_And_Add_32;
+
+   ----------------------------------------------------------------------------
+   function Fetch_And_Add_32 (Target    : access Unsigned_32;
+                              Increment : in     Unsigned_32)
+                             return Unsigned_32 is
+      use Ada.Characters.Latin_1;
+      type Unsigned_32_Access is access all Unsigned_32;
+
+      Tmp : Unsigned_32;
+   begin
+      System.Machine_Code.Asm
+        (Template =>
+           "# BEGIN Fetch_And_Add_32"        & LF & HT &
+           ".set nomove"                     & LF &
+           "$FAA2:"                          & LF & HT &
+           "ll    $13, 0(%1)"                & LF & HT &
+           "add   $12, $13, %2"              & LF & HT &
+           "sc    $12, 0(%1)"                & LF & HT &
+           "beqz  $12, $FAA2"                & LF & HT &
+           "move  %0,  $13"                  & LF & HT &
+           "# END Fetch_And_Add_32",
+         Outputs  => Unsigned_32'Asm_Output ("=r", Tmp),   -- %0 = Tmp
+         Inputs   => (Unsigned_32_Access'Asm_Input         -- %1 = Target
+                      ("r", Unsigned_32_Access (Target)),
+                      Unsigned_32'Asm_Input ("r",          -- %2 = Increment
+                                             Increment)),
+         Clobber  => "$12,$13",
+         Volatile => True);
+      return Tmp;
+   end Fetch_And_Add_32;
+
+   ----------------------------------------------------------------------------
+   --  64-bit primitives.
+   ----------------------------------------------------------------------------
+
+   ----------------------------------------------------------------------------
    --  gcc 3.4 for MIPS N32 seems to handle 64 bit atomic objects.
    ----------------------------------------------------------------------------
+
+   ----------------------------------------------------------------------------
+   function Atomic_Read_64 (Target : access Element) return Element is
+      A1 : Assertion (Assert => Element'Object_Size = 64);
+      pragma Unreferenced (A1);
+   begin
+      Membar;
+      declare
+         Tmp : constant Element := Target.all;
+      begin
+         Membar;
+         return Tmp;
+      end;
+   end Atomic_Read_64;
+
+   ----------------------------------------------------------------------------
+   procedure Atomic_Write_64 (Target : access Element;
+                              Value  : in     Element) is
+      A1 : Assertion (Assert => Element'Object_Size = 64);
+      pragma Unreferenced (A1);
+   begin
+      Membar;
+      Target.all := Value;
+      Membar;
+   end Atomic_Write_64;
 
    ----------------------------------------------------------------------------
    procedure Compare_And_Swap_64 (Target    : access Element;
@@ -260,58 +428,59 @@ package body Primitives is
    end Void_Compare_And_Swap_64;
 
    ----------------------------------------------------------------------------
-   procedure Fetch_And_Add (Target    : access Unsigned_32;
-                            Increment : in     Unsigned_32) is
+   procedure Fetch_And_Add_64 (Target    : access Unsigned_64;
+                               Increment : in     Unsigned_64) is
       use Ada.Characters.Latin_1;
-      type Unsigned_32_Access is access all Unsigned_32;
+      type Unsigned_64_Access is access all Unsigned_64;
    begin
       System.Machine_Code.Asm
         (Template =>
-           "# BEGIN Fetch_And_Add_32"        & LF & HT &
+           "# BEGIN Fetch_And_Add_64"        & LF & HT &
            ".set nomove"                     & LF & HT &
            "$FAA1:"                          & LF & HT &
-           "ll    $12, 0(%0)"                & LF & HT &
+           "lld   $12, 0(%0)"                & LF & HT &
            "add   $12, $12, %1"              & LF & HT &
-           "sc    $12, 0(%0)"                & LF & HT &
+           "scd   $12, 0(%0)"                & LF & HT &
            "beqz  $12, $FAA1"                & LF & HT &
-           "# END Fetch_And_Add_32",
-         Inputs   => (Unsigned_32_Access'Asm_Input         -- %0 = Target
-                      ("r", Unsigned_32_Access (Target)),
-                      Unsigned_32'Asm_Input ("r",          -- %1 = Increment
+           "# END Fetch_And_Add_64",
+         Inputs   => (Unsigned_64_Access'Asm_Input         -- %0 = Target
+                      ("r", Unsigned_64_Access (Target)),
+                      Unsigned_64'Asm_Input ("r",          -- %1 = Increment
                                              Increment)),
          Clobber  => "$12",
          Volatile => True);
-   end Fetch_And_Add;
+   end Fetch_And_Add_64;
 
    ----------------------------------------------------------------------------
-   function Fetch_And_Add (Target    : access Unsigned_32;
-                           Increment : in     Unsigned_32)
-                          return Unsigned_32 is
+   function Fetch_And_Add_64 (Target    : access Unsigned_64;
+                              Increment : in     Unsigned_64)
+                             return Unsigned_64 is
       use Ada.Characters.Latin_1;
-      type Unsigned_32_Access is access all Unsigned_32;
+      type Unsigned_64_Access is access all Unsigned_64;
 
-      Tmp : Unsigned_32;
+      Tmp : Unsigned_64;
    begin
       System.Machine_Code.Asm
         (Template =>
-           "# BEGIN Fetch_And_Add_32"        & LF & HT &
+           "# BEGIN Fetch_And_Add_64"        & LF & HT &
            ".set nomove"                     & LF &
            "$FAA2:"                          & LF & HT &
-           "ll    $13, 0(%1)"                & LF & HT &
+           "lld   $13, 0(%1)"                & LF & HT &
            "add   $12, $13, %2"              & LF & HT &
-           "sc    $12, 0(%1)"                & LF & HT &
+           "scd   $12, 0(%1)"                & LF & HT &
            "beqz  $12, $FAA2"                & LF & HT &
            "move  %0,  $13"                  & LF & HT &
-           "# END Fetch_And_Add_32",
-         Outputs  => Unsigned_32'Asm_Output ("=r", Tmp),   -- %0 = Tmp
-         Inputs   => (Unsigned_32_Access'Asm_Input         -- %1 = Target
-                      ("r", Unsigned_32_Access (Target)),
-                      Unsigned_32'Asm_Input ("r",          -- %2 = Increment
+           "# END Fetch_And_Add_64",
+         Outputs  => Unsigned_64'Asm_Output ("=r", Tmp),   -- %0 = Tmp
+         Inputs   => (Unsigned_64_Access'Asm_Input         -- %1 = Target
+                      ("r", Unsigned_64_Access (Target)),
+                      Unsigned_64'Asm_Input ("r",          -- %2 = Increment
                                              Increment)),
          Clobber  => "$12,$13",
          Volatile => True);
       return Tmp;
-   end Fetch_And_Add;
+   end Fetch_And_Add_64;
+
 
    ----------------------------------------------------------------------------
    procedure Membar is
