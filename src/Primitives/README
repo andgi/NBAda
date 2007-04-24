@@ -2,9 +2,9 @@
 Ada binding to some hardware synchronization primitives
 -------------------------------------------------------
 
-Copyright (C) 2004 - 2005  Anders Gidenstam.  All rights reserved.
+Copyright (C) 2004 - 2007  Anders Gidenstam.  All rights reserved.
 
-anders-www@gidenstam.org
+anders-www (at) gidenstam.org
 
 Introduction
 
@@ -23,7 +23,7 @@ Supported platforms
   Presently the binding supports 32-bit versions of the
   'Compare & Swap' and 'Fetch & Add' synchronization primitives on
 
-   - SPARC v8+ and v9 based Sun workstations
+   - SPARC v8+ and v9 based Sun workstations in 32 or 64-bit mode.
 
    - Intel IA32 compatible processors (486(?) or Pentium and newer).
 
@@ -32,7 +32,11 @@ Supported platforms
   Presently the binding supports 64-bit versions of the
   'Compare & Swap' primitives on
 
-   - 64bit MIPS based SGI workstations running Irix with the N32 ABI.
+   - Intel IA32 compatible processors (Pentium and newer).
+
+   - SPARC v9 based Sun workstations in 64-bit mode.
+
+   - 64-bit MIPS based SGI workstations running Irix with the N32 ABI.
 
   As the binding uses GNAT syntax for the inline assembler, other compilers
   than GNAT are unlikely to work without adapting the machine code insertions.
@@ -45,9 +49,13 @@ Test programs
   > gnatmake -I./IA32 cas_test
   > gnatmake -I./IA32 faa_test
 
-  On SPARC:
+  On SPARC 32-bit:
   > gnatmake -I./SPARCv9 cas_test -cargs -Wa,-xarch=v8plus
   > gnatmake -I./SPARCv9 faa_test -cargs -Wa,-xarch=v8plus
+
+  On SPARC 64-bit:
+  > gnatmake -I./SPARCv9 -m64 --RTS=m64 cas_test -cargs -Wa,-xarch=v9
+  > gnatmake -I./SPARCv9 -m64 --RTS=m64 faa_test -cargs -Wa,-xarch=v9
 
   On MIPS Irix:
   > gnatmake -I./MIPSN32 cas_test
