@@ -5,7 +5,7 @@
 --                    by H. Sundell and P. Tsigas.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 15 18:46:02 2006
---  $Id: nbada-lock_free_deques.ads,v 1.3 2007/04/23 09:51:37 andersg Exp $
+--  $Id: nbada-lock_free_deques.ads,v 1.4 2007/04/24 10:31:00 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -60,7 +60,8 @@ package Lock_Free_Deques is
 --        --  Clean up and scan often.
 --        Process_Ids                  => Process_Ids);
 
-   procedure Verify (Deque : in out Deque_Type);
+   procedure Verify (Deque : in out Deque_Type;
+                     Print : in     Boolean := False);
    --  Should only be called when the deque is idle.
 
 private

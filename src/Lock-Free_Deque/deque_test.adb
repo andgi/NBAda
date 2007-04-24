@@ -4,7 +4,7 @@
 --  Description     : Test program for the lock-free deque.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 16 16:06:25 2006
--- $Id: deque_test.adb,v 1.6 2007/04/23 09:51:37 andersg Exp $
+-- $Id: deque_test.adb,v 1.7 2007/04/24 10:30:59 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -29,13 +29,13 @@ procedure Deque_Test is
    --  Test application.
    ----------------------------------------------------------------------------
 
-   No_Of_Elements : constant := 1_0;
+   No_Of_Elements : constant := 1_000;
    type Test_Type is (QUEUE_RIGHT, QUEUE_LEFT, STACK_RIGHT, STACK_LEFT,
                       ALL_TESTS);
    DEQUE_FIFO_PROPERTY_VIOLATION  : exception;
    DEQUE_STACK_PROPERTY_VIOLATION : exception;
 
-   Test : constant Test_Type := STACK_LEFT;
+   Test : constant Test_Type := ALL_TESTS;
 
    Output_File : Ada.Text_IO.File_Type renames
      Ada.Text_IO.Standard_Output;
@@ -393,9 +393,9 @@ begin
            ("Testing with right producer/left consumer tasks.");
          declare
             use type Primitives.Unsigned_32;
-            P0, P1--, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
+            P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
               : Right_Producer;
-            C0, C1--, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
+            C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
               : Left_Consumer;
          begin
             delay 5.0;
@@ -410,9 +410,9 @@ begin
            ("Testing with left producer/right consumer tasks.");
          declare
             use type Primitives.Unsigned_32;
-            P0, P1--, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
+            P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
               : Left_Producer;
-            C0, C1--, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
+            C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
               : Right_Consumer;
          begin
             delay 5.0;
@@ -427,10 +427,10 @@ begin
            ("Testing with left producer/left consumer tasks.");
          declare
             use type Primitives.Unsigned_32;
-            P0, P1--, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
+            P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
               : Left_Producer;
-            --C0, C1--, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
-            --  : Left_Consumer;
+            C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
+              : Left_Consumer;
          begin
             delay 5.0;
             T1 := Ada.Real_Time.Clock;
@@ -444,9 +444,9 @@ begin
            ("Testing with right producer/right consumer tasks.");
          declare
             use type Primitives.Unsigned_32;
-            P0, P1--, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
+            P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
               : Right_Producer;
-            C0, C1--, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
+            C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
               : Right_Consumer;
          begin
             delay 5.0;
@@ -461,13 +461,13 @@ begin
            ("Testing with right/left producer / right/left consumer tasks.");
          declare
             use type Primitives.Unsigned_32;
-            RP0, RP1--, RP2, RP3, RP4, RP5--, RP6, RP7
+            RP0, RP1, RP2, RP3, RP4, RP5--, RP6, RP7
               : Right_Producer;
-            LP0, LP1--, LP2, LP3, LP4, LP5--, LP6, LP7
+            LP0, LP1, LP2, LP3, LP4, LP5--, LP6, LP7
               : Left_Producer;
-            RC0, RC1--, RC2, RC3, RC4, RC5--, RC6, RC7
+            RC0, RC1, RC2, RC3, RC4, RC5--, RC6, RC7
               : Right_Consumer;
-            LC0, LC1--, LC2, LC3, LC4, LC5--, LC6, LC7
+            LC0, LC1, LC2, LC3, LC4, LC5--, LC6, LC7
               : Left_Consumer;
          begin
             delay 5.0;
@@ -496,7 +496,7 @@ begin
                          Duration'Image (Ada.Real_Time.To_Duration (T2 - T1)));
 
    Ada.Text_IO.Put_Line ("Verifying deque.");
-   Verify (Deque);
+   Verify (Deque, Print => False);
 
    Ada.Text_IO.Put_Line ("Emptying deque.");
    delay 5.0;
@@ -508,12 +508,12 @@ begin
       loop
          V := Pop_Left (Deque'Access);
          Ada.Text_IO.Put_Line (Output_File,
-                               "Pop_Right() = (" &
+                               "Pop_Left() = (" &
                                PID.Process_ID_Type'Image (V.Creator) & ", " &
                                Integer'Image (V.Index) & ")");
-         Primitives.Fetch_And_Add_32 (Right_Pop_Count'Access, 1);
+         Primitives.Fetch_And_Add_32 (Left_Pop_Count'Access, 1);
          Ada.Text_IO.Put_Line ("Verifying deque.");
-         Verify (Deque);
+         Verify (Deque, Print => False);
       end loop;
    exception
       when E : others =>
@@ -531,5 +531,8 @@ begin
          Ada.Text_IO.Put_Line ("Final pop count: " &
                                Primitives.Unsigned_32'Image
                                (Right_Pop_Count + Left_Pop_Count));
+
+         Ada.Text_IO.Put_Line ("Verifying deque.");
+         Verify (Deque, Print => True);
    end;
 end Deque_Test;

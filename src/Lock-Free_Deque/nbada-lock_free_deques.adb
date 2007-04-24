@@ -5,7 +5,7 @@
 --                    by H. Sundell and P. Tsigas.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 15 18:59:45 2006
---  $Id: nbada-lock_free_deques.adb,v 1.6 2007/04/23 09:51:37 andersg Exp $
+--  $Id: nbada-lock_free_deques.adb,v 1.7 2007/04/24 10:31:00 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -17,6 +17,8 @@ with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
 with Ada.Text_IO;
 
+with Primitives;
+
 package body Lock_Free_Deques is
 
    ----------------------------------------------------------------------------
@@ -24,7 +26,7 @@ package body Lock_Free_Deques is
    ----------------------------------------------------------------------------
 
    Node_Pool : Lock_Free_Growing_Storage_Pools.Lock_Free_Storage_Pool
-     (Block_Size => Deque_Node'Max_Size_In_Storage_Elements);
+       (Block_Size => Deque_Node'Max_Size_In_Storage_Elements);
 
    type New_Deque_Node_Access is access Deque_Node;
    for New_Deque_Node_Access'Storage_Pool use Node_Pool;
@@ -35,14 +37,7 @@ package body Lock_Free_Deques is
    --  Internal operations.
    ----------------------------------------------------------------------------
 
-   function Read_All (Link : access Deque_Node_Reference)
-                     return Deque_Node_Access
-     renames LFRC_Ops.Dereference;
-   function Read (Link : access Deque_Node_Reference)
-                 return Deque_Node_Access;
-   --  Behaves like LFRC_Ops.Dereference except that it returns
-   --  Null_Reference if the link is marked as logically deleted.
-   pragma Inline_Always (Read);
+   Debug : constant Boolean := False;
 
    procedure Push_Common (Node, Next : Deque_Node_Access);
    --  Note: Push_Common releases both Node and Next.
@@ -63,6 +58,14 @@ package body Lock_Free_Deques is
    --  Note: The reference to Node is not released by Help_Delete.
    --        Node.Next should be marked before the call to Help_Delete.
    --  Note: Uses at most 3 additional dereferences.
+
+   function Same_Node (Left  : Deque_Node_Access;
+                       Right : Deque_Node_Reference) return Boolean;
+   --  Returns true if Left and Right refer to the same node.
+   pragma Inline (Same_Node);
+   function Different_Nodes (Left, Right : Deque_Node_Access) return Boolean;
+   --  Returns true if Left and Right refer to different nodes.
+   pragma Inline (Different_Nodes);
 
    ----------------------------------------------------------------------------
    --  Public operations.
@@ -97,7 +100,7 @@ package body Lock_Free_Deques is
             Help_Insert (Node  => Next,
                          After => Node);
 
-         elsif Node = Deque.Head then
+         elsif Same_Node (Node, Deque.Head) then
             --  The deque is empty.
 
             Release (Node);
@@ -134,6 +137,7 @@ package body Lock_Free_Deques is
 
          --  Back-off.
          delay 0.0;
+
       end loop;
 
    end Pop_Right;
@@ -193,7 +197,7 @@ package body Lock_Free_Deques is
               Dereference ("+"(Prev).Next'Access);
             Value : Value_Type;
          begin
-            if Node = Deque.Tail then
+            if Same_Node (Node, Deque.Tail) then
                Release (Node);
                Release (Prev);
                raise Deque_Empty;
@@ -214,6 +218,7 @@ package body Lock_Free_Deques is
                   --  We marked Node as logically deleted.
                   --  Now unlink it.
                   Help_Delete (Node);
+
                   declare
                      Next : constant Deque_Node_Access :=
                        Dereference ("+"(Node).Next'Access);
@@ -284,10 +289,14 @@ package body Lock_Free_Deques is
    end Push_Left;
 
    ----------------------------------------------------------------------------
-   procedure Verify (Deque : in out Deque_Type) is
+   procedure Verify (Deque : in out Deque_Type;
+                     Print : in     Boolean := False) is
       use LFRC_Ops;
 
-      function Find (Value : Unsafe_Reference_Value) return Natural;
+      function Find  (Value : Unsafe_Reference_Value) return Natural;
+      function Image (Node  : Deque_Node_Access) return String;
+
+      -----------------------------------------------------------------
       function Find (Value : Unsafe_Reference_Value) return Natural is
          Node : Deque_Node_Access := Dereference (Deque.Head'Access);
          N    : Natural := 0;
@@ -314,11 +323,35 @@ package body Lock_Free_Deques is
          return Natural'Last;
       end Find;
 
+      -----------------------------------------------------------------
+      function Image (Node  : Deque_Node_Access) return String is
+         function To_Unsigned is
+            new Ada.Unchecked_Conversion (Deque_Node_Reference,
+                                          Primitives.Standard_Unsigned);
+         function To_Unsigned is
+            new Ada.Unchecked_Conversion (Deque_Node_Access,
+                                          Primitives.Standard_Unsigned);
+         use Primitives;
+      begin
+         return
+           Standard_Unsigned'Image (To_Unsigned (Node)) &
+           "@(" &
+           "Previous = " &
+           Standard_Unsigned'Image (To_Unsigned ("+" (Node).Previous)) & ", " &
+           "Next = " &
+           Standard_Unsigned'Image (To_Unsigned ("+" (Node).Next)) &
+           ")";
+      end Image;
+
+      -----------------------------------------------------------------
       Prev : Deque_Node_Access := Null_Reference;
       Node : Deque_Node_Access := Dereference (Deque.Head'Access);
       N    : Natural := 0;
    begin
       loop
+         if Print then
+            Ada.Text_IO.Put_Line (Image (Node));
+         end if;
          if "+" (Node).Previous /= Prev then
             if  "+" (Node).Previous = Null_Reference then
                Ada.Text_IO.Put_Line
@@ -477,21 +510,6 @@ package body Lock_Free_Deques is
    end All_References;
 
    ----------------------------------------------------------------------
-   function Read (Link : access Deque_Node_Reference)
-                 return Deque_Node_Access is
-      use LFRC_Ops;
-      Ref : Deque_Node_Access;
-   begin
-      Ref := Dereference (Link);
-      if Is_Marked (Ref) then
-         Release (Ref);
-         return Null_Reference;
-      else
-         return Ref;
-      end if;
-   end Read;
-
-   ----------------------------------------------------------------------
    procedure Push_Common (Node, Next : Deque_Node_Access) is
       use LFRC_Ops;
    begin
@@ -501,6 +519,7 @@ package body Lock_Free_Deques is
               Unsafe_Read ("+"(Next).Previous'Access);
          begin
             if Is_Marked (Next_Prev) or "+"(Node).Next /= Unmark (Next) then
+               --  Next or Node has been marked deleted.
                exit;
             end if;
 
@@ -525,6 +544,7 @@ package body Lock_Free_Deques is
          end;
 
          --  Back-off.
+         delay 0.0;
 
       end loop;
       Release (Next);
@@ -540,29 +560,30 @@ package body Lock_Free_Deques is
    begin
       loop
          --  Debug check.
-         if "+" (Prev) = null then
-            Ada.Exceptions.Raise_Exception
-              (Constraint_Error'Identity,
-               "lock_free_deques.adb:464  Help_Insert: " &
-               "Prev is null! This should not happen!");
+         if Debug then
+            if "+" (Prev) = null then
+               Ada.Exceptions.Raise_Exception
+                 (Constraint_Error'Identity,
+                  "lock_free_deques.adb:464  Help_Insert: " &
+                  "Prev is null! This should not happen!");
+            end if;
          end if;
 
          declare
             Prev_Next : constant Deque_Node_Access :=
               Dereference ("+" (Prev).Next'Access);
          begin
-            if Is_Marked (Prev_Next) or "+" (Prev_Next) = null then
+            if "+" (Prev_Next) = null then
+               --  Prev is the right dummy node.
+               --  This case is different from [Sundell, Tsigas, 2004].
+               Release (Prev_Next);
+               return;
+
+            elsif Is_Marked (Prev_Next) then
+               --  Prev is marked deleted. Move Prev to Prev.Previous.
 
                if not Last_Link then
-                  if Is_Marked (Prev_Next) then
-                     Help_Delete (Prev);
-                  else
-                     Ada.Text_IO.Put_Line ("lock_free_deques.adb:" &
-                                           " Help_Insert: " &
-                                           "Attempt to delete the right " &
-                                           "dummy node! Bad!!");
-                  end if;
-
+                  Help_Delete (Prev);
                   Last_Link := True;
                end if;
 
@@ -575,6 +596,7 @@ package body Lock_Free_Deques is
                end;
 
             else
+               --  Prev_Next is a valid link to an active node.
 
                declare
                   Node_Prev : constant Unsafe_Reference_Value :=
@@ -582,32 +604,34 @@ package body Lock_Free_Deques is
                begin
 
                   if Is_Marked (Node_Prev) then
+                     --  Node has been marked deleted. Give up.
                      Release (Prev_Next);
                      return;
                   end if;
 
-                  if Prev_Next /= Node then
-
+                  if Different_Nodes (Prev_Next, Node) then
+                     --  Move Prev to Prev_Next.
                      Last_Link := False;
                      Release (Prev);
                      Prev := Prev_Next;
 
                   else
-
+                     --  Node is Prev_Next.
                      Release (Prev_Next);
 
                      if Compare_And_Swap
                        (Link      => "+" (Node).Previous'Access,
                         Old_Value => Node_Prev,
-                        New_Value => Prev) then
+                        New_Value => Unmark (Prev)) then
 
                         if not Is_Marked ("+" (Prev).Previous) then
+                           --  Done.
                            return;
                         end if;
 
                      end if;
 
-                     --  Back-off
+                     --  Back-off.
                      delay 0.0;
 
                   end if;
@@ -649,26 +673,27 @@ package body Lock_Free_Deques is
          Next := Dereference ("+"(Node).Next'Access);
 
          --  Debug checks.
-         if "+" (Next) = null then
-            Ada.Exceptions.Raise_Exception
-              (Constraint_Error'Identity,
-               "lock_free_deques.adb: Help_Delete: " &
-               "Node.next is null! This should not happen!");
-         end if;
-         if "+" (Prev) = null then
-            Ada.Exceptions.Raise_Exception
-              (Constraint_Error'Identity,
-               "lock_free_deques.adb: Help_Delete: " &
-               "Node.previous is null! This should not happen!");
+         if Debug then
+            if "+" (Next) = null then
+               Ada.Exceptions.Raise_Exception
+                 (Constraint_Error'Identity,
+                  "lock_free_deques.adb: Help_Delete: " &
+                  "Node.next is null! This should not happen!");
+            end if;
+            if "+" (Prev) = null then
+               Ada.Exceptions.Raise_Exception
+                 (Constraint_Error'Identity,
+                  "lock_free_deques.adb: Help_Delete: " &
+                  "Node.previous is null! This should not happen!");
+            end if;
          end if;
 
-
-         loop
+         Find : loop
             --  Exit if we didn't find Node, i.e. it is already unlinked.
-            exit when Unmark (Prev) = Unmark (Next);
+            exit Find when Unmark (Prev) = Unmark (Next);
 
             if Is_Marked ("+"(Next).Next) then
-               --  Next is deleted. Move to the next node.
+               --  Next is deleted. Move Next to the next next node.
                declare
                   Next_Next : constant Deque_Node_Access :=
                     Dereference ("+"(Next).Next'Access);
@@ -681,24 +706,21 @@ package body Lock_Free_Deques is
                   Prev_Next : constant Deque_Node_Access :=
                     Dereference ("+"(Prev).Next'Access);
                begin
-                  if "+" (Prev_Next) = null or Is_Marked (Prev_Next) then
-                     --  Doesn't this imply that prev is the dummy node
-                     --  at the right end of the deque?
-                     --  No, it could _also_ be marked.
+                  if "+" (Prev_Next) = null then
+                     --  Prev is the right dummy node.
+                     --  This case is different from [Sundell, Tsigas, 2004].
+                     Release (Prev_Next);
+                     exit Find;
+
+                  elsif Is_Marked (Prev_Next) then
+                     --  Prev has been marked deleted.
 
                      if not Last_Link then
-                        if Is_Marked (Prev_Next) then
-                           Help_Delete (Prev);
-                        else
-                           Ada.Text_IO.Put_Line
-                             ("lock_free_deques.adb:" &
-                              " Help_Delete: " &
-                              "Attempt to delete the right " &
-                              "dummy node! Bad!!");
-                        end if;
+                        Help_Delete (Prev);
                         Last_Link := True;
                      end if;
 
+                     --  Move Prev to Prev.Previous.
                      declare
                         Prev_Prev : constant Deque_Node_Access :=
                           Dereference ("+" (Prev).Previous'Access);
@@ -706,24 +728,24 @@ package body Lock_Free_Deques is
                         Release (Prev);
 
                         if "+" (Prev_Prev) = null then
+                           --  The left dummy node has been marked deleted!
                            Ada.Text_IO.Put_Line ("lock_free_deques.adb: " &
                                                  "Help_Delete: " &
                                                  "Setting Prev to null! " &
                                                  "Bad!!");
+                           raise Constraint_Error;
                         end if;
 
                         Prev := Prev_Prev;
                      end;
 
-                  elsif Prev_Next /= Node then
-
+                  elsif Different_Nodes (Prev_Next, Node) then
                      Last_Link := False;
                      Release (Prev);
                      Prev := Prev_Next;
 
                   else
-                     --  Prev_Next = Node.
-
+                     --  Node is Prev_Next.
                      Release (Prev_Next);
 
                      if
@@ -731,11 +753,10 @@ package body Lock_Free_Deques is
                                          Old_Value => Unmark (Node),
                                          New_Value => Unmark (Next))
                      then
-                        exit;
+                        exit Find;
                      end if;
 
                      --  Back-off
-
                      delay 0.0;
 
                   end if;
@@ -744,12 +765,28 @@ package body Lock_Free_Deques is
 
             end if;
 
-         end loop;
+         end loop Find;
 
          Release (Prev);
          Release (Next);
       end;
 
    end Help_Delete;
+
+   ----------------------------------------------------------------------------
+   function Same_Node (Left  : Deque_Node_Access;
+                       Right : Deque_Node_Reference) return Boolean is
+      use LFRC_Ops;
+   begin
+      return Unmark (Left) = Right;
+   end Same_Node;
+
+   ----------------------------------------------------------------------------
+   function Different_Nodes (Left, Right : Deque_Node_Access) return Boolean is
+      use LFRC_Ops;
+   begin
+      return Unmark (Left) /= Unmark (Right);
+   end Different_Nodes;
+
 
 end Lock_Free_Deques;
