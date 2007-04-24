@@ -24,7 +24,7 @@
 --  Description     : Test application for the lock-free sets.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Mar 10 17:51:23 2006
---  $Id: set_test.adb,v 1.4 2007/04/24 15:45:36 andersg Exp $
+--  $Id: set_test.adb,v 1.5 2007/04/24 17:09:51 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -118,16 +118,21 @@ procedure Set_Test is
                              (No_Inserters_Running'Access, 1)));
 
       declare
-         use type Primitives.Unsigned_32;
-      begin
-         while Start = 0 loop
-            null;
-         end loop;
-      end;
-
-      declare
          ID  : constant PID.Process_ID_Type := PID.Process_ID;
       begin
+         Ada.Text_IO.Put_Line (Output_File,
+                               "Inserter (" &
+                               PID.Process_ID_Type'Image (ID) &
+                               ") started.");
+
+         declare
+            use type Primitives.Unsigned_32;
+         begin
+            while Start = 0 loop
+               null;
+            end loop;
+         end;
+
          for I in 1 .. No_Of_Elements loop
             begin
                Insert (Into  => Set,
@@ -184,9 +189,14 @@ procedure Set_Test is
       declare
          ID   : constant PID.Process_ID_Type := PID.Process_ID;
          Gen  : Random.Generator;
-         Done : Natural := 0;
       begin
          Random.Reset (Gen);
+
+         Ada.Text_IO.Put_Line (Output_File,
+                               "Remover (" &
+                               PID.Process_ID_Type'Image (ID) &
+                               ") started.");
+
 
          declare
             use type Primitives.Unsigned_32;
@@ -207,18 +217,27 @@ procedure Set_Test is
                        );
                No_Removes := Primitives.Unsigned_32'Succ (No_Removes);
                I := I + 1;
-               Done := 0;
 
             exception
                when Sets.Not_Found =>
                   declare
                      use type Primitives.Unsigned_32;
                   begin
-                     exit when Done > Key_Universe'Last and
-                       No_Inserters_Running = 0;
+                     exit when No_Inserters_Running = 0;
                   end;
+            end;
+         end loop;
 
-                  Done := Done + 1;
+         for K in Key_Universe loop
+            begin
+               Delete (From => Set,
+                       Key  => K
+                       );
+               No_Removes := Primitives.Unsigned_32'Succ (No_Removes);
+
+            exception
+               when Sets.Not_Found =>
+                  null;
             end;
          end loop;
 
