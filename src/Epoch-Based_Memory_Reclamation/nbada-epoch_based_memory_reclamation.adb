@@ -35,7 +35,7 @@ pragma Style_Checks (Off);
 --                    University of Cambridge, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Mar  8 12:28:31 2006
---  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.7 2007/04/20 12:40:14 andersg Exp $
+--  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.8 2007/04/25 16:11:41 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -98,6 +98,8 @@ package body Epoch_Based_Memory_Reclamation is
    --  Shared statistics.
    Reclaimed : aliased Primitives.Standard_Unsigned := 0;
    pragma Atomic (Reclaimed);
+   Created   : aliased Primitives.Standard_Unsigned := 0;
+   pragma Atomic (Created);
 
    ----------------------------------------------------------------------------
    --  Operations.
@@ -366,6 +368,8 @@ package body Epoch_Based_Memory_Reclamation is
          end if;
          Dereferenced_Count (ID) := Dereferenced_Count (ID) + 1;
 
+         Primitives.Fetch_And_Add (Created'Access, 1);
+
          return To_Private_Reference (Node);
       end Create;
 
@@ -431,6 +435,9 @@ package body Epoch_Based_Memory_Reclamation is
    begin
       Ada.Text_IO.Put_Line
         ("Epoch_Based_Memory_Reclamation.Print_Statistics:");
+      Ada.Text_IO.Put_Line
+        ("  #Created = " &
+         Primitives.Standard_Unsigned'Image (Created));
       Ada.Text_IO.Put_Line
         ("  #Reclaimed = " &
          Primitives.Standard_Unsigned'Image (Reclaimed));
