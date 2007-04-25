@@ -34,7 +34,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:35:09 2004
---  $Id: nbada-hazard_pointers.adb,v 1.13 2007/04/25 12:40:14 andersg Exp $
+--  $Id: nbada-hazard_pointers.adb,v 1.14 2007/04/25 15:29:16 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -43,7 +43,7 @@ with Primitives;
 with Hash_Tables;
 
 with Ada.Unchecked_Conversion;
-
+with Ada.Exceptions;
 with Ada.Text_IO;
 
 package body Hazard_Pointers is
@@ -93,9 +93,17 @@ package body Hazard_Pointers is
       for I in Hazard_Pointer'Range (2) loop
          if Hazard_Pointer (ID, I) = Shared_Reference_Base (Local) then
             Hazard_Pointer (ID, I) := null;
-            exit;
+            return;
          end if;
       end loop;
+      --  Not found.
+      if Integrity_Checking and Local /= null then
+         Ada.Exceptions.Raise_Exception
+              (Constraint_Error'Identity,
+               "hazard_pointers.adb: " &
+               "Released a private references that had not " &
+               "been dereferenced!");
+      end if;
    end Release;
 
    ----------------------------------------------------------------------------
@@ -128,7 +136,10 @@ package body Hazard_Pointers is
          end loop;
          --  Dereference node iff there is a free hazard pointer.
          if not Found then
-            raise Constraint_Error;
+            Ada.Exceptions.Raise_Exception
+              (Constraint_Error'Identity,
+               "hazard_pointers.adb: " &
+               "Maximum number of local dereferences exceeded!");
          else
             loop
                Node := Node_Access (Shared.all);
@@ -248,7 +259,10 @@ package body Hazard_Pointers is
          end loop;
          --  Dereference node iff there is a free hazard pointer.
          if not Found then
-            raise Constraint_Error;
+            Ada.Exceptions.Raise_Exception
+              (Constraint_Error'Identity,
+               "hazard_pointers.adb: " &
+               "Maximum number of local dereferences exceeded!");
          else
             loop
                Node := To_Private_Reference (Link.all);
@@ -390,7 +404,10 @@ package body Hazard_Pointers is
                return To_Private_Reference (Node);
             end;
          else
-            raise Constraint_Error;
+            Ada.Exceptions.Raise_Exception
+              (Constraint_Error'Identity,
+               "hazard_pointers.adb: " &
+               "Maximum number of local dereferences exceeded!");
          end if;
       end Create;
 

@@ -34,7 +34,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:10:15 2004
---  $Id: nbada-hazard_pointers.ads,v 1.13 2007/04/25 12:40:14 andersg Exp $
+--  $Id: nbada-hazard_pointers.ads,v 1.14 2007/04/25 15:29:16 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -48,6 +48,9 @@ generic
    with package Process_Ids is
      new Process_Identification (<>);
    --  Process identification.
+
+   Integrity_Checking : Boolean := True;
+   --  Enable strong integrity checking.
 package Hazard_Pointers is
 
    ----------------------------------------------------------------------------
