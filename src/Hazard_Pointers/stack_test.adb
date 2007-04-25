@@ -29,7 +29,7 @@
 --  Description     : Test of the lock-free example stack.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 18:54:53 2005
---  $Id: stack_test.adb,v 1.3 2007/04/19 09:28:44 andersg Exp $
+--  $Id: stack_test.adb,v 1.4 2007/04/25 12:40:14 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -92,7 +92,7 @@ procedure Stack_Test is
    No_Pushers_Running   : aliased Primitives.Unsigned_32 := 0;
    No_Poppers_Running   : aliased Primitives.Unsigned_32 := 0;
 
-   Task_Count : aliased Primitives.Unsigned_32 := 0;
+--   Task_Count : aliased Primitives.Unsigned_32 := 0;
    function Pinned_Task return System.Task_Info.Task_Info_Type is
    begin
       --  GNAT/IRIX
@@ -106,9 +106,9 @@ procedure Stack_Test is
 --             Integer (Primitives.Fetch_And_Add_32 (Task_Count'Access, 1))
 --           );
       --  GNAT/Linux
---      return System.Task_Info.System_Scope;
+      return System.Task_Info.System_Scope;
       --  GNAT/Solaris
-      return System.Task_Info.New_Bound_Thread_Attributes;
+--      return System.Task_Info.New_Bound_Thread_Attributes;
    end Pinned_Task;
 
    ----------------------------------------------------------------------------

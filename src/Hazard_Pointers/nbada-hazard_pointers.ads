@@ -34,12 +34,13 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:10:15 2004
---  $Id: nbada-hazard_pointers.ads,v 1.12 2007/04/19 09:28:44 andersg Exp $
+--  $Id: nbada-hazard_pointers.ads,v 1.13 2007/04/25 12:40:14 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
 
 with Process_Identification;
+with Primitives;
 
 generic
    Max_Number_Of_Dereferences : Natural;
@@ -127,7 +128,127 @@ package Hazard_Pointers is
 
    end Operations;
 
+
+   ----------------------------------------------------------------------------
+   --  Reference enabled operations on shared references.
+   ----------------------------------------------------------------------------
+
+   ----------------------------------------------------------------------------
+   type Shared_Reference_Base is limited private;
+   --  For type separation between shared references to different
+   --  managed types derive your own shared reference types from
+   --  Shared_Reference_Base and instantiate the memory management
+   --  operation package below for each of them.
+
+   ----------------------------------------------------------------------------
+   generic
+
+      type Managed_Node is
+        new Managed_Node_Base with private;
+
+      type Shared_Reference is new Shared_Reference_Base;
+      --  All shared variables of type Shared_Reference MUST be declared
+      --  atomic by 'pragma Atomic (Variable_Name);' .
+
+   package Reference_Operations is
+
+      type Node_Access is access all Managed_Node;
+      --  Note: There SHOULD NOT be any shared variables of type
+      --        Node_Access.
+
+      type Private_Reference is private;
+      --  Note: There SHOULD NOT be any shared variables of type
+      --        Private_Reference.
+      Null_Reference : constant Private_Reference;
+      --  Note: A marked null reference is not equal to Null_Reference.
+
+      ----------------------------------------------------------------------
+      --  Operations.
+      ----------------------------------------------------------------------
+      function  Dereference (Link : access Shared_Reference)
+                            return Private_Reference;
+      --  Note: Dereference preservs any mark on Link.all.
+      --        In particular Mark (Null_Reference) /= Null_Reference.
+
+      procedure Release (Node : in Private_Reference);
+
+      function  "+"     (Node : in Private_Reference)
+                        return Node_Access;
+      pragma Inline_Always ("+");
+      function  Deref   (Node : in Private_Reference)
+                        return Node_Access;
+
+      function  Boolean_Compare_And_Swap (Link      : access Shared_Reference;
+                                          Old_Value : in Private_Reference;
+                                          New_Value : in Private_Reference)
+                                         return Boolean;
+
+      procedure Void_Compare_And_Swap    (Link      : access Shared_Reference;
+                                          Old_Value : in Private_Reference;
+                                          New_Value : in Private_Reference);
+
+      procedure Delete  (Node : in Private_Reference);
+
+      procedure Store   (Link : access Shared_Reference;
+                         Node : in Private_Reference);
+      --  Note: Store is only safe to use when there cannot be any
+      --        concurrent updates to Link.
+
+      generic
+         type User_Node_Access is access Managed_Node;
+         --  Select an appropriate (preferably non-blocking) storage
+         --  pool by the "for User_Node_Access'Storage_Pool use ..."
+         --  construct.
+         --  Note: The nodes allocated in this way must have an
+         --        implementation of Free that use the same storage pool.
+      function Create return Private_Reference;
+      --  Creates a new User_Node and returns a safe reference to it.
+
+      --  Private (and shared) references can be tagged with a mark.
+      procedure Mark      (Node : in out Private_Reference);
+      pragma Inline_Always (Mark);
+      function  Mark      (Node : in     Private_Reference)
+                          return Private_Reference;
+      pragma Inline_Always (Mark);
+      procedure Unmark    (Node : in out Private_Reference);
+      pragma Inline_Always (Unmark);
+      function  Unmark    (Node : in     Private_Reference)
+                          return Private_Reference;
+      pragma Inline_Always (Unmark);
+      function  Is_Marked (Node : in     Private_Reference)
+                          return Boolean;
+      pragma Inline_Always (Is_Marked);
+
+      function  Is_Marked (Node : in     Shared_Reference)
+                          return Boolean;
+      pragma Inline_Always (Is_Marked);
+
+      function "=" (Link : in     Shared_Reference;
+                    Ref  : in     Private_Reference) return Boolean;
+      pragma Inline_Always ("=");
+      function "=" (Ref  : in     Private_Reference;
+                    Link : in     Shared_Reference) return Boolean;
+      pragma Inline_Always ("=");
+      --  It is possible to compare a reference to the current value of a link.
+
+   private
+
+      type Private_Reference is new Primitives.Standard_Unsigned;
+
+      Null_Reference : constant Private_Reference := 0;
+
+      Mark_Bits  : constant := 2;
+      --  Note: Reference_Counted_Node_Base'Alignment >= 2 ** Mark_Bits
+      --        MUST hold.
+      Mark_Mask  : constant Private_Reference := 2 ** Mark_Bits - 1;
+      Ref_Mask   : constant Private_Reference := -(2 ** Mark_Bits);
+
+   end Reference_Operations;
+   ----------------------------------------------------------------------------
+
    procedure Print_Statistics;
+
+--  private
 
    type Managed_Node_Access is access all Managed_Node_Base'Class;
    --  Note: There SHOULD NOT be any shared variables of type

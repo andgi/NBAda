@@ -34,7 +34,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:35:09 2004
---  $Id: nbada-hazard_pointers.adb,v 1.12 2007/04/19 09:28:44 andersg Exp $
+--  $Id: nbada-hazard_pointers.adb,v 1.13 2007/04/25 12:40:14 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -210,6 +210,245 @@ package body Hazard_Pointers is
       end Initialize;
 
    end Operations;
+   ----------------------------------------------------------------------------
+
+   ----------------------------------------------------------------------------
+   package body Reference_Operations is
+
+      ----------------------------------------------------------------------
+      function To_Private_Reference is
+         new Ada.Unchecked_Conversion (Shared_Reference, Private_Reference);
+      function To_Private_Reference is
+         new Ada.Unchecked_Conversion (Node_Access, Private_Reference);
+
+      ----------------------------------------------------------------------
+      function Boolean_Compare_And_Swap is
+         new Primitives.Standard_Boolean_Compare_And_Swap (Private_Reference);
+      procedure Value_Compare_And_Swap is
+         new Primitives.Standard_Compare_And_Swap (Private_Reference);
+      procedure Void_Compare_And_Swap is
+         new Primitives.Standard_Void_Compare_And_Swap (Private_Reference);
+
+      ----------------------------------------------------------------------
+      function  Dereference (Link : access Shared_Reference)
+                            return Private_Reference is
+         ID    : constant Processes := Process_Ids.Process_ID;
+         Index : HP_Index;
+         Found : Boolean := False;
+         Node  : Private_Reference;
+      begin
+         --  Find a free hazard pointer.
+         for I in Hazard_Pointer'Range (2) loop
+            if Hazard_Pointer (ID, I) = null then
+               --  Found a free hazard pointer.
+               Index := I;
+               Found := True;
+               exit;
+            end if;
+         end loop;
+         --  Dereference node iff there is a free hazard pointer.
+         if not Found then
+            raise Constraint_Error;
+         else
+            loop
+               Node := To_Private_Reference (Link.all);
+               Hazard_Pointer (ID, Index) :=
+                 Shared_Reference_Base (Deref (Node));
+
+               Primitives.Membar;
+               --  The write to the hazard pointer must be visible before
+               --  Link is read again.
+               exit when To_Private_Reference (Link.all) = Node;
+            end loop;
+         end if;
+         return Node;
+      end Dereference;
+
+      ----------------------------------------------------------------------
+      procedure Release     (Node : in Private_Reference) is
+      begin
+         Release (Managed_Node_Access (Deref (Node)));
+      end Release;
+
+      ----------------------------------------------------------------------
+      function  "+"     (Node : in Private_Reference)
+                        return Node_Access renames Deref;
+
+      ----------------------------------------------------------------------
+      function  Deref   (Node : in Private_Reference)
+                        return Node_Access is
+
+         function To_Node_Access is
+            new Ada.Unchecked_Conversion (Private_Reference,
+                                          Node_Access);
+
+      begin
+         return To_Node_Access (Node and Ref_Mask);
+      end Deref;
+
+      ----------------------------------------------------------------------
+      function  Boolean_Compare_And_Swap (Link      : access Shared_Reference;
+                                          Old_Value : in Private_Reference;
+                                          New_Value : in Private_Reference)
+                                         return Boolean is
+
+         type Shared_Reference_Access is access all Shared_Reference;
+         type Private_Reference_Access is access all Private_Reference;
+         function To_Private_Reference_Access is
+            new Ada.Unchecked_Conversion (Shared_Reference_Access,
+                                          Private_Reference_Access);
+
+      begin
+         return Boolean_Compare_And_Swap
+           (Target =>
+              To_Private_Reference_Access (Shared_Reference_Access (Link)),
+            Old_Value => Old_Value,
+            New_Value => New_Value);
+      end Boolean_Compare_And_Swap;
+
+      ----------------------------------------------------------------------
+      procedure Void_Compare_And_Swap    (Link      : access Shared_Reference;
+                                          Old_Value : in Private_Reference;
+                                          New_Value : in Private_Reference) is
+
+         type Shared_Reference_Access is access all Shared_Reference;
+         type Private_Reference_Access is access all Private_Reference;
+         function To_Private_Reference_Access is
+            new Ada.Unchecked_Conversion (Shared_Reference_Access,
+                                          Private_Reference_Access);
+
+      begin
+         Void_Compare_And_Swap
+           (Target =>
+              To_Private_Reference_Access (Shared_Reference_Access (Link)),
+            Old_Value => Old_Value,
+            New_Value => New_Value);
+      end Void_Compare_And_Swap;
+
+      ----------------------------------------------------------------------
+      procedure Delete      (Node : in Private_Reference) is
+         ID : constant Processes := Process_Ids.Process_ID;
+         Deleted : constant Node_Access := Deref (Node);
+      begin
+         Release (Node);
+         Managed_Node_Base (Deleted.all).MM_Next :=
+           Shared_Reference_Base (D_List (ID));
+         D_List  (ID)      := Managed_Node_Access (Deleted);
+         D_Count (ID)      := D_Count (ID) + 1;
+         if D_Count (ID) >=
+           Node_Count (1.5 * Float (Node_Count (Processes'Last) *
+                                    Node_Count (Max_Number_Of_Dereferences)))
+         then
+            Scan (ID);
+         end if;
+      end Delete;
+
+      ----------------------------------------------------------------------
+      procedure Store   (Link : access Shared_Reference;
+                         Node : in Private_Reference) is
+
+         type Shared_Reference_Access is access all Shared_Reference;
+         type Private_Reference_Access is access all Private_Reference;
+         function To_Private_Reference_Access is
+            new Ada.Unchecked_Conversion (Shared_Reference_Access,
+                                          Private_Reference_Access);
+
+         Tmp : constant Private_Reference := To_Private_Reference (Link.all);
+      begin
+         To_Private_Reference_Access (Shared_Reference_Access (Link)).all :=
+           Node;
+
+         if "+"(Tmp) /= null then
+            Delete (Tmp);
+         end if;
+      end Store;
+
+      ----------------------------------------------------------------------
+      function Create return Private_Reference is
+         ID    : constant Processes        := Process_Ids.Process_ID;
+         Index : HP_Index;
+         Found : Boolean := False;
+      begin
+         --  Find a free hazard pointer.
+         for I in Hazard_Pointer'Range (2) loop
+            if Hazard_Pointer (ID, I) = null then
+               --  Found a free hazard pointer.
+               Index := I;
+               Found := True;
+               exit;
+            end if;
+         end loop;
+         --  Dereference node iff there is a free hazard pointer.
+         if Found then
+            declare
+               UNode : constant User_Node_Access := new Managed_Node;
+               Node  : constant Node_Access      := UNode.all'Unchecked_Access;
+            begin
+               Hazard_Pointer (ID, Index) :=
+                 Shared_Reference_Base (Node);
+
+               return To_Private_Reference (Node);
+            end;
+         else
+            raise Constraint_Error;
+         end if;
+      end Create;
+
+      ----------------------------------------------------------------------
+      procedure Mark      (Node : in out Private_Reference) is
+      begin
+         Node := Node or 1;
+      end Mark;
+
+      ----------------------------------------------------------------------
+      function  Mark      (Node : in     Private_Reference)
+                          return Private_Reference is
+      begin
+         return Node or 1;
+      end Mark;
+
+      ----------------------------------------------------------------------
+      procedure Unmark    (Node : in out Private_Reference) is
+      begin
+         Node := Node and Ref_Mask;
+      end Unmark;
+
+      ----------------------------------------------------------------------
+      function  Unmark    (Node : in     Private_Reference)
+                          return Private_Reference is
+      begin
+         return Node and Ref_Mask;
+      end Unmark;
+
+      ----------------------------------------------------------------------
+      function  Is_Marked (Node : in     Private_Reference)
+                          return Boolean is
+      begin
+         return (Node and Mark_Mask) = 1;
+      end Is_Marked;
+
+      ----------------------------------------------------------------------
+      function  Is_Marked (Node : in     Shared_Reference)
+                          return Boolean is
+      begin
+         return (To_Private_Reference (Node) and Mark_Mask) = 1;
+      end Is_Marked;
+
+      ----------------------------------------------------------------------
+      function "=" (Link : in     Shared_Reference;
+                    Ref  : in     Private_Reference) return Boolean is
+      begin
+         return To_Private_Reference (Link) = Ref;
+      end "=";
+
+      ----------------------------------------------------------------------
+      function "=" (Ref  : in     Private_Reference;
+                    Link : in     Shared_Reference) return Boolean is
+      begin
+         return To_Private_Reference (Link) = Ref;
+      end "=";
+
+   end Reference_Operations;
 
    ----------------------------------------------------------------------------
    procedure Print_Statistics is
