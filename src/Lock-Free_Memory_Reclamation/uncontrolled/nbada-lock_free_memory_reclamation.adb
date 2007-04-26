@@ -32,7 +32,7 @@
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 14:07:58 2004
---  $Id: nbada-lock_free_memory_reclamation.adb,v 1.25 2007/04/26 14:40:04 andersg Exp $
+--  $Id: nbada-lock_free_memory_reclamation.adb,v 1.26 2007/04/26 15:50:57 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -219,17 +219,6 @@ package body Lock_Free_Memory_Reclamation is
          --  Find and clear hazard pointer.
          Primitives.Membar;
          Hazard_Pointer (ID, HP_Index (Node.HP)) := null;
-         --  If we have dereferenced the same node several time, there are
-         --  several hazard pointers to it. Release removes one.
---           for I in Hazard_Pointer'Range (2) loop
---              if
---                Hazard_Pointer (ID, I) =
---                Atomic_Node_Access (To_Node_Access (Node))
---              then
---                 Hazard_Pointer (ID, I) := null;
---                 exit;
---              end if;
---           end loop;
       end Release;
 
       ----------------------------------------------------------------------
@@ -285,6 +274,40 @@ package body Lock_Free_Memory_Reclamation is
             exit when PL.D_Count < Max_Delete_List_Size;
          end loop;
       end Delete;
+
+      ----------------------------------------------------------------------
+      function  Copy (Node : in Private_Reference)
+                     return Private_Reference is
+         ID    : constant Processes := Process_Ids.Process_ID;
+         Index : HP_Index;
+         Found : Boolean := False;
+         Copy  : Private_Reference;
+      begin
+         --  Find a free hazard pointer.
+         for I in Hazard_Pointer'Range (2) loop
+            if Hazard_Pointer (ID, I) = null then
+               Index   := I;
+               Copy.HP := Natural (I);
+               Found   := True;
+               exit;
+            end if;
+         end loop;
+         --  Copy the reference iff there is a free hazard pointer.
+         if not Found then
+            Ada.Exceptions.Raise_Exception
+              (Constraint_Error'Identity,
+               "lock_free_memory_reclamation.adb: " &
+               "Maximum number of local dereferences exceeded!");
+         else
+            Copy.Ref := Node.Ref;
+            Hazard_Pointer (ID, Index) :=
+              Atomic_Node_Access (To_Node_Access (Copy));
+
+            Primitives.Membar;
+         end if;
+
+         return Copy;
+      end Copy;
 
       ----------------------------------------------------------------------
       function  Compare_And_Swap (Link      : access Shared_Reference;
@@ -469,6 +492,138 @@ package body Lock_Free_Memory_Reclamation is
          return To_Private_Reference (Link) = Ref.Ref;
       end "=";
 
+      ----------------------------------------------------------------------
+      ----------------------------------------------------------------------
+      function Unsafe_Read (Link : access Shared_Reference)
+                           return Unsafe_Reference_Value is
+      begin
+         return Unsafe_Reference_Value (To_Private_Reference (Link.all));
+      end Unsafe_Read;
+
+      ----------------------------------------------------------------------
+      function  Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in Unsafe_Reference_Value;
+                                  New_Value : in Private_Reference)
+                                 return Boolean is
+      begin
+         --  Since we have not dereferenced Old_Value it is not
+         --  guaranteed to have a positive reference count.
+         --  However, since we just successfully removed a link to that
+         --  node it's reference count certainly should not be zero.
+         return Compare_And_Swap (Link      => Link,
+                                  Old_Value =>
+                                    (Ref => Private_Reference_Impl (Old_Value),
+                                     HP  => 0),
+                                  New_Value => New_Value);
+      end Compare_And_Swap;
+
+      ----------------------------------------------------------------------
+      procedure Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in     Unsafe_Reference_Value;
+                                  New_Value : in     Private_Reference) is
+      begin
+         --  Since we have not dereferenced Old_Value it is not
+         --  guaranteed to have a positive reference count.
+         --  However, since we just successfully removed a link to that
+         --  node it's reference count certainly should not be zero.
+         if
+           Compare_And_Swap (Link      => Link,
+                             Old_Value =>
+                               (Ref => Private_Reference_Impl (Old_Value),
+                                HP  => 0),
+                             New_Value => New_Value)
+         then
+            null;
+         end if;
+      end Compare_And_Swap;
+
+      ----------------------------------------------------------------------
+      function  Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in Unsafe_Reference_Value;
+                                  New_Value : in Unsafe_Reference_Value)
+                                 return Boolean is
+      begin
+         --  Since we have not dereferenced Old_Value it is not
+         --  guaranteed to have a positive reference count.
+         --  However, since we just successfully removed a link to that
+         --  node it's reference count certainly should not be zero.
+         --  NOTE: The New_Value could easily be dangerous.
+         return Compare_And_Swap (Link      => Link,
+                                  Old_Value =>
+                                    (Ref => Private_Reference_Impl (Old_Value),
+                                     HP  => 0),
+                                  New_Value =>
+                                    (Ref => Private_Reference_Impl (New_Value),
+                                     HP  => 0));
+      end Compare_And_Swap;
+
+      ----------------------------------------------------------------------
+      procedure Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in     Unsafe_Reference_Value;
+                                  New_Value : in     Unsafe_Reference_Value) is
+      begin
+         --  Since we have not dereferenced Old_Value it is not
+         --  guaranteed to have a positive reference count.
+         --  However, since we just successfully removed a link to that
+         --  node it's reference count certainly should not be zero.
+         if
+           Compare_And_Swap (Link      => Link,
+                             Old_Value =>
+                               (Ref => Private_Reference_Impl (Old_Value),
+                                HP  => 0),
+                             New_Value =>
+                               (Ref => Private_Reference_Impl (New_Value),
+                                HP  => 0))
+         then
+            null;
+         end if;
+      end Compare_And_Swap;
+
+      ----------------------------------------------------------------------
+      function  Is_Marked (Node : in     Unsafe_Reference_Value)
+                          return Boolean is
+      begin
+         return (Private_Reference_Impl (Node) and Mark_Mask) =
+           Private_Reference_Impl'(1);
+      end Is_Marked;
+
+      ----------------------------------------------------------------------
+      function  Mark      (Node : in     Unsafe_Reference_Value)
+                          return Unsafe_Reference_Value is
+      begin
+         return Node or 1;
+      end Mark;
+
+      ----------------------------------------------------------------------
+      function "=" (Val : in     Unsafe_Reference_Value;
+                    Ref : in     Private_Reference) return Boolean is
+      begin
+         return Ref.Ref = Private_Reference_Impl (Val);
+      end "=";
+
+
+      ----------------------------------------------------------------------
+      function "=" (Ref : in     Private_Reference;
+                    Val : in     Unsafe_Reference_Value) return Boolean is
+      begin
+         return Ref.Ref = Private_Reference_Impl (Val);
+      end "=";
+
+      ----------------------------------------------------------------------
+      function "=" (Link : in     Shared_Reference;
+                    Ref  : in     Unsafe_Reference_Value) return Boolean is
+      begin
+         return To_Private_Reference (Link) = Private_Reference_Impl (Ref);
+      end "=";
+
+      ----------------------------------------------------------------------
+      function "=" (Ref  : in     Unsafe_Reference_Value;
+                    Link : in     Shared_Reference) return Boolean is
+      begin
+         return To_Private_Reference (Link) = Private_Reference_Impl (Ref);
+      end "=";
+
+      ----------------------------------------------------------------------
       ----------------------------------------------------------------------
       function To_Node_Access (X : Private_Reference)
                               return Node_Access is
