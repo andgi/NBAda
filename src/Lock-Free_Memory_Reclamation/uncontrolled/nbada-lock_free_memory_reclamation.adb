@@ -3,7 +3,7 @@
 --  garbage reclamation scheme by A. Gidenstam, M. Papatriantafilou, H. Sundell
 --  and P. Tsigas.
 --
---  Copyright (C) 2004 - 2006  Anders Gidenstam
+--  Copyright (C) 2004 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 14:07:58 2004
---  $Id: nbada-lock_free_memory_reclamation.adb,v 1.24 2006/11/30 21:15:23 andersg Exp $
+--  $Id: nbada-lock_free_memory_reclamation.adb,v 1.25 2007/04/26 14:40:04 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -71,7 +71,7 @@ package body Lock_Free_Memory_Reclamation is
 
    procedure Fetch_And_Add (Target    : access Primitives.Unsigned_32;
                             Increment : in     Primitives.Unsigned_32)
-     renames Primitives.Fetch_And_Add;
+     renames Primitives.Fetch_And_Add_32;
 
    package HP_Sets is
       new Hash_Tables (Managed_Node_Access, "=", Hash_Ref);
@@ -167,8 +167,8 @@ package body Lock_Free_Memory_Reclamation is
          new Ada.Unchecked_Conversion (Shared_Reference_Access,
                                        Shared_Reference_Base_Access);
 
-      function Compare_And_Swap_32 is
-         new Primitives.Boolean_Compare_And_Swap_32 (Shared_Reference_Base);
+      function Compare_And_Swap_Impl is new
+        Primitives.Standard_Boolean_Compare_And_Swap (Shared_Reference_Base);
 
       Mark_Mask  : constant Private_Reference_Impl := 2 ** Mark_Bits - 1;
       Ref_Mask   : constant Private_Reference_Impl := -(2 ** Mark_Bits);
@@ -294,7 +294,7 @@ package body Lock_Free_Memory_Reclamation is
          use type Reference_Count;
       begin
          if
-           Compare_And_Swap_32
+           Compare_And_Swap_Impl
            (Target    =>
               To_Shared_Reference_Base_Access (Link.all'Unchecked_Access),
             Old_Value => (Ref => Shared_Reference_Base_Impl (Old_Value.Ref)),
@@ -607,6 +607,7 @@ package body Lock_Free_Memory_Reclamation is
 
    ----------------------------------------------------------------------------
    procedure Clean_Up_All (ID : in Processes) is
+      pragma Unreferenced (ID);
       use type Primitives.Unsigned_32;
       Node  : Atomic_Node_Access;
    begin
@@ -629,12 +630,13 @@ package body Lock_Free_Memory_Reclamation is
    ----------------------------------------------------------------------------
    function Hash_Ref (Ref  : in Managed_Node_Access;
                       Size : in Natural) return Natural is
-      type Unsigned is mod 2**32;
+      use type Primitives.Standard_Unsigned;
       function To_Unsigned is
          new Ada.Unchecked_Conversion (Managed_Node_Access,
-                                       Unsigned);
+                                       Primitives.Standard_Unsigned);
    begin
-      return Natural ((To_Unsigned (Ref) / 4) mod Unsigned (Size));
+      return Natural
+        ((To_Unsigned (Ref) / 4) mod Primitives.Standard_Unsigned (Size));
    end Hash_Ref;
 
 end Lock_Free_Memory_Reclamation;

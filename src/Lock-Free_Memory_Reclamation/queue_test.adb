@@ -1,9 +1,9 @@
 -------------------------------------------------------------------------------
---  Lock-Free Reference Counting - An implementation of the lock-free
+--  Lock-Free Memory Reclamation - An implementation of the lock-free
 --  garbage reclamation scheme by A. Gidenstam, M. Papatriantafilou, H. Sundell
 --  and P. Tsigas.
 --
---  Copyright (C) 2004 - 2006  Anders Gidenstam
+--  Copyright (C) 2004 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 -- Description     : Example application for lock-free reference counting.
 -- Author          : Anders Gidenstam
 -- Created On      : Wed Apr 13 22:09:40 2005
--- $Id: queue_test.adb,v 1.12 2006/11/30 20:02:10 andersg Exp $
+-- $Id: queue_test.adb,v 1.13 2007/04/26 14:40:03 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -50,7 +50,7 @@ procedure Queue_Test is
    --  Test application.
    ----------------------------------------------------------------------------
 
-   No_Of_Elements : constant := 10_000;
+   No_Of_Elements : constant := 100_000;
    QUEUE_FIFO_PROPERTY_VIOLATION : exception;
 
    Output_File : Ada.Text_IO.File_Type renames
@@ -77,7 +77,7 @@ procedure Queue_Test is
    No_Producers_Running : aliased Primitives.Unsigned_32 := 0;
    No_Consumers_Running : aliased Primitives.Unsigned_32 := 0;
 
-   Task_Count : aliased Primitives.Unsigned_32 := 0;
+--   Task_Count : aliased Primitives.Unsigned_32 := 0;
    function Pinned_Task return System.Task_Info.Task_Info_Type is
    begin
       --  GNAT/IRIX
@@ -88,10 +88,12 @@ procedure Queue_Test is
 --           Priority    => System.Task_Info.No_Specified_Priority,
 --           Runon_CPU   =>
 --             --System.Task_Info.ANY_CPU
---             Integer (Primitives.Fetch_And_Add (Task_Count'Access, 1))
+--             Integer (Primitives.Fetch_And_Add_32 (Task_Count'Access, 1))
 --           );
       --  GNAT/Linux
       return System.Task_Info.System_Scope;
+      --  GNAT/Solaris
+--      return System.Task_Info.New_Bound_Thread_Attributes;
    end Pinned_Task;
 
    ----------------------------------------------------------------------------
@@ -99,7 +101,7 @@ procedure Queue_Test is
       No_Enqueues : Primitives.Unsigned_32 := 0;
    begin
       PID.Register;
-      Primitives.Fetch_And_Add (No_Producers_Running'Access, 1);
+      Primitives.Fetch_And_Add_32 (No_Producers_Running'Access, 1);
 
       declare
          use type Primitives.Unsigned_32;
@@ -132,8 +134,8 @@ procedure Queue_Test is
       declare
          use type Primitives.Unsigned_32;
       begin
-         Primitives.Fetch_And_Add (Enqueue_Count'Access, No_Enqueues);
-         Primitives.Fetch_And_Add (No_Producers_Running'Access, -1);
+         Primitives.Fetch_And_Add_32 (Enqueue_Count'Access, No_Enqueues);
+         Primitives.Fetch_And_Add_32 (No_Producers_Running'Access, -1);
       end;
       Ada.Text_IO.Put_Line (Output_File,
                             "Producer (?): exited.");
@@ -154,7 +156,7 @@ procedure Queue_Test is
       No_Dequeues : Primitives.Unsigned_32 := 0;
    begin
       PID.Register;
-      Primitives.Fetch_And_Add (No_Consumers_Running'Access, 1);
+      Primitives.Fetch_And_Add_32 (No_Consumers_Running'Access, 1);
 
       declare
          ID   : constant PID.Process_ID_Type := PID.Process_ID;
@@ -214,8 +216,8 @@ procedure Queue_Test is
       declare
          use type Primitives.Unsigned_32;
       begin
-         Primitives.Fetch_And_Add (Dequeue_Count'Access, No_Dequeues);
-         Primitives.Fetch_And_Add (No_Consumers_Running'Access, -1);
+         Primitives.Fetch_And_Add_32 (Dequeue_Count'Access, No_Dequeues);
+         Primitives.Fetch_And_Add_32 (No_Consumers_Running'Access, -1);
       end;
 
       Ada.Text_IO.Put_Line (Output_File,
@@ -252,7 +254,7 @@ begin
    begin
       delay 5.0;
       T1 := Ada.Real_Time.Clock;
-      Primitives.Fetch_And_Add (Start'Access, 1);
+      Primitives.Fetch_And_Add_32 (Start'Access, 1);
    end;
 --     declare
 --        C1 : Consumer;
@@ -267,7 +269,8 @@ begin
    Ada.Text_IO.Put_Line ("Dequeue count: " &
                          Primitives.Unsigned_32'Image (Dequeue_Count));
    Ada.Text_IO.Put_Line ("Elapsed time:" &
-                         Duration'Image (Ada.Real_Time.To_Duration (T2 - T1)));
+                         Duration'Image (Ada.Real_Time.To_Duration (T2 - T1)) &
+                         " seconds.");
 
    Ada.Text_IO.Put_Line ("Emptying queue.");
    delay 5.0;
@@ -281,7 +284,7 @@ begin
                                "Dequeue() = (" &
                                PID.Process_ID_Type'Image (V.Creator) & ", " &
                                Integer'Image (V.Index) & ")");
-         Primitives.Fetch_And_Add (Dequeue_Count'Access, 1);
+         Primitives.Fetch_And_Add_32 (Dequeue_Count'Access, 1);
       end loop;
    exception
       when E : others =>

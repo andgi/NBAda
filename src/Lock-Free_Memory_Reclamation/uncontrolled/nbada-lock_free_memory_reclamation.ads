@@ -3,7 +3,7 @@
 --  garbage reclamation scheme by A. Gidenstam, M. Papatriantafilou, H. Sundell
 --  and P. Tsigas.
 --
---  Copyright (C) 2004 - 2006  Anders Gidenstam
+--  Copyright (C) 2004 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 13:54:45 2004
---  $Id: nbada-lock_free_memory_reclamation.ads,v 1.17 2006/11/30 20:52:28 andersg Exp $
+--  $Id: nbada-lock_free_memory_reclamation.ads,v 1.18 2007/04/26 14:40:04 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -200,7 +200,7 @@ package Lock_Free_Memory_Reclamation is
 
    private
 
-      type Private_Reference_Impl is mod 2 ** 32;
+      type Private_Reference_Impl is new Primitives.Standard_Unsigned;
 
       subtype Index is Natural range 0 .. Max_Number_Of_Dereferences;
       type Private_Reference is
@@ -232,12 +232,12 @@ private
    type Managed_Node_Access is
      access all Managed_Node_Base'Class;
 
-   type Shared_Reference_Base_Impl is mod 2 ** 32;
+   type Shared_Reference_Base_Impl is new Primitives.Standard_Unsigned;
    type Shared_Reference_Base is
       record
          Ref : Shared_Reference_Base_Impl := 0;
       end record;
-   for Shared_Reference_Base'Size use 32;
+   for Shared_Reference_Base'Size use Primitives.Standard_Unsigned'Size;
    pragma Atomic (Shared_Reference_Base);
 
    Null_Reference : constant Shared_Reference_Base := (Ref => 0);
