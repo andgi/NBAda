@@ -1,19 +1,40 @@
 -------------------------------------------------------------------------------
+--  Lock-Free Deques - An Ada implementation of the lock-free deque algorithm
+--                     by H. Sundell and P. Tsigas.
+--
+--  Copyright (C) 2006 - 2007  Anders Gidenstam
+--
+--  This program is free software; you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation; either version 2 of the License, or
+--  (at your option) any later version.
+--
+--  This program is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : lock_free_deques.ads
 --  Description     : An Ada implementation of the lock-free deque algorithm
 --                    by H. Sundell and P. Tsigas.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 15 18:46:02 2006
---  $Id: nbada-lock_free_deques.ads,v 1.4 2007/04/24 10:31:00 andersg Exp $
+--  $Id: nbada-lock_free_deques.ads,v 1.5 2007/04/26 14:52:16 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
 with Lock_Free_Reference_Counting;
+pragma Elaborate_All (Lock_Free_Reference_Counting);
+--  with Lock_Free_Memory_Reclamation;
 with Process_Identification;
 
-pragma Elaborate_All (Lock_Free_Reference_Counting);
 
 generic
 
@@ -44,6 +65,7 @@ package Lock_Free_Deques is
 
    package LFRC is new Lock_Free_Reference_Counting
      (Max_Number_Of_Guards => 128);
+--     package LFRC is new Lock_Free_Memory_Reclamation
 --       (Max_Number_Of_Dereferences   => 7,
 --        --  Remember to account for the dereferences in the
 --        --  callbacks Clean_Up and Dispose (which are invoked by Delete).

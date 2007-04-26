@@ -1,10 +1,30 @@
 -------------------------------------------------------------------------------
+--  Lock-Free Deques - An Ada implementation of the lock-free deque algorithm
+--                     by H. Sundell and P. Tsigas.
+--
+--  Copyright (C) 2006 - 2007  Anders Gidenstam
+--
+--  This program is free software; you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation; either version 2 of the License, or
+--  (at your option) any later version.
+--
+--  This program is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : deque_test.adb
 --  Description     : Test program for the lock-free deque.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 16 16:06:25 2006
--- $Id: deque_test.adb,v 1.7 2007/04/24 10:30:59 andersg Exp $
+-- $Id: deque_test.adb,v 1.8 2007/04/26 14:52:16 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -72,7 +92,7 @@ procedure Deque_Test is
    No_Producers_Running       : aliased Primitives.Unsigned_32 := 0;
    No_Consumers_Running       : aliased Primitives.Unsigned_32 := 0;
 
-   Task_Count : aliased Primitives.Unsigned_32 := 0;
+--   Task_Count : aliased Primitives.Unsigned_32 := 0;
    function Pinned_Task return System.Task_Info.Task_Info_Type is
    begin
       --  GNAT/IRIX
@@ -87,6 +107,8 @@ procedure Deque_Test is
 --           );
       --  GNAT/Linux
       return System.Task_Info.System_Scope;
+      --  GNAT/Solaris
+--      return System.Task_Info.New_Bound_Thread_Attributes;
    end Pinned_Task;
 
    ----------------------------------------------------------------------------
@@ -461,13 +483,13 @@ begin
            ("Testing with right/left producer / right/left consumer tasks.");
          declare
             use type Primitives.Unsigned_32;
-            RP0, RP1, RP2, RP3, RP4, RP5--, RP6, RP7
+            RP0, RP1, RP2, RP3, RP4, RP5, RP6, RP7
               : Right_Producer;
-            LP0, LP1, LP2, LP3, LP4, LP5--, LP6, LP7
+            LP0, LP1, LP2, LP3, LP4, LP5, LP6, LP7
               : Left_Producer;
-            RC0, RC1, RC2, RC3, RC4, RC5--, RC6, RC7
+            RC0, RC1, RC2, RC3, RC4, RC5, RC6, RC7
               : Right_Consumer;
-            LC0, LC1, LC2, LC3, LC4, LC5--, LC6, LC7
+            LC0, LC1, LC2, LC3, LC4, LC5, LC6, LC7
               : Left_Consumer;
          begin
             delay 5.0;
@@ -493,7 +515,8 @@ begin
    Ada.Text_IO.Put_Line ("Left_Pop count: " &
                          Primitives.Unsigned_32'Image (Left_Pop_Count));
    Ada.Text_IO.Put_Line ("Elapsed time:" &
-                         Duration'Image (Ada.Real_Time.To_Duration (T2 - T1)));
+                         Duration'Image (Ada.Real_Time.To_Duration (T2 - T1)) &
+                         " seconds.");
 
    Ada.Text_IO.Put_Line ("Verifying deque.");
    Verify (Deque, Print => False);

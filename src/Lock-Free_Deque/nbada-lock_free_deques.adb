@@ -1,11 +1,31 @@
 -------------------------------------------------------------------------------
+--  Lock-Free Deques - An Ada implementation of the lock-free deque algorithm
+--                     by H. Sundell and P. Tsigas.
+--
+--  Copyright (C) 2006 - 2007  Anders Gidenstam
+--
+--  This program is free software; you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation; either version 2 of the License, or
+--  (at your option) any later version.
+--
+--  This program is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : lock_free_deques.adb
 --  Description     : An Ada implementation of the lock-free deque algorithm
 --                    by H. Sundell and P. Tsigas.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 15 18:59:45 2006
---  $Id: nbada-lock_free_deques.adb,v 1.7 2007/04/24 10:31:00 andersg Exp $
+--  $Id: nbada-lock_free_deques.adb,v 1.8 2007/04/26 14:52:16 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
