@@ -25,7 +25,7 @@
 --                    by H. Sundell and P. Tsigas.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 15 18:46:02 2006
---  $Id: nbada-lock_free_deques.ads,v 1.5 2007/04/26 14:52:16 andersg Exp $
+--  $Id: nbada-lock_free_deques.ads,v 1.6 2007/04/26 15:49:32 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -33,6 +33,7 @@ pragma License (GPL);
 with Lock_Free_Reference_Counting;
 pragma Elaborate_All (Lock_Free_Reference_Counting);
 --  with Lock_Free_Memory_Reclamation;
+
 with Process_Identification;
 
 
@@ -66,7 +67,7 @@ package Lock_Free_Deques is
    package LFRC is new Lock_Free_Reference_Counting
      (Max_Number_Of_Guards => 128);
 --     package LFRC is new Lock_Free_Memory_Reclamation
---       (Max_Number_Of_Dereferences   => 7,
+--       (Max_Number_Of_Dereferences   => 8,
 --        --  Remember to account for the dereferences in the
 --        --  callbacks Clean_Up and Dispose (which are invoked by Delete).
 --        --  Here: PushRight <= ?
@@ -80,7 +81,7 @@ package Lock_Free_Deques is
 --        Max_Number_Of_Links_Per_Node => 2,
 --        Clean_Up_Threshold           => 256,
 --        --  Clean up and scan often.
---        Process_Ids                  => Process_Ids);
+--        Process_Ids                  => Process_Ids);l
 
    procedure Verify (Deque : in out Deque_Type;
                      Print : in     Boolean := False);

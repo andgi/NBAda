@@ -25,7 +25,7 @@
 --                    by H. Sundell and P. Tsigas.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 15 18:59:45 2006
---  $Id: nbada-lock_free_deques.adb,v 1.8 2007/04/26 14:52:16 andersg Exp $
+--  $Id: nbada-lock_free_deques.adb,v 1.9 2007/04/26 15:49:32 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -349,12 +349,12 @@ package body Lock_Free_Deques is
             new Ada.Unchecked_Conversion (Deque_Node_Reference,
                                           Primitives.Standard_Unsigned);
          function To_Unsigned is
-            new Ada.Unchecked_Conversion (Deque_Node_Access,
+            new Ada.Unchecked_Conversion (LFRC_Ops.Node_Access,
                                           Primitives.Standard_Unsigned);
          use Primitives;
       begin
          return
-           Standard_Unsigned'Image (To_Unsigned (Node)) &
+           Standard_Unsigned'Image (To_Unsigned ("+" (Node))) &
            "@(" &
            "Previous = " &
            Standard_Unsigned'Image (To_Unsigned ("+" (Node).Previous)) & ", " &
