@@ -33,7 +33,7 @@
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 24 10:25:44 2005
---  $Id: large_primitives.adb,v 1.13 2007/05/15 13:13:59 andersg Exp $
+--  $Id: large_primitives.adb,v 1.14 2007/05/15 13:17:50 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -169,7 +169,7 @@ package body Large_Primitives is
          use type System.Address;
          use HP;
          use Object_Value_Operations;
-         Val : Object_Value_Access := Get_Block (ID);
+         Val : constant Object_Value_Access := Get_Block (ID);
       begin
          Val.Value := Value;
 
