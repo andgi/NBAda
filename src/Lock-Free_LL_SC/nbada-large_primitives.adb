@@ -33,7 +33,7 @@
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 24 10:25:44 2005
---  $Id: nbada-large_primitives.adb,v 1.12 2007/04/19 09:28:44 andersg Exp $
+--  $Id: nbada-large_primitives.adb,v 1.13 2007/05/15 13:13:59 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -204,17 +204,19 @@ package body Large_Primitives is
       -------------------------------------------------------------------------
       procedure Store_Conditional (Target : in out Shared_Element;
                                    Value  : in     Element) is
-         Tmp : Boolean;
       begin
-         Tmp := Store_Conditional (Target'Unrestricted_Access, Value);
+         if Store_Conditional (Target'Unrestricted_Access, Value) then
+            null;
+         end if;
       end Store_Conditional;
 
       -------------------------------------------------------------------------
       procedure Store_Conditional (Target : access Shared_Element;
                                    Value  : in     Element) is
-         Tmp : Boolean;
       begin
-         Tmp := Store_Conditional (Target, Value);
+         if Store_Conditional (Target, Value) then
+            null;
+         end if;
       end Store_Conditional;
 
       -------------------------------------------------------------------------
@@ -255,8 +257,7 @@ package body Large_Primitives is
       -------------------------------------------------------------------------
       procedure Initialize (Target : access Shared_Element;
                             Value  : in     Element) is
-         ID  : constant Processes := Process_Ids.Process_ID;
-         Val : constant Object_Value_Access := Get_Block (ID);
+         Val : Object_Value_Access;
 
          type Shared_Reference_Access is
            access all Object_Value_Operations.Shared_Reference;
@@ -265,6 +266,10 @@ package body Large_Primitives is
               new Ada.Unchecked_Conversion (Shared_Element_Access,
                                             Shared_Reference_Access);
       begin
+         Primitives.Fetch_And_Add (Allocated'Access, 1);
+         Val :=
+           Object_Value_Access (New_Object_Value_Access'(new Object_Value));
+
          Val.Value := Value;
          Object_Value_Operations.Initialize
            (To_Shared_Reference (Target.Reference'Access),
