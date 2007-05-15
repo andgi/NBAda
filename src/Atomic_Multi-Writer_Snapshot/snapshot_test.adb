@@ -28,7 +28,7 @@
 --                    Proceedings of STOC'05, ACM, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue May 15 13:19:07 2007
--- $Id: snapshot_test.adb,v 1.1 2007/05/15 14:02:15 andersg Exp $
+-- $Id: snapshot_test.adb,v 1.2 2007/05/15 14:13:17 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -53,9 +53,11 @@ procedure Snapshot_Test is
       new Atomic_Multiwriter_Snapshots (Process_Ids              => PID,
                                         Max_Number_Of_Components => 32);
 
-   package Integer_Components is
-      new My_Snapshot.Element_Components (Element => Integer);
-   subtype Integer_Component is Integer_Components.Element_Component;
+   type My_Int is new Integer;
+   for My_Int'Size use Primitives.Standard_Unsigned'Size;
+   package My_Int_Components is
+      new My_Snapshot.Element_Components (Element => My_Int);
+   subtype My_Int_Component is My_Int_Components.Element_Component;
 
    ----------------------------------------------------------------------------
    --  Test application.
@@ -82,8 +84,8 @@ procedure Snapshot_Test is
    end Reader;
 
    ----------------------------------------------------------------------
-   My_Components : constant array (1 .. 10) of Integer_Component :=
-     (others => Integer_Components.Create (Default_Value => 42));
+   My_Components : constant array (1 .. 10) of My_Int_Component :=
+     (others => My_Int_Components.Create (Default_Value => 42));
 
    Start              : aliased Primitives.Unsigned_32 := 0;
    Write_Count        : aliased Primitives.Unsigned_32 := 0;
@@ -106,9 +108,9 @@ procedure Snapshot_Test is
 --             Integer (Primitives.Fetch_And_Add_32 (Task_Count'Access, 1))
 --           );
       --  GNAT/Linux
-      return System.Task_Info.System_Scope;
+--      return System.Task_Info.System_Scope;
       --  GNAT/Solaris
---      return System.Task_Info.New_Bound_Thread_Attributes;
+      return System.Task_Info.New_Bound_Thread_Attributes;
    end Pinned_Task;
 
    ----------------------------------------------------------------------
@@ -130,11 +132,11 @@ procedure Snapshot_Test is
       end;
 
       declare
-         use Integer_Components;
-         ID          : constant PID.Process_ID_Type := PID.Process_ID;
+         use My_Int_Components;
+         ID : constant PID.Process_ID_Type := PID.Process_ID;
       begin
          for I in 1 .. No_Of_Writes loop
-            Write (My_Components (Component), I);
+            Write (My_Components (Component), My_Int (I));
             No_Writes := Primitives.Unsigned_32'Succ (No_Writes);
          end loop;
 
@@ -186,9 +188,9 @@ procedure Snapshot_Test is
       end;
 
       declare
-         use Integer_Components;
+         use My_Int_Components;
          use type Primitives.Unsigned_32;
-         ID          : constant PID.Process_ID_Type := PID.Process_ID;
+         ID : constant PID.Process_ID_Type := PID.Process_ID;
       begin
          loop
             declare
