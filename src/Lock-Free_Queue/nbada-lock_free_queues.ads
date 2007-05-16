@@ -23,13 +23,14 @@
 --                    lock-free queue algorithm.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Nov 28 10:55:38 2006
---  $Id: nbada-lock_free_queues.ads,v 1.3 2007/05/16 12:28:51 andersg Exp $
+--  $Id: nbada-lock_free_queues.ads,v 1.4 2007/05/16 12:41:22 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
 with Process_Identification;
 with Epoch_Based_Memory_Reclamation;
+--  with Hazard_Pointers;
 
 generic
 
@@ -59,6 +60,9 @@ package Lock_Free_Queues is
      (Epoch_Update_Threshold     => 100,
       --  Suitable number for epoch-based reclamation.
       Process_Ids                => Process_Ids);
+--     package MR is new Hazard_Pointers
+--       (Max_Number_Of_Dereferences => 3,
+--        Process_Ids                => Process_Ids);
 
 private
 
