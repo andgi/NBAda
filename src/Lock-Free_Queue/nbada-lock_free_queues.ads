@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Lock-free Queue - An implementation of Michael and Scott's lock-free queue.
---  Copyright (C) 2006  Anders Gidenstam
+--  Copyright (C) 2006 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -16,13 +16,6 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
---  As a special exception, if other files instantiate generics from this
---  unit, or you link this unit with other files to produce an executable,
---  this unit does not by itself cause the resulting executable to be
---  covered by the GNU General Public License. This exception does not
---  however invalidate any other reasons why the executable file might be
---  covered by the GNU Public License.
---
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : lock_free_queues.ads
@@ -30,10 +23,10 @@
 --                    lock-free queue algorithm.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Nov 28 10:55:38 2006
---  $Id: nbada-lock_free_queues.ads,v 1.2 2006/11/30 19:52:45 andersg Exp $
+--  $Id: nbada-lock_free_queues.ads,v 1.3 2007/05/16 12:28:51 andersg Exp $
 -------------------------------------------------------------------------------
 
-pragma License (Modified_GPL);
+pragma License (GPL);
 
 with Process_Identification;
 with Epoch_Based_Memory_Reclamation;
