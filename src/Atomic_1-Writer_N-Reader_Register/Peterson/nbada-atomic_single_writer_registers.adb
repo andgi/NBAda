@@ -3,9 +3,9 @@
 -- Description     :
 -- Author          : Anders Gidenstam
 -- Created On      : Sat Oct 20 00:04:58 2001
--- $Id: nbada-atomic_single_writer_registers.adb,v 1.3 2002/01/14 14:58:01 anders Exp $
+-- $Id: nbada-atomic_single_writer_registers.adb,v 1.4 2007/05/16 14:42:26 andersg Exp $
 
-package body Wait_Free is
+package body Atomic_Single_Writer_Registers is
 
    procedure Write (Register : in out Atomic_1_M_Register;
                     Value    : in     Element_Type) is
@@ -49,5 +49,5 @@ package body Wait_Free is
       end if;
    end Read;
 
-end Wait_Free;
+end Atomic_Single_Writer_Registers;
 

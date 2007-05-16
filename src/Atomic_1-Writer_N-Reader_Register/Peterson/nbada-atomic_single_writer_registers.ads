@@ -3,12 +3,12 @@
 -- Description     :
 -- Author          : Anders Gidenstam
 -- Created On      : Fri Oct 19 23:57:47 2001
--- $Id: nbada-atomic_single_writer_registers.ads,v 1.2 2002/01/12 00:23:53 anders Exp $
+-- $Id: nbada-atomic_single_writer_registers.ads,v 1.3 2007/05/16 14:42:26 andersg Exp $
 
 generic
    type Element_Type is private;
 
-package Wait_Free is
+package Atomic_Single_Writer_Registers is
 
    ----------------------------------------------------------------------------
    --
@@ -48,5 +48,5 @@ private
          pragma Volatile (Copybuff);
       end record;
 
-end Wait_Free;
+end Atomic_Single_Writer_Registers;
 

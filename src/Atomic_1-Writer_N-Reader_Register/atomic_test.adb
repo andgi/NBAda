@@ -3,17 +3,17 @@
 -- Description     : Test of wait-free constructions.
 -- Author          : Anders Gidenstam
 -- Created On      : Sat Oct 20 00:43:30 2001
--- $Id: atomic_test.adb,v 1.2 2002/01/12 00:23:53 anders Exp $
+-- $Id: atomic_test.adb,v 1.3 2007/05/16 14:42:26 andersg Exp $
 
 with Ada.Text_IO; use Ada.Text_IO;
 
-with Wait_Free;
+with Atomic_Single_Writer_Registers;
 
 procedure Atomic_Test is
 
    type My_String is new String (1..40);
 
-   package Wait_Free_Strings is new Wait_Free (My_String);
+   package Wait_Free_Strings is new Atomic_Single_Writer_Registers (My_String);
    use Wait_Free_Strings;
 
    task Writer;
