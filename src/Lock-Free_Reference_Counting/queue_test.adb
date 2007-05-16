@@ -17,23 +17,16 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
---  As a special exception, if other files instantiate generics from this
---  unit, or you link this unit with other files to produce an executable,
---  this unit does not by itself cause the resulting executable to be
---  covered by the GNU General Public License. This exception does not
---  however invalidate any other reasons why the executable file might be
---  covered by the GNU Public License.
---
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : queue_test.adb
 --  Description     : Example application for lock-free reference counting.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Apr 13 22:09:40 2005
---  $Id: queue_test.adb,v 1.2 2007/04/19 15:40:50 andersg Exp $
+--  $Id: queue_test.adb,v 1.3 2007/05/16 18:07:48 andersg Exp $
 -------------------------------------------------------------------------------
 
-pragma License (Modified_GPL);
+pragma License (GPL);
 
 with Primitives;
 
@@ -96,9 +89,9 @@ procedure Queue_Test is
 --             Integer (Primitives.Fetch_And_Add_32 (Task_Count'Access, 1))
 --           );
       --  GNAT/Linux
---      return System.Task_Info.System_Scope;
+      return System.Task_Info.System_Scope;
       --  GNAT/Solaris
-      return System.Task_Info.New_Bound_Thread_Attributes;
+--      return System.Task_Info.New_Bound_Thread_Attributes;
    end Pinned_Task;
 
    ----------------------------------------------------------------------------
@@ -250,9 +243,9 @@ begin
    Ada.Text_IO.Put_Line ("Testing with producer/consumer tasks.");
    declare
       use type Primitives.Unsigned_32;
-      P0, P1--, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
+      P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
         : Producer;
-      C0, C1--, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
+      C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
         : Consumer;
    begin
       delay 5.0;

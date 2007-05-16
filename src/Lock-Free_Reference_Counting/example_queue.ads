@@ -16,13 +16,6 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
---  As a special exception, if other files instantiate generics from this
---  unit, or you link this unit with other files to produce an executable,
---  this unit does not by itself cause the resulting executable to be
---  covered by the GNU General Public License. This exception does not
---  however invalidate any other reasons why the executable file might be
---  covered by the GNU Public License.
---
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : example_queue.ads
@@ -30,10 +23,10 @@
 --                    schemes.
 --  Author          : Anders Gidenstam
 --  Created On      : Sat May  7 20:54:49 2005
---  $Id: example_queue.ads,v 1.2 2006/12/01 10:40:10 andersg Exp $
+--  $Id: example_queue.ads,v 1.3 2007/05/16 18:07:48 andersg Exp $
 -------------------------------------------------------------------------------
 
-pragma License (Modified_GPL);
+pragma License (GPL);
 
 with Lock_Free_Reference_Counting;
 with Process_Identification;

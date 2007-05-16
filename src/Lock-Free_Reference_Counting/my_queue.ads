@@ -17,23 +17,16 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
---  As a special exception, if other files instantiate generics from this
---  unit, or you link this unit with other files to produce an executable,
---  this unit does not by itself cause the resulting executable to be
---  covered by the GNU General Public License. This exception does not
---  however invalidate any other reasons why the executable file might be
---  covered by the GNU Public License.
---
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : my_queue.ads
 --  Description     : Example application for lock-free reference counting.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Mar  2 18:49:40 2006
---  $Id: my_queue.ads,v 1.1 2006/11/30 18:04:18 andersg Exp $
+--  $Id: my_queue.ads,v 1.2 2007/05/16 18:07:48 andersg Exp $
 -------------------------------------------------------------------------------
 
-pragma License (Modified_GPL);
+pragma License (GPL);
 
 with Process_Identification;
 with Example_Queue;
