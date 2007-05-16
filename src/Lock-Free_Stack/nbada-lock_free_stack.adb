@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Lock-free Stack - A lock-free stack using lock-free memory reclamation.
---  Copyright (C) 2005 - 2006  Anders Gidenstam
+--  Copyright (C) 2005 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -16,13 +16,6 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
---  As a special exception, if other files instantiate generics from this
---  unit, or you link this unit with other files to produce an executable,
---  this unit does not by itself cause the resulting executable to be
---  covered by the GNU General Public License. This exception does not
---  however invalidate any other reasons why the executable file might be
---  covered by the GNU Public License.
---
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : lock_free_stack.adb
@@ -30,10 +23,10 @@
 --                    memory management and ABA prevention.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 18:15:38 2005
---  $Id: nbada-lock_free_stack.adb,v 1.4 2006/10/18 21:38:44 andersg Exp $
+--  $Id: nbada-lock_free_stack.adb,v 1.5 2007/05/16 12:54:22 andersg Exp $
 -------------------------------------------------------------------------------
 
-pragma License (Modified_GPL);
+pragma License (GPL);
 
 with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
