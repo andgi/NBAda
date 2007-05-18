@@ -16,13 +16,6 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
---  As a special exception, if other files instantiate generics from this
---  unit, or you link this unit with other files to produce an executable,
---  this unit does not by itself cause the resulting executable to be
---  covered by the GNU General Public License. This exception does not
---  however invalidate any other reasons why the executable file might be
---  covered by the GNU Public License.
---
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : pass_the_buck.ads
@@ -34,10 +27,10 @@
 --                    Computer Systems, 23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 23 17:13:55 2006
---  $Id: nbada-pass_the_buck.ads,v 1.2 2007/04/19 12:18:16 andersg Exp $
+--  $Id: nbada-pass_the_buck.ads,v 1.3 2007/05/18 09:00:07 andersg Exp $
 -------------------------------------------------------------------------------
 
-pragma License (Modified_GPL);
+pragma License (GPL);
 
 generic
 
