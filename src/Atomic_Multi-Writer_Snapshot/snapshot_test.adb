@@ -28,7 +28,7 @@
 --                    Proceedings of STOC'05, ACM, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue May 15 13:19:07 2007
--- $Id: snapshot_test.adb,v 1.2 2007/05/15 14:13:17 andersg Exp $
+-- $Id: snapshot_test.adb,v 1.3 2007/05/18 13:03:53 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -108,9 +108,9 @@ procedure Snapshot_Test is
 --             Integer (Primitives.Fetch_And_Add_32 (Task_Count'Access, 1))
 --           );
       --  GNAT/Linux
---      return System.Task_Info.System_Scope;
+      return System.Task_Info.System_Scope;
       --  GNAT/Solaris
-      return System.Task_Info.New_Bound_Thread_Attributes;
+--      return System.Task_Info.New_Bound_Thread_Attributes;
    end Pinned_Task;
 
    ----------------------------------------------------------------------
