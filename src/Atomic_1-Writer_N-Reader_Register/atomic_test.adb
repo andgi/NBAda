@@ -1,9 +1,32 @@
+-------------------------------------------------------------------------------
+--  Ada implementation of atomic multi-word register based on the algorithm
+--  by G. Peterson.
+--  Copyright (C) 2001 - 2007  Anders Gidenstam
+--
+--  This program is free software; you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation; either version 2 of the License, or
+--  (at your option) any later version.
+--
+--  This program is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
--- Filename        : atomic_test.adb
--- Description     : Test of wait-free constructions.
--- Author          : Anders Gidenstam
--- Created On      : Sat Oct 20 00:43:30 2001
--- $Id: atomic_test.adb,v 1.3 2007/05/16 14:42:26 andersg Exp $
+--  Filename        : atomic_test.adb
+--  Description     : Test of wait-free register constructions.
+--  Author          : Anders Gidenstam
+--  Created On      : Sat Oct 20 00:43:30 2001
+--  $Id: atomic_test.adb,v 1.4 2007/05/18 13:46:15 andersg Exp $
+-------------------------------------------------------------------------------
+
+pragma License (GPL);
 
 with Ada.Text_IO; use Ada.Text_IO;
 
@@ -11,7 +34,7 @@ with Atomic_Single_Writer_Registers;
 
 procedure Atomic_Test is
 
-   type My_String is new String (1..40);
+   type My_String is new String (1 .. 40);
 
    package Wait_Free_Strings is new Atomic_Single_Writer_Registers (My_String);
    use Wait_Free_Strings;
@@ -59,5 +82,6 @@ procedure Atomic_Test is
    end Reader;
 
 begin
-   null;
+   Ada.Text_IO.Put_Line ("NOTE: Unless there are severe errors detected " &
+                         "this program runs forever.");
 end Atomic_Test;
