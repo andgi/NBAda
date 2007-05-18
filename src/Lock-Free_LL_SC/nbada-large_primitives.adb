@@ -26,7 +26,7 @@
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 24 10:25:44 2005
---  $Id: nbada-large_primitives.adb,v 1.15 2007/05/18 09:58:20 andersg Exp $
+--  $Id: nbada-large_primitives.adb,v 1.16 2007/05/18 12:10:52 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -51,7 +51,7 @@ package body Large_Primitives is
 
    type Link is
       record
-         Target : HP.Managed_Node_Access;
+         Target : MR.Managed_Node_Access;
          Source : System.Address;
       end record;
 
@@ -117,11 +117,11 @@ package body Large_Primitives is
       -------------------------------------------------------------------------
       function Load_Linked (Target : access Shared_Element) return Element is
          ID : constant Processes := Process_Ids.Process_ID;
-         use HP;
+         use MR;
          use Object_Value_Operations;
       begin
          Exp (ID, Next (ID)).Source := Target.all'Address;
-         HP.Release (Exp (ID, Next (ID)).Target);
+         MR.Release (Exp (ID, Next (ID)).Target);
          Exp (ID, Next (ID)).Target :=
            Managed_Node_Access (Dereference (Target.Reference'Access));
 
@@ -160,7 +160,7 @@ package body Large_Primitives is
                                   Value  : in     Element) return Boolean is
          ID : constant Processes := Process_Ids.Process_ID;
          use type System.Address;
-         use HP;
+         use MR;
          use Object_Value_Operations;
          Val : constant Object_Value_Access := Get_Block (ID);
       begin
@@ -221,7 +221,7 @@ package body Large_Primitives is
       -------------------------------------------------------------------------
       function Verify_Link (Target : access Shared_Element) return Boolean is
          ID : constant Processes := Process_Ids.Process_ID;
-         use HP;
+         use MR;
          use Object_Value_Operations;
          use type System.Address;
       begin

@@ -22,7 +22,7 @@
 --  Description     : Test of large word LL/SC/VL and hazard pointers.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 24 15:00:10 2005
---  $Id: large_primitives_test.adb,v 1.6 2007/05/18 09:58:20 andersg Exp $
+--  $Id: large_primitives_test.adb,v 1.7 2007/05/18 12:10:52 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -159,7 +159,7 @@ begin
    end;
 
    LL_SC.Print_Statistics;
-   LL_SC.HP.Print_Statistics;
+   LL_SC.MR.Print_Statistics;
 
    Ada.Text_IO.Put_Line ("Large_Primitives_Test:");
    Ada.Text_IO.Put_Line ("  #Loaded = " &

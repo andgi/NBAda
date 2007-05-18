@@ -26,13 +26,16 @@
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 23 17:59:44 2005
---  $Id: nbada-large_primitives.ads,v 1.9 2007/05/18 09:58:20 andersg Exp $
+--  $Id: nbada-large_primitives.ads,v 1.10 2007/05/18 12:10:52 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
 with Process_Identification;
-with Hazard_Pointers;
+
+with
+  Hazard_Pointers;
+--  Epoch_Based_Memory_Reclamation;
 
 generic
    Max_Number_Of_Links : Natural;
@@ -42,8 +45,13 @@ generic
    --  Process identification.
 package Large_Primitives is
 
-   package HP is new Hazard_Pointers (Max_Number_Of_Links + 1,
-                                      Process_Ids);
+   package MR is
+      new Hazard_Pointers (Max_Number_Of_Links + 1,
+                           Process_Ids);
+--      new Epoch_Based_Memory_Reclamation (Epoch_Update_Threshold => 100,
+--                                          --  Suitable number for epoch-based
+--                                          --  reclamation.
+--                                          Process_Ids => Process_Ids);
 
    generic
       type Element is private;
@@ -78,13 +86,13 @@ package Large_Primitives is
 
    private
 
-      type Object_Value is new HP.Managed_Node_Base with
+      type Object_Value is new MR.Managed_Node_Base with
          record
             Value : Element;
          end record;
       procedure Free (Node : access Object_Value);
 
-      package Object_Value_Operations is new HP.Operations (Object_Value);
+      package Object_Value_Operations is new MR.Operations (Object_Value);
 
       type Shared_Reference is new Object_Value_Operations.Shared_Reference;
 
