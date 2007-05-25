@@ -27,7 +27,7 @@
 --                    Computer Systems, 23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 23 17:13:55 2006
---  $Id: nbada-pass_the_buck.ads,v 1.3 2007/05/18 09:00:07 andersg Exp $
+--  $Id: nbada-pass_the_buck.ads,v 1.4 2007/05/25 09:20:52 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -64,6 +64,9 @@ private
 
    type Guard_Type is new Natural range 0 .. Max_Number_Of_Guards;
    for Guard_Type'Size use 32;
-   pragma Atomic (Guard_Type);
+
+
+   type Atomic_Guard_Type is new Guard_Type;
+   pragma Atomic (Atomic_Guard_Type);
 
 end Pass_The_Buck;

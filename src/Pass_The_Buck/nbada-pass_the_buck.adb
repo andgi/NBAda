@@ -27,7 +27,7 @@
 --                    Computer Systems, 23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 23 17:30:49 2006
---  $Id: nbada-pass_the_buck.adb,v 1.3 2007/05/18 09:00:07 andersg Exp $
+--  $Id: nbada-pass_the_buck.adb,v 1.4 2007/05/25 09:20:52 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -43,6 +43,12 @@ package body Pass_The_Buck is
    ----------------------------------------------------------------------
    type Atomic_Boolean is new Primitives.Unsigned_32;
 
+   type Atomic_Value_Type is
+      record
+         Value : aliased Value_Type;
+         pragma Atomic (Value);
+      end record;
+
    ----------------------------------------------------------------------
    function Hash_Value (Value : in Value_Type;
                         Size  : in Natural) return Natural;
@@ -52,24 +58,21 @@ package body Pass_The_Buck is
    ----------------------------------------------------------------------
    --  Internal state.
 
-   Max_Guard : aliased Guard_Type := 1;
+   Max_Guard : aliased Atomic_Guard_Type := 1;
    pragma Atomic (Max_Guard);
 
    Guard     : array (Guard_Type range 1 .. Guard_Type (Max_Number_Of_Guards))
      of aliased Atomic_Boolean := (others => 0);
---   pragma Atomic_Components (Guard);
    Post      : array (Guard_Type range 1 .. Guard_Type (Max_Number_Of_Guards))
-     of aliased Value_Type := (others => Null_Value);
---   pragma Atomic_Components (Post);
+     of Atomic_Value_Type := (others => (Value => Null_Value));
    Hand_Off  : array (Guard_Type range 1 .. Guard_Type (Max_Number_Of_Guards))
-     of aliased Value_Type := (others => Null_Value);
---   pragma Atomic_Components (Post);
+     of Atomic_Value_Type := (others => (Value => Null_Value));
 
    ----------------------------------------------------------------------
    function Compare_And_Swap is
       new Primitives.Boolean_Compare_And_Swap_32 (Atomic_Boolean);
    procedure Compare_And_Swap is
-      new Primitives.Void_Compare_And_Swap_32 (Guard_Type);
+      new Primitives.Void_Compare_And_Swap_32 (Atomic_Guard_Type);
    function  Compare_And_Swap is
       new Primitives.Standard_Boolean_Compare_And_Swap (Value_Type);
 
@@ -84,13 +87,13 @@ package body Pass_The_Buck is
                                  New_Value => 1)
             then
                declare
-                  Max : Guard_Type := Max_Guard;
+                  Max : Guard_Type := Guard_Type (Max_Guard);
                begin
                   while Max < I loop
                      Compare_And_Swap (Target    => Max_Guard'Access,
-                                       Old_Value => Max,
-                                       New_Value => I);
-                     Max := Max_Guard;
+                                       Old_Value => Atomic_Guard_Type (Max),
+                                       New_Value => Atomic_Guard_Type (I));
+                     Max := Guard_Type (Max_Guard);
                   end loop;
                end;
 
@@ -113,7 +116,7 @@ package body Pass_The_Buck is
                          Value : in Value_Type) is
    begin
       Primitives.Membar;
-      Post (Guard) := Value;
+      Post (Guard).Value := Value;
       Primitives.Membar;
    end Post_Guard;
 
@@ -130,23 +133,24 @@ package body Pass_The_Buck is
 
       for I in Guard'Range loop
          declare
-            Value : Value_Type := Post (I);
+            Value : Value_Type := Post (I).Value;
          begin
             if Value /= Null_Value and Member (Value, V_Set) then
 
-               while Value /= Null_Value and Value = Post (I) loop
+               while Value /= Null_Value and Value = Post (I).Value loop
                   declare
-                     H : constant Value_Type := Hand_Off (I);
+                     H : constant Value_Type := Hand_Off (I).Value;
                   begin
-                     if Compare_And_Swap (Target     => Hand_Off (I)'Access,
-                                          Old_Value  => H,
-                                          New_Value  => Value)
+                     if Compare_And_Swap
+                       (Target     => Hand_Off (I).Value'Access,
+                        Old_Value  => H,
+                        New_Value  => Value)
                      then
                         Delete (Value, V_Set);
                         if H /= Null_Value then
                            Insert (H, V_Set);
                         end if;
-                        Value := Hand_Off (I);
+                        Value := Hand_Off (I).Value;
                      end if;
                   end;
                end loop;
@@ -154,12 +158,13 @@ package body Pass_The_Buck is
             else
 
                declare
-                  H : constant Value_Type := Hand_Off (I);
+                  H : constant Value_Type := Hand_Off (I).Value;
                begin
                   if H /= Null_Value and H /= Value then
-                     if Compare_And_Swap (Target     => Hand_Off (I)'Access,
-                                          Old_Value  => H,
-                                          New_Value  => Null_Value)
+                     if Compare_And_Swap
+                       (Target     => Hand_Off (I).Value'Access,
+                        Old_Value  => H,
+                        New_Value  => Null_Value)
                      then
                         Insert (H, V_Set);
                      end if;
