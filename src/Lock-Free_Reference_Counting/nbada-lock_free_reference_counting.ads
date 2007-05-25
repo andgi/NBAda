@@ -28,7 +28,7 @@ pragma Style_Checks (Off);
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:42:38 2006
---  $Id: nbada-lock_free_reference_counting.ads,v 1.7 2007/05/16 18:07:48 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.ads,v 1.8 2007/05/25 09:22:12 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -42,8 +42,11 @@ generic
    --  The maximum number of simultaneously active guards.
    --  (Here: One guard per thread is good.)
 
-   Debug : Boolean := False;
-   --  Enables some profiling.
+   Integrity_Checking : Boolean := True;
+   --  Enable strong integrity checking.
+
+   Collect_Statistics : Boolean := True;
+   --  Enable some statics gathering.
 
 package Lock_Free_Reference_Counting is
 
@@ -80,6 +83,8 @@ package Lock_Free_Reference_Counting is
 
    function All_References (Node : access Managed_Node_Base)
                            return Reference_Set is abstract;
+   --  All_References is used to remove all references from a node when
+   --  it is being reclaimed.
 
    ----------------------------------------------------------------------------
    generic
@@ -108,6 +113,8 @@ package Lock_Free_Reference_Counting is
       ----------------------------------------------------------------------
       function  Dereference (Link : access Shared_Reference)
                             return Private_Reference;
+      --  Note: Dereference preservs any mark on Link.all.
+      --        In particular Mark (Null_Reference) /= Null_Reference.
 
       procedure Release (Node : in Private_Reference);
 
@@ -145,8 +152,6 @@ package Lock_Free_Reference_Counting is
       --  Creates a new User_Node and returns a safe reference to it.
 
       --  Private (and shared) references can be tagged with a mark.
-      --  NOTE: A private reference with the value Null_Reference always loses
-      --        its mark.
       procedure Mark      (Node : in out Private_Reference);
       pragma Inline_Always (Mark);
       function  Mark      (Node : in     Private_Reference)
@@ -242,10 +247,17 @@ private
 
    subtype Reference_Count is Primitives.Unsigned_32;
 
+   type MM_Magic_Type is new Primitives.Unsigned_32;
+   MM_Live        : constant := 12121212;
+   MM_Reclaimable : constant := 21212121;
+   MM_Reclaimed   : constant := 88888888;
+
    type Managed_Node_Base is abstract tagged limited
       record
          MM_RC    : aliased Reference_Count := 1;
          pragma Atomic (MM_RC);
+         MM_Magic : aliased MM_Magic_Type := MM_Live;
+         pragma Atomic (MM_Magic);
       end record;
 
    type Managed_Node_Access is

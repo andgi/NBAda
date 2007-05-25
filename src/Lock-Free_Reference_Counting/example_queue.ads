@@ -23,7 +23,7 @@
 --                    schemes.
 --  Author          : Anders Gidenstam
 --  Created On      : Sat May  7 20:54:49 2005
---  $Id: example_queue.ads,v 1.3 2007/05/16 18:07:48 andersg Exp $
+--  $Id: example_queue.ads,v 1.4 2007/05/25 09:22:12 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -54,7 +54,8 @@ package Example_Queue is
 
    package LFMR is new Lock_Free_Reference_Counting
      (Max_Number_Of_Guards => 128,
-      Debug                => True);
+      Integrity_Checking   => True,
+      Collect_Statistics   => True);
 
 private
 

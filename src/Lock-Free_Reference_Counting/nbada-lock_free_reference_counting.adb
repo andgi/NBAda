@@ -29,7 +29,7 @@ pragma Style_Checks (Off);
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:55:18 2006
---  $Id: nbada-lock_free_reference_counting.adb,v 1.6 2007/05/16 18:07:48 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.adb,v 1.7 2007/05/25 09:22:12 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -67,6 +67,8 @@ package body Lock_Free_Reference_Counting is
       Value_Type           => Managed_Node_Access,
       Null_Value           => null);
 
+   function Image (Node : in Managed_Node_Access) return String;
+
    ----------------------------------------------------------------------------
    --  Internal data structures.
    ----------------------------------------------------------------------------
@@ -94,6 +96,7 @@ package body Lock_Free_Reference_Counting is
 
       function To_Node_Access (X : Private_Reference)
                               return Node_Access;
+      --  To_Node_Access strips any mark from X and returns an access type.
       pragma Inline (To_Node_Access);
 
       type Shared_Reference_Base_Access is access all Shared_Reference_Base;
@@ -114,6 +117,7 @@ package body Lock_Free_Reference_Counting is
 
          Guard    : constant PTB.Guard_Type := PTB.Hire_Guard;
          Node_Ref : Private_Reference;
+         State    : MM_Magic_Type;
       begin
          Dereference :
          loop
@@ -123,6 +127,19 @@ package body Lock_Free_Reference_Counting is
 
             PTB.Post_Guard (Guard,
                             Managed_Node_Access (To_Node_Access (Node_Ref)));
+
+            if Integrity_Checking then
+               if To_Private_Reference (Link.all) = Node_Ref then
+                  declare
+                     use type Reference_Count;
+                     Node_Base : constant Managed_Node_Access :=
+                       Managed_Node_Access (To_Node_Access (Node_Ref));
+                     --  Base type view of the node.
+                  begin
+                     State := Node_Base.MM_Magic;
+                  end;
+               end if;
+            end if;
 
             if To_Private_Reference (Link.all) = Node_Ref then
                declare
@@ -145,6 +162,19 @@ package body Lock_Free_Reference_Counting is
 
          PTB.Post_Guard (Guard, null);
          PTB.Fire_Guard (Guard);
+
+         if Integrity_Checking then
+            if Unmark (Node_Ref) /= Null_Reference and then
+              State /= MM_Live then
+               Ada.Exceptions.Raise_Exception
+                 (Constraint_Error'Identity,
+                  "lock_free_reference_counting.adb: " &
+                  "Dereferenced the non-exsisting node " &
+                  Image (Managed_Node_Access (To_Node_Access (Node_Ref))) &
+                  "!");
+            end if;
+         end if;
+
          return Node_Ref;
       end Dereference;
 
@@ -315,7 +345,7 @@ package body Lock_Free_Reference_Counting is
          UNode : constant User_Node_Access := new Managed_Node;
          Node  : constant Node_Access      := UNode.all'Unchecked_Access;
       begin
-         if Debug then
+         if Collect_Statistics then
             Fetch_And_Add (No_Nodes_Created'Access, 1);
          end if;
 
@@ -514,19 +544,25 @@ package body Lock_Free_Reference_Counting is
    ----------------------------------------------------------------------------
    procedure Print_Statistics is
    begin
-      Ada.Text_IO.Put_Line ("Lock_Free_Reference_Counting.Print_Statistics:");
-      Ada.Text_IO.Put_Line ("  #Created = " &
-                            Primitives.Unsigned_32'Image (No_Nodes_Created));
-      Ada.Text_IO.Put_Line ("  #Reclaimed = " &
-                            Primitives.Unsigned_32'Image (No_Nodes_Reclaimed));
-
+      if Collect_Statistics then
+         Ada.Text_IO.Put_Line
+           ("Lock_Free_Reference_Counting.Print_Statistics:");
+         Ada.Text_IO.Put_Line
+           ("  #Created = " & Primitives.Unsigned_32'Image (No_Nodes_Created));
+         Ada.Text_IO.Put_Line
+           ("  #Reclaimed = " &
+            Primitives.Unsigned_32'Image (No_Nodes_Reclaimed));
+      end if;
    end Print_Statistics;
 
    ----------------------------------------------------------------------------
    procedure Clean_And_Liberate (Node : in Managed_Node_Access) is
 
+      -----------------------------------------------------------------
       function To_Managed_Node_Access (X : Shared_Reference_Base)
                                       return Managed_Node_Access;
+
+      -----------------------------------------------------------------
       function To_Managed_Node_Access (X : Shared_Reference_Base)
                                       return Managed_Node_Access is
 
@@ -538,42 +574,56 @@ package body Lock_Free_Reference_Counting is
          return To_Managed_Node_Access (X.Ref and Ref_Mask);
       end To_Managed_Node_Access;
 
-      use type Reference_Count;
-      Refs : constant Reference_Set := All_References (Node);
+      -----------------------------------------------------------------
    begin
-      loop
-         declare
-            All_Null : Boolean := True;
-         begin
-            for I in Refs'Range loop
-               declare
-                  Next : constant Managed_Node_Access :=
-                    To_Managed_Node_Access (Refs (I).all);
-               begin
-                  if Next /= null then
-                     --  Lower the Next's RC.
-                     if Fetch_And_Add (Target    => Next.MM_RC'Access,
-                                       Increment => -1) = 1
-                     then
-                        declare
-                           Next_Refs : constant Reference_Set :=
-                             All_References (Next);
-                        begin
-                           All_Null              := False;
-                           Refs (I).all          := Next_Refs (I).all;
-                           Next_Refs (I).all.Ref := 0;
-                           Clean_And_Liberate (Next);
-                        end;
-                     else
-                        Refs (I).all.Ref := 0;
+      if Integrity_Checking then
+         if Node = null or else Node.MM_Magic /= MM_Live then
+            Ada.Exceptions.Raise_Exception
+              (Constraint_Error'Identity,
+               "lock_free_reference_counting.adb: " &
+               "Attempting to Clean_And_Liberate the already cleaned node " &
+               Image (Node) & "!");
+         end if;
+      end if;
+      Node.MM_Magic := MM_Reclaimable;
+      declare
+         use type Reference_Count;
+         Refs : constant Reference_Set := All_References (Node);
+      begin
+         Remove_References : loop
+            declare
+               All_Null : Boolean := True;
+            begin
+               for I in Refs'Range loop
+                  declare
+                     Next : constant Managed_Node_Access :=
+                       To_Managed_Node_Access (Refs (I).all);
+                  begin
+                     if Next /= null then
+                        --  Lower the Next's RC.
+                        if Fetch_And_Add (Target    => Next.MM_RC'Access,
+                                          Increment => -1) = 1
+                        then
+                           declare
+                              Next_Refs : constant Reference_Set :=
+                                All_References (Next);
+                           begin
+                              All_Null              := False;
+                              Refs (I).all          := Next_Refs (I).all;
+                              Next_Refs (I).all.Ref := 0;
+                              Clean_And_Liberate (Next);
+                           end;
+                        else
+                           Refs (I).all.Ref := 0;
+                        end if;
                      end if;
-                  end if;
-               end;
-            end loop;
+                  end;
+               end loop;
 
-            exit when All_Null;
-         end;
-      end loop;
+               exit Remove_References when All_Null;
+            end;
+         end loop Remove_References;
+      end;
 
       declare
          Old : constant PTB.Value_Set (1 .. 1)
@@ -582,12 +632,51 @@ package body Lock_Free_Reference_Counting is
            := PTB.Liberate (Old);
       begin
          for I in VS'Range loop
-            Free    (VS (I));
+            if Integrity_Checking then
+               if VS (I) = null or else VS (I).MM_Magic /= MM_Reclaimable then
+                  declare
+                     MM_Magic : constant MM_Magic_Type := VS (I).MM_Magic;
+                  begin
+                     if MM_Magic = MM_Live then
+                        Ada.Exceptions.Raise_Exception
+                          (Constraint_Error'Identity,
+                           "lock_free_reference_counting.adb: " &
+                           "Attempt to reclaim the live node " &
+                           Image (VS (I)) & "!");
+                     elsif  MM_Magic = MM_Reclaimed then
+                        Ada.Exceptions.Raise_Exception
+                          (Constraint_Error'Identity,
+                           "lock_free_reference_counting.adb: " &
+                           "Attempt to reclaim the already reclaimed node " &
+                           Image (VS (I)) & "!");
+                     else
+                        Ada.Exceptions.Raise_Exception
+                          (Constraint_Error'Identity,
+                           "lock_free_reference_counting.adb: " &
+                           "Attempt to reclaim the non-valid node " &
+                           Image (VS (I)) & "!");
+                     end if;
+                  end;
+               end if;
+            end if;
+            VS (I).MM_Magic := MM_Reclaimed;
+            Free (VS (I));
          end loop;
-         if Debug then
+         if Collect_Statistics then
             Fetch_And_Add (No_Nodes_Reclaimed'Access, VS'Length);
          end if;
       end;
    end Clean_And_Liberate;
+
+   ----------------------------------------------------------------------------
+   function Image (Node : in Managed_Node_Access) return String is
+      function To_Unsigned is new
+        Ada.Unchecked_Conversion (Managed_Node_Access,
+                                  Primitives.Standard_Unsigned);
+      use type Primitives.Standard_Unsigned;
+   begin
+      return Primitives.Standard_Unsigned'Image (To_Unsigned (Node));
+   end Image;
+
 
 end Lock_Free_Reference_Counting;
