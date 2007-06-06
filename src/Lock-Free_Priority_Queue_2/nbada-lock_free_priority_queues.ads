@@ -13,10 +13,10 @@ package Lock_Free_Priority_Queues is
    type Lock_Free_Priority_Queue is limited private;
 
    procedure Insert     (Queue   : in out Lock_Free_Priority_Queue;
-			 Element : in     Element_Type);
+                         Element : in     Element_Type);
 
    function  Delete_Min (Queue   : access Lock_Free_Priority_Queue)
-			 return Element_Type;
+                         return Element_Type;
 
    Queue_Empty : exception;
 
@@ -24,7 +24,8 @@ private
 
    Max_Levels : constant := 7;
 
-   package LFRC is new Lockfree_Reference_Counting
+   package LFRC is new
+     Lock_Free_Memory_Reclamation
      (Max_Number_Of_Dereferences   => 4,
       --  Remember to account for the dereferences in the
       --  callbacks Clean_Up and Dispose (which are invoked by Delete).
@@ -49,11 +50,11 @@ private
    type Queue_Node is --  (Max_Level : Level) is
      new LFRC.Reference_Counted_Node_Base with
       record
-	 Max_Level : Level;
-	 pragma Atomic (Max_Level);
+         Max_Level : Level;
+         pragma Atomic (Max_Level);
          Next  : Queue_Node_Reference_Array;
---	 pragma Atomic_Components (Next);
-	 Prev  : aliased Queue_Node_Reference;
+--       pragma Atomic_Components (Next);
+         Prev  : aliased Queue_Node_Reference;
          pragma Atomic (Prev);
          Item  : Element_Type;
       end record;
