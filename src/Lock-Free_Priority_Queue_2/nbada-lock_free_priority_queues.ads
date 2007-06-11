@@ -1,80 +1,150 @@
+-------------------------------------------------------------------------------
+--  Lock-Free Priority Queues - An implementation of the lock-free skip-list
+--                              algorithm by H. Sundell.
+--
+--  Copyright (C) 2007  Anders Gidenstam
+--
+--  This program is free software; you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation; either version 2 of the License, or
+--  (at your option) any later version.
+--
+--  This program is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--
+-------------------------------------------------------------------------------
+--                              -*- Mode: Ada -*-
+--  Filename        : lock_free_priority_queues.ads
+--  Description     : Lock-free priority queue based on Håkan Sundell,
+--                    "
+--                    ",
+--  Author          : Anders Gidenstam
+--  Created On      : Wed Jun  6 15:26:34 2007
+--  $Id: nbada-lock_free_priority_queues.ads,v 1.3 2007/06/11 18:08:24 andersg Exp $
+-------------------------------------------------------------------------------
 
-with Lockfree_Reference_Counting;
+pragma License (GPL);
+
 with Process_Identification;
 
+with Lock_Free_Reference_Counting;
+
 generic
+
    type Element_Type is private;
-   --  The element type.
+
+   with function "<" (Left, Right : Element_Type) return Boolean is <>;
+   --  Note: Element_Type must be totally ordered.
+
    with package Process_Ids is
-    new Process_Identification (<>);
+     new Process_Identification (<>);
    --  Process identification.
+
 package Lock_Free_Priority_Queues is
 
-   type Lock_Free_Priority_Queue is limited private;
+   type Priority_Queue_Type is limited private;
 
-   procedure Insert     (Queue   : in out Lock_Free_Priority_Queue;
-                         Element : in     Element_Type);
+   Queue_Empty     : exception;
+   Already_Present : exception;
 
-   function  Delete_Min (Queue   : access Lock_Free_Priority_Queue)
-                         return Element_Type;
+   procedure Initialize (Queue : in out Priority_Queue_Type);
 
-   Queue_Empty : exception;
+   procedure Insert  (Into    : in out Priority_Queue_Type;
+                      Element : in     Element_Type);
+
+   procedure Delete_Min (From    : in out Priority_Queue_Type;
+                         Element :    out Element_Type);
+   function  Delete_Min (From : in Priority_Queue_Type)
+                        return Element_Type;
+   function  Delete_Min (From : access Priority_Queue_Type)
+                        return Element_Type;
+
+   procedure Verify (Queue : in out Priority_Queue_Type;
+                     Print : in     Boolean := False);
+   --  Should only be called when the deque is idle.
 
 private
 
-   Max_Levels : constant := 7;
+   Max_Levels : constant := 3;
 
-   package LFRC is new
-     Lock_Free_Memory_Reclamation
-     (Max_Number_Of_Dereferences   => 4,
-      --  Remember to account for the dereferences in the
-      --  callbacks Clean_Up and Dispose (which are invoked by Delete).
-      --  Here: Engueue  <= ?
-      --        Dequeue  <= ?
-      --        Dispose  <= 1
-      --        Clean_up <= 2
-      Max_Number_Of_Links_Per_Node => Max_Levels + 1,
-      Clean_Up_Threshold           => 256,
-      --  Clean up and scan often.
-      Process_Ids                  => Process_Ids);
+   package LFMR is new Lock_Free_Reference_Counting
+     (Max_Number_Of_Guards => 128);
+--     package LFRC is new Lock_Free_Memory_Reclamation
+--       (Max_Number_Of_Dereferences   => 8,
+--        --  Remember to account for the dereferences in the
+--        --  callbacks Clean_Up and Dispose (which are invoked by Delete).
+--        --  Here: Insert    <= ?
+--        --        Delete    <= ?
+--        --        Lookup    <= ?
+--        --        Dispose   <= ?
+--        --        Clean_up  <= ?
+--        --  Delete is called from Delete on a dereferenced node so the
+--        --  maximum number of simultaneous dereferences is ?.
+--        Max_Number_Of_Links_Per_Node => Max_Levels + 1,
+--        Clean_Up_Threshold           => 256,
+--        --  Clean up and scan often.
+--        Process_Ids                  => Process_Ids);
 
-   type Queue_Node_Reference is new LFRC.Shared_Reference_Base;
 
-   type Key_Type is new Integer;
-   type Level is range 0 .. Max_Levels;
+   type List_Node_Reference is new LFMR.Shared_Reference_Base;
+   --  List_Node_Reference is an atomic type since Shared_Reference_Base is.
 
-   type Queue_Node_Reference_Array is
-      array (Level range 1 .. Max_Levels) of aliased Queue_Node_Reference;
-   --pragma Atomic_Components (Queue_Node_Reference_Array);
+   type List_Level is range 0 .. Max_Levels;
 
-   type Queue_Node is --  (Max_Level : Level) is
-     new LFRC.Reference_Counted_Node_Base with
+   type List_Node_Reference_Array is
+      array (List_Level range 1 .. Max_Levels) of aliased List_Node_Reference;
+
+   type Atomic_Boolean is new Boolean;
+   for Atomic_Boolean'Size use 32;
+
+   type List_Node is --  (Max_Level : Level) is
+     new LFMR.Managed_Node_Base with
       record
-         Max_Level : Level;
+         Max_Level   : aliased List_Level;
          pragma Atomic (Max_Level);
-         Next  : Queue_Node_Reference_Array;
---       pragma Atomic_Components (Next);
-         Prev  : aliased Queue_Node_Reference;
-         pragma Atomic (Prev);
-         Item  : Element_Type;
+         Valid_Level : aliased List_Level := 0;
+         pragma Atomic (Valid_Level);
+         Next        : List_Node_Reference_Array;
+         Previous    : aliased List_Node_Reference;
+         pragma Atomic (Previous);
+         Deleted     : aliased Atomic_Boolean := False;
+         pragma Atomic (Deleted);
+         Value       : Element_Type;
       end record;
 
-   procedure Dispose  (Node       : access Queue_Node;
+   procedure Dispose  (Node       : access List_Node;
                        Concurrent : in     Boolean);
-   procedure Clean_Up (Node : access Queue_Node);
-   procedure Free     (Node : access Queue_Node);
+   procedure Clean_Up (Node : access List_Node);
 
-   package LFRC_Ops is new LFRC.Operations (Queue_Node,
-                                            Queue_Node_Reference);
+   function All_References (Node : access List_Node)
+                           return LFMR.Reference_Set;
 
-   subtype Queue_Node_Access is LFRC_Ops.Private_Reference;
+   procedure Free     (Node : access List_Node);
 
-   type Lock_Free_Priority_Queue is limited
+   package LFMR_Ops is new LFMR.Operations (List_Node,
+                                            List_Node_Reference);
+
+   subtype List_Node_Access is LFMR_Ops.Private_Reference;
+
+   type Priority_Queue_Access is access all Priority_Queue_Type;
+
+   type Mutable_View (Self : access Priority_Queue_Type) is
+     limited null record;
+
+   type Priority_Queue_Type is limited
       record
-         Head : aliased Queue_Node_Reference;
+         Head    : aliased List_Node_Reference;
          pragma Atomic (Head);
-         Tail : aliased Queue_Node_Reference;
+         Tail    : aliased List_Node_Reference;
          pragma Atomic (Tail);
+         Mutable : Mutable_View (Priority_Queue_Type'Access);
       end record;
+
 
 end Lock_Free_Priority_Queues;
