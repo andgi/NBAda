@@ -28,7 +28,7 @@
 --  Description     : Synchronization primitives.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Jul  5 14:53:50 2002
---  $Id: nbada-primitives.adb,v 1.13 2007/04/19 12:03:30 andersg Exp $
+--  $Id: nbada-primitives.adb,v 1.14 2007/07/19 10:26:35 andersg Exp $
 -------------------------------------------------------------------------------
 
 with System.Machine_Code;
@@ -310,8 +310,8 @@ package body Primitives is
    ----------------------------------------------------------------------------
 
    ----------------------------------------------------------------------------
-   --  My GCC does not generate 64-bit aware code, so 64-bit objects cannot be
-   --  handled atomically.
+   --  GCC with  -Wa,-xarch=v8plus does not allow 64-bit aware code,
+   --  so 64-bit objects cannot be handled atomically.
    ----------------------------------------------------------------------------
 
    ----------------------------------------------------------------------------
