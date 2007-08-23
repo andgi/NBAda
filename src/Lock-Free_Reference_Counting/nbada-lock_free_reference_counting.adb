@@ -29,7 +29,7 @@ pragma Style_Checks (Off);
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:55:18 2006
---  $Id: nbada-lock_free_reference_counting.adb,v 1.7 2007/05/25 09:22:12 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.adb,v 1.8 2007/08/23 16:52:11 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -139,6 +139,9 @@ package body Lock_Free_Reference_Counting is
                      State := Node_Base.MM_Magic;
                   end;
                end if;
+               Primitives.Membar;
+               --  The integrity check must precede the ordinary
+               --  loop exit test.
             end if;
 
             if To_Private_Reference (Link.all) = Node_Ref then
