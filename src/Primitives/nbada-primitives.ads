@@ -28,7 +28,7 @@
 --  Description     : Synchronization primitives.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Jul  5 12:27:13 2002
---  $Id: nbada-primitives.ads,v 1.15 2007/04/17 17:10:00 andersg Exp $
+--  $Id: nbada-primitives.ads,v 1.16 2007/08/23 13:52:36 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -49,6 +49,24 @@ package Primitives is
    --  on the platform in use.
    Not_Implemented : exception;
 
+   ----------------------------------------------------------------------------
+   --  NOTE: Memory consistency on multiprocessors/multicores.
+   --        Most contemporary multiprocessor or multicore computers
+   --        do not guarantee sequential consistency for normal
+   --        memory reads and writes. Memory synchronization barriers
+   --        MUST be used if the order in which the memory opertations
+   --        become visible to other processors matters.
+   --        All operations provided by this package include the required
+   --        memory barriers.
+   ----------------------------------------------------------------------------
+
+   ----------------------------------------------------------------------------
+   --  Memory synchronization barrier.
+   --    Guarantees that all memory accesses by the thread in question before
+   --    the barrier takes effect before any accesses after the barrier.
+   procedure Membar;
+   pragma Inline (Membar);
+   pragma Inline_Always (Membar);
 
    ----------------------------------------------------------------------------
    --  Primitives for the platform's standard word size.
@@ -438,14 +456,5 @@ package Primitives is
    --    end atomic;
 --   pragma Inline (Fetch_And_Add_64);
 --   pragma Inline_Always (Fetch_And_Add_64);
-
-
-   ----------------------------------------------------------------------------
-   --  Memory synchronization barrier.
-   --  Guarantees that all memory accesses by the thread in question before
-   --  the barrier takes effect before any accesses after the barrier.
-   procedure Membar;
-   pragma Inline (Membar);
-   pragma Inline_Always (Membar);
 
 end Primitives;
