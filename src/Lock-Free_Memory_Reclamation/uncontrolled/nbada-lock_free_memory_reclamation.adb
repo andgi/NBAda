@@ -32,7 +32,7 @@
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 14:07:58 2004
---  $Id: nbada-lock_free_memory_reclamation.adb,v 1.27 2007/08/23 14:43:13 andersg Exp $
+--  $Id: nbada-lock_free_memory_reclamation.adb,v 1.28 2007/08/23 14:46:16 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -202,8 +202,9 @@ package body Lock_Free_Memory_Reclamation is
                Hazard_Pointer (ID, Index) :=
                  Atomic_Node_Access (To_Node_Access (Node_Ref));
 
-               Primitives.Membar;  --  The write to the hazard pointer must
-                                   --  be visible before Link is read again.
+               Primitives.Membar;
+               --  The write to the hazard pointer must be visible
+               --  before Link is read again.
                exit when To_Private_Reference (Link.all) = Node_Ref.Ref;
             end loop;
          end if;
@@ -216,8 +217,9 @@ package body Lock_Free_Memory_Reclamation is
          ID : constant Processes := Process_Ids.Process_ID;
       begin
          --  Find and clear hazard pointer.
-         Primitives.Membar;  --  Complete all preceding memory operations
-                             --  before releasing the hazard pointer.
+         Primitives.Membar;
+         --  Complete all preceding memory operations before releasing
+         --  the hazard pointer.
          Hazard_Pointer (ID, HP_Index (Node.HP)) := null;
       end Release;
 
@@ -303,9 +305,9 @@ package body Lock_Free_Memory_Reclamation is
             Hazard_Pointer (ID, Index) :=
               Atomic_Node_Access (To_Node_Access (Copy));
 
-            Primitives.Membar;  --  Make sure the hazard pointer write is
-                                --  committed before subsequent memory
-                                --  operations.
+            Primitives.Membar;
+            --  Make sure the hazard pointer write is committed before
+            --  subsequent memory operations.
          end if;
 
          return Copy;
@@ -681,19 +683,20 @@ package body Lock_Free_Memory_Reclamation is
       while Index /= 0 loop
          Node := DL_Nodes (ID, Index);
          if Node.MM_RC = 0 then
-            Primitives.Membar;  --  The read of MM_RC must precede the write of
-                                --  MM_trace.
+            Primitives.Membar;
+            --  The read of MM_RC must precede the write of MM_trace.
             Node.MM_Trace := True;
-            Primitives.Membar;  --  The write of MM_Trace must precede the
-                                --  reread of MM_RC.
+            Primitives.Membar;
+            --  The write of MM_Trace must precede the reread of MM_RC.
             if Node.MM_RC /= 0 then
                Node.MM_Trace := False;
             end if;
          end if;
          Index := PL.DL_Nexts (Index);
       end loop;
-      Primitives.Membar;  --  Make sure the memory operations of the algorithm
-                          --  phases are separated.
+      Primitives.Membar;
+      --  Make sure the memory operations of the algorithm phases are
+      --  separated.
 
       Clear (P_Set (ID).all);
 
@@ -711,8 +714,9 @@ package body Lock_Free_Memory_Reclamation is
             end if;
          end loop;
       end loop;
-      Primitives.Membar;  --  Make sure the memory operations of the algorithm
-                          --  phases are separated.
+      Primitives.Membar;
+      --  Make sure the memory operations of the algorithm phases are
+      --  separated.
 
       --  Attempt to reclaim nodes.
       while PL.D_List /= 0 loop
@@ -724,8 +728,9 @@ package body Lock_Free_Memory_Reclamation is
            not Member (Managed_Node_Access (Node), P_Set (ID).all)
          then
             DL_Nodes (ID, Index) := null;
-            Primitives.Membar;  --  The write to DL_Nodes (ID, Index) must
-                                --  precede the read of DL_Claims (ID, Index).
+            Primitives.Membar;
+            --  The write to DL_Nodes (ID, Index) must precede the
+            --  read of DL_Claims (ID, Index).
             if DL_Claims (ID, Index) = 0 then
                Dispose (Managed_Node_Access (Node),
                         Concurrent => False);
