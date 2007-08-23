@@ -28,7 +28,7 @@ pragma Style_Checks (Off);
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:42:38 2006
---  $Id: nbada-lock_free_reference_counting.ads,v 1.8 2007/05/25 09:22:12 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.ads,v 1.9 2007/08/23 17:29:11 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -140,6 +140,12 @@ package Lock_Free_Reference_Counting is
       procedure Store   (Link : access Shared_Reference;
                          Node : in Private_Reference);
 
+
+      procedure Delete  (Node : in Private_Reference)
+        renames Release;
+      --  For API compatability with Lock_Free_Memory_Reclamation.
+      --  In the future LFRC could use the knowledge that a node is
+      --  logically deleted to improve garbage management.
 
       generic
          type User_Node_Access is access Managed_Node;
@@ -266,7 +272,8 @@ private
    type Shared_Reference_Base_Impl is new Primitives.Standard_Unsigned;
    type Shared_Reference_Base is
       record
-         Ref : Shared_Reference_Base_Impl := 0;
+         Ref : aliased Shared_Reference_Base_Impl := 0;
+         pragma Atomic (Ref);
       end record;
    for Shared_Reference_Base'Size use Shared_Reference_Base_Impl'Size;
    pragma Atomic (Shared_Reference_Base);
