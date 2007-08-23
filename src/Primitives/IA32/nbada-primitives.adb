@@ -28,7 +28,7 @@
 --  Description     : Synchronization primitives.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Jul  5 14:53:50 2002
---  $Id: nbada-primitives.adb,v 1.15 2007/04/19 15:49:11 andersg Exp $
+--  $Id: nbada-primitives.adb,v 1.16 2007/08/23 13:31:57 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -47,6 +47,17 @@ package body Primitives is
    ----------------------------------------------------------------------------
    --  Configuration options.
 
+   --  NOTE: Multiprocessor memory consistency.
+   --   - mfence: Guarantees that all memory reads and writes
+   --             issued before the mfence instruction are completed
+   --             before any reads or writes after the mfence instruction.
+   --   - lfence: Guarantees that all memory loads issued before the lfence
+   --             instruction are completed before any loads after the
+   --             lfence instruction.
+   --   - sfence: Guarantees that all memory stores issued before the sfence
+   --             instruction are completed before any stores after the
+   --             sfence instruction.
+
    MFENCE : constant String := "mfence";
    --  NOTE: The "mfence" instruction in the machine code below is
    --        necessary to guarantee sequencially consistent memory on some
@@ -57,7 +68,7 @@ package body Primitives is
    --        MFENCE to "#mfence" instead of "mfence".
 
 
-   CAS_Based_FAA : constant Boolean := False;
+   CAS_Based_FAA : constant Boolean := True;
    --  NOTE: The pure assembler FAA breaks on some IA32 implementations
    --        when optimized for some reason.
    --        This is a workaround.
