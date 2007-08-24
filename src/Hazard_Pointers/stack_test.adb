@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
---  Large Primitives - An implementation of Maged Michael's LL/SC primitives.
+--  Example Stack - A lock-free stack using hazard pointers.
 --  Copyright (C) 2005 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
@@ -16,23 +16,16 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
---  As a special exception, if other files instantiate generics from this
---  unit, or you link this unit with other files to produce an executable,
---  this unit does not by itself cause the resulting executable to be
---  covered by the GNU General Public License. This exception does not
---  however invalidate any other reasons why the executable file might be
---  covered by the GNU Public License.
---
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : stack_test.adb
 --  Description     : Test of the lock-free example stack.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 18:54:53 2005
---  $Id: stack_test.adb,v 1.4 2007/04/25 12:40:14 andersg Exp $
+--  $Id: stack_test.adb,v 1.5 2007/08/24 15:04:48 andersg Exp $
 -------------------------------------------------------------------------------
 
-pragma License (Modified_GPL);
+pragma License (GPL);
 
 with Process_Identification;
 with Primitives;
