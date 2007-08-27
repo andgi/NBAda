@@ -1,0 +1,163 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Non-blocking Ada Reference Manual
+%
+% Copyright (C) 2007 Anders Gidenstam (andersg@mpi-inf.mpg.de)
+%
+%  Algorithms and Complexity Group
+%  Max-Planck-Institut für Informatik
+%  Stuhlsatzenhausweg 85
+%  66123 Saarbrücken, Germany
+%
+% $Id: reference_manual.tex,v 1.1 2007/08/27 18:12:54 andersg Exp $
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass[english,10pt]{book}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\usepackage[english]{babel}
+\usepackage{amssymb}
+\usepackage{amsmath}
+%\usepackage{graphicx}   % For importing graphics
+\usepackage{moreverb}   % To be able to use the environment boxedverbatim
+\usepackage{subfigure}  % To be able to use \subfigure
+\usepackage{fancyhdr}
+\usepackage{makeidx}    % To make an index
+%\usepackage[chapter]{algorithm}
+%\usepackage[noend]{algorithmic}
+%\usepackage{color}
+%\usepackage{psfig}
+%\usepackage{psfrag}
+%\usepackage{epsfig}
+
+%%%%% Typesets operation and variable names in the main text.
+\newcommand{\op}[1]{{\textsf{\textit{#1}}}}
+\newcommand{\var}[1]{{\textsf{#1}}}
+\newcommand{\code}[1]{{\textsf{\tt {#1}}}}
+
+%%%%% Typesets keywords in code figures.
+\newcommand{\kw}[1]{{\textbf{#1}}}
+\newcommand{\term}[1]{{\emph{#1}}}
+
+%%%%% for easy-to-undo modifications
+\newcommand{\remove}[1]{{}}
+
+%%%%% For eye-catching TODO notes, questions, etc
+\newcommand{\todo}[1]{\noindent{\bf TODO:}{\sc #1}}
+%\newcommand{\todo}[1]{{}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%% Document specific definitions
+
+%% Library name
+\newcommand{\nbada}{{\sc NbAda}}
+
+%% Ada
+\newcommand{\ada}{{\sc Ada}}
+
+
+
+%%%%% Make index
+%\makeindex
+
+%%%%%%%%%%%%%%%%%%%%%%%% EOD %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+\selectlanguage{english}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Title page
+
+\begin{titlepage}
+  
+  \title{%
+    \Huge Non-blocking Ada\\
+    \vspace{5mm}
+    \huge Reference Manual
+  }
+  \author{%
+    Anders Gidenstam  (andersg@mpi-inf.mpg.de)
+  }
+
+  \date{
+    Draft \today\\
+    \vspace{5mm}
+    %%
+    \vspace{12mm}
+    Algorithms and Complexity Group\\
+    Max-Planck-Institut f\"ur Informatik\\
+    Stuhlsatzenhausweg 85\\
+    66123 Saarbr\"ucken, Germany\\
+    \vspace{12mm}
+    Saarbr\"ucken, Germany, 2007
+  }
+
+
+  \maketitle
+\end{titlepage}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Introduction}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Data structures}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Atomic Objects}
+
+\subsection{Large Register}
+
+\cite{Pet83}
+
+\subsection{Linearizable Snapshot}
+
+\cite{Jayanti:2005:MWS}
+
+\subsection{Software Load-Linked/Store-Conditional}
+
+\cite{Michael:2004:PLFLL}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Containers}
+
+\subsection{}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Support Packages}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Memory Reclamation Schemes}
+
+\cite{Fraser:2004:PLF,Hart:2005:CPMR}
+
+\cite{Michael:2002:SMR,Michael:2004:SMR}
+
+\cite{Herlihy:2002:ROP,HerlihyLuMaMo:2002:DSLF,HerlihyLuMaMo:2005:NBMM}
+
+\cite{GiPaSuTs:2005:LFGC}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Memory Allocation Pools}
+
+\cite{IBM:1983}
+
+\cite{Dice:2002:MLFM,Michael:2004:SLFDMA,GiPaTs:2005:AMLF,SchneiderAnNi:2006:SLCMMA}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Hardware Abstraction Interface}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% References and index.
+\cleardoublepage
+\addcontentsline{toc}{chapter}{Bibliography}
+\bibliographystyle{alpha}
+\bibliography{references}
+
+%\printindex
+
+
+\end{document}
