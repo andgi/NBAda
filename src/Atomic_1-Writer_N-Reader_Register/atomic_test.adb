@@ -23,7 +23,7 @@
 --  Description     : Test of wait-free register constructions.
 --  Author          : Anders Gidenstam
 --  Created On      : Sat Oct 20 00:43:30 2001
---  $Id: atomic_test.adb,v 1.4 2007/05/18 13:46:15 andersg Exp $
+--  $Id: atomic_test.adb,v 1.5 2007/08/28 16:05:12 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -34,7 +34,7 @@ with Atomic_Single_Writer_Registers;
 
 procedure Atomic_Test is
 
-   type My_String is new String (1 .. 40);
+   type My_String is new String (1 .. 255);
 
    package Wait_Free_Strings is new Atomic_Single_Writer_Registers (My_String);
    use Wait_Free_Strings;
@@ -42,7 +42,7 @@ procedure Atomic_Test is
    task Writer;
    task type Reader (No : Positive);
 
-   Reg : Atomic_1_M_Register (No_Of_Readers => 10);
+   Reg : Atomic_1_M_Register (No_Of_Readers => 15);
 
    R1  : Reader (1);
    R2  : Reader (2);
@@ -54,17 +54,22 @@ procedure Atomic_Test is
    R8  : Reader (8);
    R9  : Reader (9);
    R10 : Reader (10);
+   R11 : Reader (11);
+   R12 : Reader (12);
+   R13 : Reader (13);
+   R14 : Reader (14);
+   R15 : Reader (15);
 
-   Str1 : constant My_String := "Hej din gamla hoppräka!                 ";
-   Str2 : constant My_String := "Sju sjösjuka sjömän från Shanghai..     ";
+   Str1 : constant My_String := (others => 'A');
+   Str2 : constant My_String := (others => 'B');
 
    task body Writer is
    begin
+      Write (Reg, Str1);
+      delay 1.0;
       loop
          Write (Reg, Str1);
-         delay 0.0;
          Write (Reg, Str2);
-         delay 0.0;
       end loop;
    end Writer;
 
@@ -77,11 +82,10 @@ procedure Atomic_Test is
          if Str /= Str1 and Str /= Str2 then
             Put_Line (Integer'Image (No) & ": " & String (Str));
          end if;
-         delay 0.0;
       end loop;
    end Reader;
 
 begin
-   Ada.Text_IO.Put_Line ("NOTE: Unless there are severe errors detected " &
+   Ada.Text_IO.Put_Line ("NOTE: Unless there are severe errors " &
                          "this program runs forever.");
 end Atomic_Test;
