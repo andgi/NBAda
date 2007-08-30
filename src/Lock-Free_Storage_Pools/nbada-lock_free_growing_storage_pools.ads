@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Lock-free growing storage pool for fixed sized blocks.
---  Copyright (C) 2005  Anders Gidenstam
+--  Copyright (C) 2005 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -16,12 +16,6 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
---  As a special exception, if other files instantiate generics from this
---  unit, or you link this unit with other files to produce an executable,
---  this unit does not by itself cause the resulting executable to be
---  covered by the GNU General Public License. This exception does not
---  however invalidate any other reasons why the executable file might be
---  covered by the GNU Public License.
 -------------------------------------------------------------------------------
 pragma Style_Checks (OFF);
 -------------------------------------------------------------------------------
@@ -30,18 +24,19 @@ pragma Style_Checks (OFF);
 --  Description     : A lock-free fixed storage pool implementation.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Jun 14 17:00:17 2005
---  $Id: nbada-lock_free_growing_storage_pools.ads,v 1.3 2006/03/03 17:43:22 anders Exp $
+--  $Id: nbada-lock_free_growing_storage_pools.ads,v 1.4 2007/08/30 15:13:13 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (ALL_CHECKS);
 
-pragma License (Modified_GPL);
+pragma License (GPL);
 
 with System.Storage_Elements;
 with System.Storage_Pools;
 
-with Lock_Free_Fixed_Size_Storage_Pools;
+with NBAda.Lock_Free_Fixed_Size_Storage_Pools;
 
-package Lock_Free_Growing_Storage_Pools is
+package NBAda.Lock_Free_Growing_Storage_Pools is
+
    pragma Preelaborate (Lock_Free_Growing_Storage_Pools);
 
    type Lock_Free_Storage_Pool
@@ -97,4 +92,4 @@ private
    procedure Initialize (Pool : in out Lock_Free_Storage_Pool);
    procedure Finalize   (Pool : in out Lock_Free_Storage_Pool);
 
-end Lock_Free_Growing_Storage_Pools;
+end NBAda.Lock_Free_Growing_Storage_Pools;

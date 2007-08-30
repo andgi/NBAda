@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Lock-free fixed size storage pool.
---  Copyright (C) 2003 - 2006  Anders Gidenstam
+--  Copyright (C) 2003 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -16,12 +16,6 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
---  As a special exception, if other files instantiate generics from this
---  unit, or you link this unit with other files to produce an executable,
---  this unit does not by itself cause the resulting executable to be
---  covered by the GNU General Public License. This exception does not
---  however invalidate any other reasons why the executable file might be
---  covered by the GNU Public License.
 -------------------------------------------------------------------------------
 pragma Style_Checks (OFF);
 -------------------------------------------------------------------------------
@@ -30,16 +24,17 @@ pragma Style_Checks (OFF);
 --  Description     : A lock-free fixed size storage pool implementation.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Apr  3 17:06:17 2003
---  $Id: nbada-lock_free_fixed_size_storage_pools.ads,v 1.8 2006/03/03 17:43:22 anders Exp $
+--  $Id: nbada-lock_free_fixed_size_storage_pools.ads,v 1.9 2007/08/30 15:13:13 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (ALL_CHECKS);
 
-pragma License (Modified_GPL);
+pragma License (GPL);
 
 with System.Storage_Elements;
 with System.Storage_Pools;
 
-package Lock_Free_Fixed_Size_Storage_Pools is
+package NBAda.Lock_Free_Fixed_Size_Storage_Pools is
+
    pragma Preelaborate (Lock_Free_Fixed_Size_Storage_Pools);
 
    ----------------------------------------------------------------------------
@@ -126,4 +121,4 @@ private
    procedure Initialize (Pool : in out Lock_Free_Storage_Pool);
    procedure Finalize   (Pool : in out Lock_Free_Storage_Pool);
 
-end Lock_Free_Fixed_Size_Storage_Pools;
+end NBAda.Lock_Free_Fixed_Size_Storage_Pools;

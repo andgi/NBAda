@@ -1,11 +1,31 @@
 -------------------------------------------------------------------------------
+--  Lock-free storage pools.
+--  Copyright (C) 2003 - 2007  Anders Gidenstam
+--
+--  This program is free software; you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation; either version 2 of the License, or
+--  (at your option) any later version.
+--
+--  This program is distributed in the hope that it will be useful,
+--  but WITHOUT ANY WARRANTY; without even the implied warranty of
+--  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--  GNU General Public License for more details.
+--
+--  You should have received a copy of the GNU General Public License
+--  along with this program; if not, write to the Free Software
+--  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+--
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : threadtest.adb
 --  Description     : Ada translation of the Hoard benchmark.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Jun 27 22:25:04 2003
---  $Id: threadtest.adb,v 1.3 2005/09/23 14:08:23 anders Exp $
+--  $Id: threadtest.adb,v 1.4 2007/08/30 15:13:13 andersg Exp $
 -------------------------------------------------------------------------------
+
+pragma License (GPL);
 
 with Ada.Real_Time;
 with Ada.Unchecked_Deallocation;
@@ -13,14 +33,13 @@ with Ada.Exceptions;
 with Ada.Command_Line;
 with Ada.Text_IO;
 
---  with Lock_Free_Fixed_Size_Storage_Pools;
-with Lock_Free_Growing_Storage_Pools;
---  with NBmalloc_Storage_Pools;
+--  with NBAda.Lock_Free_Fixed_Size_Storage_Pools;
+with NBAda.Lock_Free_Growing_Storage_Pools;
 
 procedure Threadtest is
 
    Version : constant String :=
-     "$Id: threadtest.adb,v 1.3 2005/09/23 14:08:23 anders Exp $";
+     "$Id: threadtest.adb,v 1.4 2007/08/30 15:13:13 andersg Exp $";
 
    No_Iterations : Natural := 500;
    No_Objects    : Natural := 30_000;
@@ -41,12 +60,11 @@ procedure Threadtest is
 
    Pool_Size : constant := 2**15;
    My_Pool :
---     Lock_Free_Fixed_Size_Storage_Pools.Lock_Free_Storage_Pool
+--     NBada.Lock_Free_Fixed_Size_Storage_Pools.Lock_Free_Storage_Pool
 --     (Pool_Size  => Pool_Size,
 --      Block_Size => Foo'Max_Size_In_Storage_Elements);
-     Lock_Free_Growing_Storage_Pools.Lock_Free_Storage_Pool
+     NBAda.Lock_Free_Growing_Storage_Pools.Lock_Free_Storage_Pool
      (Block_Size => Foo'Max_Size_In_Storage_Elements);
---     NBmalloc_Storage_Pools.Lock_Free_Storage_Pool;
 
    type Foo_Access is access Foo;
    for Foo_Access'Storage_Pool use My_Pool;

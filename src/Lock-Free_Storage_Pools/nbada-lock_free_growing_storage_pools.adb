@@ -16,12 +16,6 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
---  As a special exception, if other files instantiate generics from this
---  unit, or you link this unit with other files to produce an executable,
---  this unit does not by itself cause the resulting executable to be
---  covered by the GNU General Public License. This exception does not
---  however invalidate any other reasons why the executable file might be
---  covered by the GNU Public License.
 -------------------------------------------------------------------------------
 pragma Style_Checks (OFF);
 -------------------------------------------------------------------------------
@@ -30,16 +24,16 @@ pragma Style_Checks (OFF);
 --  Description     : A lock-free fixed storage pool implementation.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Jun 14 17:46:13 2005
---  $Id: nbada-lock_free_growing_storage_pools.adb,v 1.5 2007/04/19 12:07:40 andersg Exp $
+--  $Id: nbada-lock_free_growing_storage_pools.adb,v 1.6 2007/08/30 15:13:13 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (ALL_CHECKS);
 
-pragma License (Modified_GPL);
+pragma License (GPL);
 
 with Ada.Unchecked_Deallocation;
-with Primitives;
+with NBAda.Primitives;
 
-package body Lock_Free_Growing_Storage_Pools is
+package body NBAda.Lock_Free_Growing_Storage_Pools is
 
    ----------------------------------------------------------------------------
    package LFFSSP renames Lock_Free_Fixed_Size_Storage_Pools;
@@ -173,4 +167,4 @@ package body Lock_Free_Growing_Storage_Pools is
       end loop;
    end Finalize;
 
-end Lock_Free_Growing_Storage_Pools;
+end NBAda.Lock_Free_Growing_Storage_Pools;

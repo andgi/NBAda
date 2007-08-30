@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Lock-free fixed size storage pool.
---  Copyright (C) 2003 - 2006  Anders Gidenstam
+--  Copyright (C) 2003 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -16,12 +16,6 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
---  As a special exception, if other files instantiate generics from this
---  unit, or you link this unit with other files to produce an executable,
---  this unit does not by itself cause the resulting executable to be
---  covered by the GNU General Public License. This exception does not
---  however invalidate any other reasons why the executable file might be
---  covered by the GNU Public License.
 -------------------------------------------------------------------------------
 pragma Style_Checks (OFF);
 -------------------------------------------------------------------------------
@@ -30,19 +24,19 @@ pragma Style_Checks (OFF);
 --  Description     : A lock-free fixed size storage pool implementation.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Apr  3 17:50:52 2003
---  $Id: nbada-lock_free_fixed_size_storage_pools.adb,v 1.9 2007/04/19 12:06:15 andersg Exp $
+--  $Id: nbada-lock_free_fixed_size_storage_pools.adb,v 1.10 2007/08/30 15:13:13 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (ALL_CHECKS);
 
-pragma License (Modified_GPL);
+pragma License (GPL);
 
 with Ada.Unchecked_Deallocation;
 with System.Address_To_Access_Conversions;
-with Primitives;
+with NBAda.Primitives;
 
 --  with Ada.Text_IO;
 
-package body Lock_Free_Fixed_Size_Storage_Pools is
+package body NBAda.Lock_Free_Fixed_Size_Storage_Pools is
 
    ----------------------------------------------------------------------------
    type Pool_Block_Access is access all Pool_Block;
@@ -366,4 +360,4 @@ package body Lock_Free_Fixed_Size_Storage_Pools is
       return X.Index = Block_Index'Last;
    end Is_Null;
 
-end Lock_Free_Fixed_Size_Storage_Pools;
+end NBAda.Lock_Free_Fixed_Size_Storage_Pools;
