@@ -22,19 +22,21 @@
 --  Description     : Test of large word LL/SC/VL and hazard pointers.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 24 15:00:10 2005
---  $Id: large_primitives_test.adb,v 1.7 2007/05/18 12:10:52 andersg Exp $
+--  $Id: large_primitives_test.adb,v 1.8 2007/08/30 16:42:12 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Process_Identification;
-with Large_Primitives;
-with Primitives;
+with NBAda.Process_Identification;
+with NBAda.Large_Primitives;
+with NBAda.Primitives;
 
 with Ada.Text_IO;
 with Ada.Exceptions;
 
 procedure Large_Primitives_Test is
+
+   use NBAda;
 
    package PID is
       new Process_Identification (Max_Number_Of_Processes => 50);

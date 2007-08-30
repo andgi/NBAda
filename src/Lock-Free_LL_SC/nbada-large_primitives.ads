@@ -26,16 +26,16 @@
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 23 17:59:44 2005
---  $Id: nbada-large_primitives.ads,v 1.10 2007/05/18 12:10:52 andersg Exp $
+--  $Id: nbada-large_primitives.ads,v 1.11 2007/08/30 16:42:12 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Process_Identification;
+with NBAda.Process_Identification;
 
 with
-  Hazard_Pointers;
---  Epoch_Based_Memory_Reclamation;
+  NBAda.Hazard_Pointers;
+--  NBAda.Epoch_Based_Memory_Reclamation;
 
 generic
    Max_Number_Of_Links : Natural;
@@ -43,7 +43,7 @@ generic
    with package Process_Ids is
      new Process_Identification (<>);
    --  Process identification.
-package Large_Primitives is
+package NBAda.Large_Primitives is
 
    package MR is
       new Hazard_Pointers (Max_Number_Of_Links + 1,
@@ -106,4 +106,4 @@ package Large_Primitives is
 
    procedure Print_Statistics;
 
-end Large_Primitives;
+end NBAda.Large_Primitives;

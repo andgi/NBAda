@@ -26,7 +26,7 @@
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 24 10:25:44 2005
---  $Id: nbada-large_primitives.adb,v 1.16 2007/05/18 12:10:52 andersg Exp $
+--  $Id: nbada-large_primitives.adb,v 1.17 2007/08/30 16:42:12 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -34,13 +34,13 @@ pragma License (GPL);
 with Ada.Unchecked_Conversion;
 with System;
 
-with Lock_Free_Fixed_Size_Storage_Pools;
+with NBAda.Lock_Free_Fixed_Size_Storage_Pools;
 with Ada.Unchecked_Deallocation;
 
-with Primitives;
+with NBAda.Primitives;
 with Ada.Text_IO;
 
-package body Large_Primitives is
+package body NBAda.Large_Primitives is
 
    ----------------------------------------------------------------------------
    --  Types.
@@ -323,4 +323,4 @@ package body Large_Primitives is
    end Print_Statistics;
 
 
-end Large_Primitives;
+end NBAda.Large_Primitives;
