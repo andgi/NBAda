@@ -16,24 +16,23 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
---  As a special exception, if other files instantiate generics from this
---  unit, or you link this unit with other files to produce an executable,
---  this unit does not by itself cause the resulting executable to be
---  covered by the GNU General Public License. This exception does not
---  however invalidate any other reasons why the executable file might be
---  covered by the GNU Public License.
+-------------------------------------------------------------------------------
+pragma Style_Checks (Off);
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : process_identification.ads
 --  Description     : Process IDs.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 15:56:51 2004
---  $Id: nbada-process_identification.ads,v 1.5 2007/04/18 13:43:20 andersg Exp $
+--  $Id: nbada-process_identification.ads,v 1.6 2007/08/30 14:19:56 andersg Exp $
 -------------------------------------------------------------------------------
+pragma Style_Checks (All_Checks);
+
+pragma License (GPL);
 
 generic
    Max_Number_Of_Processes : Natural;
-package Process_Identification is
+package NBAda.Process_Identification is
 
    pragma Elaborate_Body;
 
@@ -45,4 +44,4 @@ package Process_Identification is
    --  Returns the process ID of the calling task.
    function Process_ID return Process_ID_Type;
 
-end Process_Identification;
+end NBAda.Process_Identification;
