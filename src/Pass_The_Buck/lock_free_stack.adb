@@ -23,7 +23,7 @@
 --                    memory management and ABA prevention.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 18:15:38 2005
---  $Id: lock_free_stack.adb,v 1.3 2007/05/18 09:00:07 andersg Exp $
+--  $Id: lock_free_stack.adb,v 1.4 2007/08/30 16:59:30 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -31,7 +31,7 @@ pragma License (GPL);
 with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
 
-with Lock_Free_Growing_Storage_Pools;
+with NBAda.Lock_Free_Growing_Storage_Pools;
 
 package body Lock_Free_Stack is
 
@@ -39,14 +39,14 @@ package body Lock_Free_Stack is
    --  Storage pool for the nodes.
    -------------------------------------------------------------------------
 
-   Node_Pool : Lock_Free_Growing_Storage_Pools.Lock_Free_Storage_Pool
+   Node_Pool : NBAda.Lock_Free_Growing_Storage_Pools.Lock_Free_Storage_Pool
      (Block_Size => Stack_Node'Max_Size_In_Storage_Elements);
 
    type New_Stack_Node_Access is access Stack_Node;
    for New_Stack_Node_Access'Storage_Pool use Node_Pool;
 
    function Boolean_Compare_And_Swap is
-      new Primitives.Standard_Boolean_Compare_And_Swap (Node_Access);
+      new NBAda.Primitives.Standard_Boolean_Compare_And_Swap (Node_Access);
 
    ----------------------------------------------------------------------------
    procedure Push (On      : in out Stack_Type;

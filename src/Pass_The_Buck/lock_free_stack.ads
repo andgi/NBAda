@@ -22,13 +22,13 @@
 --  Description     : A lock-free stack using lock-free memory reclamation.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 17:55:38 2005
---  $Id: lock_free_stack.ads,v 1.3 2007/05/18 09:00:07 andersg Exp $
+--  $Id: lock_free_stack.ads,v 1.4 2007/08/30 16:59:30 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Pass_The_Buck;
-with Primitives;
+with NBAda.Pass_The_Buck;
+with NBAda.Primitives;
 
 generic
 
@@ -58,7 +58,7 @@ private
 
    type Stack_Node;
    type Stack_Node_Access is access all Stack_Node;
-   for Stack_Node_Access'Size use Primitives.Standard_Unsigned'Size;
+   for Stack_Node_Access'Size use NBAda.Primitives.Standard_Unsigned'Size;
    pragma Atomic (Stack_Node_Access);
 
    type Stack_Node is
@@ -71,7 +71,7 @@ private
 
    procedure Free (Node : access Stack_Node);
 
-   package MR is new Pass_The_Buck
+   package MR is new NBAda.Pass_The_Buck
      (Max_Number_Of_Guards => 128,
       Value_Type           => Stack_Node_Access,
       Null_Value           => null);

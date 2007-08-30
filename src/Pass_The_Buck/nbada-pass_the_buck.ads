@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Pass-the-buck - An implementation of Herlihy et. al.'s algorithm.
---  Copyright (C) 2006  Anders Gidenstam
+--  Copyright (C) 2006 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 --                    Computer Systems, 23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 23 17:13:55 2006
---  $Id: nbada-pass_the_buck.ads,v 1.4 2007/05/25 09:20:52 andersg Exp $
+--  $Id: nbada-pass_the_buck.ads,v 1.5 2007/08/30 16:59:30 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -44,7 +44,7 @@ generic
 
    Null_Value : Value_Type;
 
-package Pass_The_Buck is
+package NBAda.Pass_The_Buck is
 
    pragma Elaborate_Body;
 
@@ -69,4 +69,4 @@ private
    type Atomic_Guard_Type is new Guard_Type;
    pragma Atomic (Atomic_Guard_Type);
 
-end Pass_The_Buck;
+end NBAda.Pass_The_Buck;

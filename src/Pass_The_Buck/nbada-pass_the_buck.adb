@@ -27,18 +27,18 @@
 --                    Computer Systems, 23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 23 17:30:49 2006
---  $Id: nbada-pass_the_buck.adb,v 1.4 2007/05/25 09:20:52 andersg Exp $
+--  $Id: nbada-pass_the_buck.adb,v 1.5 2007/08/30 16:59:30 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Primitives;
+with NBAda.Primitives;
 
-with Hash_Tables;
+with NBAda.Internals.Hash_Tables;
 
 with Ada.Unchecked_Conversion;
 
-package body Pass_The_Buck is
+package body NBAda.Pass_The_Buck is
 
    ----------------------------------------------------------------------
    type Atomic_Boolean is new Primitives.Unsigned_32;
@@ -53,7 +53,8 @@ package body Pass_The_Buck is
    function Hash_Value (Value : in Value_Type;
                         Size  : in Natural) return Natural;
 
-   package Value_Sets is new Hash_Tables (Value_Type, "=", Hash_Value);
+   package Value_Sets is
+      new NBAda.Internals.Hash_Tables (Value_Type, "=", Hash_Value);
 
    ----------------------------------------------------------------------
    --  Internal state.
@@ -188,4 +189,4 @@ package body Pass_The_Buck is
                       Primitives.Standard_Unsigned (Size));
    end Hash_Value;
 
-end Pass_The_Buck;
+end NBAda.Pass_The_Buck;
