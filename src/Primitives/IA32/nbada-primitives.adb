@@ -28,7 +28,7 @@
 --  Description     : Synchronization primitives.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Jul  5 14:53:50 2002
---  $Id: nbada-primitives.adb,v 1.16 2007/08/23 13:31:57 andersg Exp $
+--  $Id: nbada-primitives.adb,v 1.17 2007/08/30 13:34:11 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -67,6 +67,12 @@ package body Primitives is
    --        To disable the mfence instruction, change the string constant
    --        MFENCE to "#mfence" instead of "mfence".
 
+   PAUSE : constant String := "pause";
+   --  NOTE: The "pause" instruction in the machine code below is
+   --        important to lower the impact of spinning on
+   --        multi-core or hyper-threaded IA32 processors.
+   --        To disable the pause instruction, change the string constant
+   --        PAUSE to "#pause" instead of "pause".
 
    CAS_Based_FAA : constant Boolean := True;
    --  NOTE: The pure assembler FAA breaks on some IA32 implementations
