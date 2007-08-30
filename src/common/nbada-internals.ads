@@ -19,18 +19,18 @@
 --
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
---  Filename        : nbada.ads
+--  Filename        : nbada-internals.ads
 --  Description     : NBAda - A library of non-blocking algorithms and
 --                    data structures.
 --  Author          : Anders Gidenstam
---  Created On      : Thu Aug 30 15:22:08 2007
---  $Id: nbada.ads,v 1.2 2007/08/30 16:16:15 andersg Exp $
+--  Created On      : Thu Aug 30 18:08:01 2007
+--  $Id: nbada-internals.ads,v 1.1 2007/08/30 16:16:15 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-package NBAda is
+package NBAda.Internals is
 
-   pragma Pure (NBAda);
+   pragma Pure (NBAda.Internals);
 
-end NBAda;
+end NBAda.Internals;
