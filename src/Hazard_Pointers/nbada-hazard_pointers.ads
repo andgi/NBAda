@@ -27,13 +27,13 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:10:15 2004
---  $Id: nbada-hazard_pointers.ads,v 1.15 2007/08/24 15:04:48 andersg Exp $
+--  $Id: nbada-hazard_pointers.ads,v 1.16 2007/08/30 16:14:05 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Process_Identification;
-with Primitives;
+with NBAda.Process_Identification;
+with NBAda.Primitives;
 
 generic
    Max_Number_Of_Dereferences : Natural;
@@ -44,7 +44,7 @@ generic
 
    Integrity_Checking : Boolean := True;
    --  Enable strong integrity checking.
-package Hazard_Pointers is
+package NBAda.Hazard_Pointers is
 
    ----------------------------------------------------------------------------
    type Managed_Node_Base is abstract tagged limited private;
@@ -269,4 +269,4 @@ private
          pragma Atomic (MM_Next);
       end record;
 
-end Hazard_Pointers;
+end NBAda.Hazard_Pointers;

@@ -27,18 +27,18 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:35:09 2004
---  $Id: nbada-hazard_pointers.adb,v 1.15 2007/08/24 15:04:48 andersg Exp $
+--  $Id: nbada-hazard_pointers.adb,v 1.16 2007/08/30 16:14:05 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Hash_Tables;
+with NBAda.Internals.Hash_Tables;
 
 with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
 with Ada.Text_IO;
 
-package body Hazard_Pointers is
+package body NBAda.Hazard_Pointers is
 
    ----------------------------------------------------------------------------
    --  Types.
@@ -53,7 +53,8 @@ package body Hazard_Pointers is
    function Hash_Ref (Ref  : in Managed_Node_Access;
                       Size : in Natural) return Natural;
 
-   package HP_Sets is new Hash_Tables (Managed_Node_Access, "=", Hash_Ref);
+   package HP_Sets is
+      new NBAda.Internals.Hash_Tables (Managed_Node_Access, "=", Hash_Ref);
 
    ----------------------------------------------------------------------------
    --  Internal data structures.
@@ -524,4 +525,4 @@ package body Hazard_Pointers is
                       Primitives.Standard_Unsigned (Size));
    end Hash_Ref;
 
-end Hazard_Pointers;
+end NBAda.Hazard_Pointers;

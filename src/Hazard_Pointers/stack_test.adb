@@ -22,13 +22,13 @@
 --  Description     : Test of the lock-free example stack.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 18:54:53 2005
---  $Id: stack_test.adb,v 1.5 2007/08/24 15:04:48 andersg Exp $
+--  $Id: stack_test.adb,v 1.6 2007/08/30 16:14:05 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Process_Identification;
-with Primitives;
+with NBAda.Process_Identification;
+with NBAda.Primitives;
 
 with Ada.Text_IO;
 with Ada.Exceptions;
@@ -40,6 +40,8 @@ with System.Task_Info;
 with Example_Stack;
 
 procedure Stack_Test is
+
+   use NBAda;
 
    package PID is
       new Process_Identification (Max_Number_Of_Processes => 32);

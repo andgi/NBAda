@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Example Stack - A lock-free stack using hazard pointers.
---  Copyright (C) 2005  Anders Gidenstam
+--  Copyright (C) 2005 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -23,19 +23,19 @@
 --                    memory management and ABA prevention.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 17:55:38 2005
---  $Id: example_stack.ads,v 1.2 2007/08/24 15:04:48 andersg Exp $
+--  $Id: example_stack.ads,v 1.3 2007/08/30 16:14:05 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Process_Identification;
-with Hazard_Pointers;
+with NBAda.Process_Identification;
+with NBAda.Hazard_Pointers;
 
 generic
    type Element_Type is private;
    --  Element type.
    with package Process_Ids is
-     new Process_Identification (<>);
+     new NBAda.Process_Identification (<>);
    --  Process identification.
 package Example_Stack is
 
@@ -58,7 +58,7 @@ package Example_Stack is
 
    --  private
 
-   package HP is new Hazard_Pointers
+   package HP is new NBAda.Hazard_Pointers
      (Max_Number_Of_Dereferences => 1,
       --  Each operation on the stack only accesses one element on the stack.
       Process_Ids         => Process_Ids);

@@ -1,6 +1,7 @@
 -------------------------------------------------------------------------------
---  Hazard Pointers - An implementation of Maged Michael's hazard pointers.
---  Copyright (C) 2004, 2005  Anders Gidenstam
+--  NBAda - A library of non-blocking algorithms and data structures.
+--
+--  Copyright (C) 2004 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -17,17 +18,20 @@
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 -------------------------------------------------------------------------------
+pragma Style_Checks (Off);
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : hash_tables.adb
 --  Description     : A simple closed hash table.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 21:56:38 2004
---  $Id: nbada-internals-hash_tables.adb,v 1.5 2007/08/24 15:04:48 andersg Exp $
+--  $Id: nbada-internals-hash_tables.adb,v 1.6 2007/08/30 16:15:38 andersg Exp $
 -------------------------------------------------------------------------------
+pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
-package body Hash_Tables is
+package body NBAda.Internals.Hash_Tables is
 
    ----------------------------------------------------------------------------
    --  Private operations.
@@ -145,4 +149,4 @@ package body Hash_Tables is
       return Current;
    end Resolve_Hash_Index;
 
-end Hash_Tables;
+end NBAda.Internals.Hash_Tables;
