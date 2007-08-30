@@ -16,28 +16,22 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
---  As a special exception, if other files instantiate generics from this
---  unit, or you link this unit with other files to produce an executable,
---  this unit does not by itself cause the resulting executable to be
---  covered by the GNU General Public License. This exception does not
---  however invalidate any other reasons why the executable file might be
---  covered by the GNU Public License.
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : primitives.adb
 --  Description     : Synchronization primitives.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Jul  5 14:53:50 2002
---  $Id: nbada-primitives.adb,v 1.17 2007/08/30 13:34:11 andersg Exp $
+--  $Id: nbada-primitives.adb,v 1.18 2007/08/30 14:11:43 andersg Exp $
 -------------------------------------------------------------------------------
 
-pragma License (Modified_GPL);
+pragma License (GPL);
 
 with System.Machine_Code;
 with Ada.Characters.Latin_1;
 with Ada.Unchecked_Conversion;
 
-package body Primitives is
+package body NBAda.Primitives is
 
    ----------------------------------------------------------------------------
    --  Synchronization primitives for IA32.
@@ -542,4 +536,4 @@ package body Primitives is
         Volatile => True);
    end Membar;
 
-end Primitives;
+end NBAda.Primitives;

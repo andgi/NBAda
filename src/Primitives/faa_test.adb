@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Fetch and Add test.
---  Copyright (C) 2004 - 2006  Anders Gidenstam
+--  Copyright (C) 2004 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -16,24 +16,18 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
---  As a special exception, if other files instantiate generics from this
---  unit, or you link this unit with other files to produce an executable,
---  this unit does not by itself cause the resulting executable to be
---  covered by the GNU General Public License. This exception does not
---  however invalidate any other reasons why the executable file might be
---  covered by the GNU Public License.
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : faa_test.adb
 --  Description     : Test of synchronization primitives package.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Jul  9 14:07:11 2002
---  $Id: faa_test.adb,v 1.9 2007/08/30 13:36:15 andersg Exp $
+--  $Id: faa_test.adb,v 1.10 2007/08/30 14:11:43 andersg Exp $
 -------------------------------------------------------------------------------
 
-pragma License (Modified_GPL);
+pragma License (GPL);
 
-with Primitives;
+with NBAda.Primitives;
 with Ada.Text_IO;
 with Ada.Exceptions;
 
@@ -41,9 +35,9 @@ with System.Task_Info;
 
 procedure FAA_Test is
 
-   Count : aliased Primitives.Standard_Unsigned := 0;
+   Count : aliased NBAda.Primitives.Standard_Unsigned := 0;
    pragma Atomic (Count);
-   Count_CAS : aliased Primitives.Standard_Unsigned := 0;
+   Count_CAS : aliased NBAda.Primitives.Standard_Unsigned := 0;
    pragma Atomic (Count_CAS);
 
    function System_Scope_Task return System.Task_Info.Task_Info_Type;
@@ -53,7 +47,8 @@ procedure FAA_Test is
    end Counter;
 
 --   function CAS is
---      new Primitives.Boolean_Compare_And_Swap_32 (Primitives.Unsigned_32);
+--      new NBAda.Primitives.Boolean_Compare_And_Swap_32
+--      (NBAda.Primitives.Unsigned_32);
 
    ----------------------------------------------------------------------------
    function System_Scope_Task return System.Task_Info.Task_Info_Type is
@@ -66,7 +61,7 @@ procedure FAA_Test is
 --           Priority    => System.Task_Info.No_Specified_Priority,
 --           Runon_CPU   =>
 --             --System.Task_Info.ANY_CPU
---             Integer (Primitives.Fetch_And_Add (Task_Count'Access, 1))
+--             Integer (NBAda.Primitives.Fetch_And_Add (Task_Count'Access, 1))
 --           );
 --  GNAT/Linux
       return System.Task_Info.System_Scope;
@@ -77,21 +72,22 @@ procedure FAA_Test is
    task body Counter is
    begin
       for I in 1 .. 10_000_000 loop
-         Primitives.Fetch_And_Add (Target    => Count'Access,
-                                   Increment => 1);
+         NBAda.Primitives.Fetch_And_Add (Target    => Count'Access,
+                                         Increment => 1);
 --           loop
 --              declare
---                 use type Primitives.Unsigned_32;
---                 T : Primitives.Unsigned_32 := Count_CAS;
+--                 use type NBAda.Primitives.Unsigned_32;
+--                 T : NBAda.Primitives.Unsigned_32 := Count_CAS;
 --              begin
 --                 exit when CAS (Count_CAS'Access, T, T + 1);
 --              end;
 --           end loop;
       end loop;
-      Ada.Text_IO.Put_Line ("Count: " &
-                            Primitives.Standard_Unsigned'Image (Count) &
-                            "  Count_CAS: " &
-                            Primitives.Standard_Unsigned'Image (Count_CAS));
+      Ada.Text_IO.Put_Line
+        ("Count: " &
+         NBAda.Primitives.Standard_Unsigned'Image (Count) &
+         "  Count_CAS: " &
+         NBAda.Primitives.Standard_Unsigned'Image (Count_CAS));
    exception
       when E : others =>
          Ada.Text_IO.Put_Line (Ada.Exceptions.Exception_Information (E));
@@ -103,17 +99,17 @@ procedure FAA_Test is
    Counters : Counter_Array (1 .. 10);
 begin
    declare
-      use type Primitives.Standard_Unsigned;
-      Test : aliased Primitives.Standard_Unsigned := 0;
+      use type NBAda.Primitives.Standard_Unsigned;
+      Test : aliased NBAda.Primitives.Standard_Unsigned := 0;
    begin
       Ada.Text_IO.Put_Line ("Test 1: 10 x FAA(Test'Access, 2)." &
                             "Expected outcome: 0, 2, 4, .. , 18.");
       for I in 1 .. 10 loop
          Ada.Text_IO.Put_Line
            ("FAA(Test'Access, 2):" &
-            Primitives.Standard_Unsigned'Image
-            (Primitives.Fetch_And_Add (Target    => Test'Access,
-                                       Increment => 2)));
+            NBAda.Primitives.Standard_Unsigned'Image
+            (NBAda.Primitives.Fetch_And_Add (Target    => Test'Access,
+                                             Increment => 2)));
       end loop;
       if Test /= 20 then
          Ada.Text_IO.Put_Line ("Test 1: Failed! Final value is incorrect.");
