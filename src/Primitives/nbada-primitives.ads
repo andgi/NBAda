@@ -22,7 +22,7 @@
 --  Description     : Synchronization primitives.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Jul  5 12:27:13 2002
---  $Id: nbada-primitives.ads,v 1.17 2007/08/30 14:11:43 andersg Exp $
+--  $Id: nbada-primitives.ads,v 1.18 2007/08/30 16:30:15 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -35,7 +35,7 @@ package NBAda.Primitives is
    --  Synchronization primitives.
    --
    ----------------------------------------------------------------------------
-   pragma Pure (Primitives);
+   pragma Preelaborate (Primitives);
 
    ----------------------------------------------------------------------------
    --  Not_Implemented is raised if a particular primitive is not implemented
