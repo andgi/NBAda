@@ -23,7 +23,7 @@
 --  Description     : NBAda build config.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Aug 30 11:18:46 2007
--- $Id: nbada_config.adb,v 1.1 2007/08/30 13:21:34 andersg Exp $
+-- $Id: nbada_config.adb,v 1.2 2007/08/30 14:35:43 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Command_Line;
@@ -39,15 +39,17 @@ procedure NBAda_Config is
    function "+" (Source : in String) return Unbounded_String renames
      Ada.Strings.Unbounded.To_Unbounded_String;
 
-   ----------------------------------------------------------------------
-   --  Configuration.
-
+   --  Types.
    type Target is (PRIMITIVES, LF_POOLS, EBMR, HAZARD_POINTERS);
    type Architecture is (IA32, SPARCV8PLUS, SPARCV9, MIPSN32);
    type Target_Array is array (Target) of Boolean;
 
+   ----------------------------------------------------------------------
+   --  Configuration.
+
+   --  NBAda source code base directory.
    Install_Base : constant String :=
-     "/home/andersg/projects/Ada/Non-Blocking";
+     "/home/andersg/projects/Ada/Non-Blocking/src";
 
    --  Architecture dependent compiler flags.
    Compiler_Flags : constant array (Architecture) of Unbounded_String :=
@@ -58,7 +60,7 @@ procedure NBAda_Config is
                           "-m64 --RTS=m64 -cargs -Wa,-xarch=v9"),
       MIPSN32     => "+" ("-I" & Install_Base & "/Primitives/MIPSN32"));
 
-   --  Component includes.
+   --  Component include directories.
    Include : constant array (Target) of Unbounded_String :=
      (PRIMITIVES      => "+" ("-I" & Install_Base & "/Primitives"),
       LF_POOLS        =>
@@ -69,7 +71,8 @@ procedure NBAda_Config is
         "+" ("-I" & Install_Base & "/Hazard_Pointers")
       );
 
-   --  Component dependencies. NOTE: Dependencies must be explicit.
+   --  Component dependencies.
+   --  NOTE: All dependencies except must be explicit.
    Depends : constant array (Target) of Target_Array :=
      (PRIMITIVES      => (others => False),
       LF_POOLS        => (PRIMITIVES => True, others => False),
@@ -179,6 +182,10 @@ procedure NBAda_Config is
    function  Compiler_Arguments (State : in Config_State) return String is
       Result : Unbounded_String;
    begin
+      --  Base include.
+      Append (Result, "+" ("-I" & Install_Base & "/common "));
+
+      --  Component includes.
       for L in Target'Range loop
          if State.Target (L) then
             Append (Result, Include (L));
