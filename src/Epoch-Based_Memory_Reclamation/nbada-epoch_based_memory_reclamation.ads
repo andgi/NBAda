@@ -28,14 +28,14 @@ pragma Style_Checks (Off);
 --                    University of Cambridge, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Mar  8 12:04:29 2006
---  $Id: nbada-epoch_based_memory_reclamation.ads,v 1.7 2007/05/18 09:07:53 andersg Exp $
+--  $Id: nbada-epoch_based_memory_reclamation.ads,v 1.8 2007/08/30 15:51:09 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
-with Process_Identification;
-with Primitives;
+with NBAda.Process_Identification;
+with NBAda.Primitives;
 
 generic
 
@@ -47,9 +47,9 @@ generic
    --  The number of critical sections entered between attempts to update
    --  the global epoch.
 
-package Epoch_Based_Memory_Reclamation is
+package NBAda.Epoch_Based_Memory_Reclamation is
 
-   pragma Elaborate_Body;
+   pragma Elaborate_Body (Epoch_Based_Memory_Reclamation);
 
    ----------------------------------------------------------------------------
    type Managed_Node_Base is abstract tagged limited private;
@@ -261,4 +261,4 @@ private
          pragma Atomic (MM_Next);
       end record;
 
-end Epoch_Based_Memory_Reclamation;
+end NBAda.Epoch_Based_Memory_Reclamation;

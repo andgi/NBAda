@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
---  Example Stack - A lock-free stack using hazard pointers.
+--  Stack test - A small test application for a lock-free stack.
 --  Copyright (C) 2005 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
@@ -22,13 +22,13 @@
 --  Description     : Test of the lock-free example stack.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 18:54:53 2005
---  $Id: stack_test.adb,v 1.3 2007/05/18 09:07:53 andersg Exp $
+--  $Id: stack_test.adb,v 1.4 2007/08/30 15:51:09 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Process_Identification;
-with Primitives;
+with NBAda.Process_Identification;
+with NBAda.Primitives;
 
 with Ada.Text_IO;
 with Ada.Exceptions;
@@ -41,8 +41,10 @@ with Example_Stack;
 
 procedure Stack_Test is
 
+   use NBAda;
+
    package PID is
-      new Process_Identification (Max_Number_Of_Processes => 32);
+      new NBAda.Process_Identification (Max_Number_Of_Processes => 32);
 
 
    type Value_Type is

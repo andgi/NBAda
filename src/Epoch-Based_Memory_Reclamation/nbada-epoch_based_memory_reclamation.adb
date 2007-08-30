@@ -28,7 +28,7 @@ pragma Style_Checks (Off);
 --                    University of Cambridge, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Mar  8 12:28:31 2006
---  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.9 2007/05/18 09:07:53 andersg Exp $
+--  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.10 2007/08/30 15:51:09 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -38,7 +38,7 @@ with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
 with Ada.Text_IO;
 
-package body Epoch_Based_Memory_Reclamation is
+package body NBAda.Epoch_Based_Memory_Reclamation is
 
    ----------------------------------------------------------------------------
    --  Types.
@@ -539,4 +539,4 @@ package body Epoch_Based_Memory_Reclamation is
       end loop;
    end Cleanup;
 
-end Epoch_Based_Memory_Reclamation;
+end NBAda.Epoch_Based_Memory_Reclamation;

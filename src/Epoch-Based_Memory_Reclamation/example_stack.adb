@@ -23,7 +23,7 @@
 --                    memory management and ABA prevention.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 18:15:38 2005
---  $Id: example_stack.adb,v 1.3 2007/05/18 09:07:53 andersg Exp $
+--  $Id: example_stack.adb,v 1.4 2007/08/30 15:51:09 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -31,7 +31,7 @@ pragma License (GPL);
 with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
 
-with Lock_Free_Growing_Storage_Pools;
+with NBAda.Lock_Free_Growing_Storage_Pools;
 
 package body Example_Stack is
 
@@ -39,7 +39,7 @@ package body Example_Stack is
    --  Storage pool for the nodes.
    -------------------------------------------------------------------------
 
-   Node_Pool : Lock_Free_Growing_Storage_Pools.Lock_Free_Storage_Pool
+   Node_Pool : NBAda.Lock_Free_Growing_Storage_Pools.Lock_Free_Storage_Pool
      (Block_Size => Stack_Node'Max_Size_In_Storage_Elements);
 
    type New_Stack_Node_Access is access Stack_Node;

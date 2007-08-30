@@ -23,19 +23,19 @@
 --                    memory management and ABA prevention.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 17:55:38 2005
---  $Id: example_stack.ads,v 1.4 2007/05/18 09:07:53 andersg Exp $
+--  $Id: example_stack.ads,v 1.5 2007/08/30 15:51:09 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Process_Identification;
-with Epoch_Based_Memory_Reclamation;
+with NBAda.Process_Identification;
+with NBAda.Epoch_Based_Memory_Reclamation;
 
 generic
    type Element_Type is private;
    --  Element type.
    with package Process_Ids is
-     new Process_Identification (<>);
+     new NBAda.Process_Identification (<>);
    --  Process identification.
 package Example_Stack is
 
@@ -58,7 +58,7 @@ package Example_Stack is
 
    --  private
 
-   package MRS is new Epoch_Based_Memory_Reclamation
+   package MRS is new NBAda.Epoch_Based_Memory_Reclamation
      (Process_Ids         => Process_Ids);
 
 private
