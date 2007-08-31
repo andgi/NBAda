@@ -16,25 +16,18 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
---  As a special exception, if other files instantiate generics from this
---  unit, or you link this unit with other files to produce an executable,
---  this unit does not by itself cause the resulting executable to be
---  covered by the GNU General Public License. This exception does not
---  however invalidate any other reasons why the executable file might be
---  covered by the GNU Public License.
---
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : queue_test.adb
 --  Description     : Example application for lock-free FIFO queue.
 --  Author          : Anders Gidenstam
 --  Created On      : Mon Jun 27 19:09:40 2005
---  $Id: queue_test.adb,v 1.6 2007/08/31 09:45:21 andersg Exp $
+--  $Id: queue_test.adb,v 1.7 2007/08/31 10:02:41 andersg Exp $
 -------------------------------------------------------------------------------
 
-pragma License (Modified_GPL);
+pragma License (GPL);
 
-with Primitives;
+with NBAda.Primitives;
 
 with Ada.Text_IO;
 with Ada.Exceptions;
@@ -43,9 +36,11 @@ with Ada.Real_Time;
 
 with System.Task_Info;
 
-with Lock_Free_Bounded_Queues;
+with NBAda.Lock_Free_Bounded_Queues;
 
 procedure Queue_Test is
+
+   use NBAda;
 
    type Process_Id is mod 2**10;
    type Index_Type is mod 2**22;

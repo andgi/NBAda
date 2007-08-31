@@ -16,13 +16,8 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
---  As a special exception, if other files instantiate generics from this
---  unit, or you link this unit with other files to produce an executable,
---  this unit does not by itself cause the resulting executable to be
---  covered by the GNU General Public License. This exception does not
---  however invalidate any other reasons why the executable file might be
---  covered by the GNU Public License.
---
+-------------------------------------------------------------------------------
+pragma Style_Checks (OFF);
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : lock_free_bounded_queues.ads
@@ -35,10 +30,11 @@
 --                    architectures (SPAA), 134--143, ACM, July 2001.
 --  Author          : Anders Gidenstam
 --  Created On      : Mon Jun 27 17:21:50 2005
---  $Id: nbada-lock_free_bounded_queues.ads,v 1.7 2007/08/31 09:45:21 andersg Exp $
+--  $Id: nbada-lock_free_bounded_queues.ads,v 1.8 2007/08/31 10:02:41 andersg Exp $
 -------------------------------------------------------------------------------
+pragma Style_Checks (ALL_CHECKS);
 
-pragma License (Modified_GPL);
+pragma License (GPL);
 
 generic
    type Element_Type is private;
@@ -48,8 +44,9 @@ generic
    Null_1 : Element_Type;
    --  NOTE: These two values MUST be different and MUST NOT appear as
    --        data values in the queue.
-package Lock_Free_Bounded_Queues is
-   pragma Pure (Lock_Free_Bounded_Queues);
+package NBAda.Lock_Free_Bounded_Queues is
+
+   pragma Preelaborate (Lock_Free_Bounded_Queues);
 
    type Queue_Size is mod 2**32;
 
@@ -91,4 +88,4 @@ private
          pragma Atomic (Vnull);
       end record;
 
-end Lock_Free_Bounded_Queues;
+end NBAda.Lock_Free_Bounded_Queues;
