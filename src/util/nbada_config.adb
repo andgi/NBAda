@@ -23,7 +23,7 @@
 --  Description     : NBAda build config.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Aug 30 11:18:46 2007
--- $Id: nbada_config.adb,v 1.2 2007/08/30 14:35:43 andersg Exp $
+-- $Id: nbada_config.adb,v 1.3 2007/08/31 15:04:46 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Command_Line;
@@ -40,7 +40,7 @@ procedure NBAda_Config is
      Ada.Strings.Unbounded.To_Unbounded_String;
 
    --  Types.
-   type Target is (PRIMITIVES, LF_POOLS, EBMR, HAZARD_POINTERS);
+   type Target is (PRIMITIVES, LF_POOLS, EBMR, HAZARD_POINTERS, SW_LL_SC);
    type Architecture is (IA32, SPARCV8PLUS, SPARCV9, MIPSN32);
    type Target_Array is array (Target) of Boolean;
 
@@ -68,18 +68,23 @@ procedure NBAda_Config is
       EBMR            =>
         "+" ("-I" & Install_Base & "/Epoch-Based_Memory_Reclamation"),
       HAZARD_POINTERS =>
-        "+" ("-I" & Install_Base & "/Hazard_Pointers")
+        "+" ("-I" & Install_Base & "/Hazard_Pointers"),
+      SW_LL_SC        =>
+        "+" ("-I" & Install_Base & "/Lock-Free_LL_SC")
       );
 
    --  Component dependencies.
-   --  NOTE: All dependencies except must be explicit.
+   --  NOTE: All dependencies must be explicit.
    Depends : constant array (Target) of Target_Array :=
      (PRIMITIVES      => (others => False),
       LF_POOLS        => (PRIMITIVES => True, others => False),
       EBMR            => (PRIMITIVES => True,
                           LF_POOLS   => True, others => False),
       HAZARD_POINTERS => (PRIMITIVES => True,
-                          LF_POOLS   => True, others => False)
+                          LF_POOLS   => True, others => False),
+      SW_LL_SC        => (PRIMITIVES      => True,
+                          LF_POOLS        => True,
+                          HAZARD_POINTERS => True, others => False)
       );
 
    ----------------------------------------------------------------------
