@@ -20,6 +20,8 @@
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 -------------------------------------------------------------------------------
+pragma Style_Checks (Off);
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : atomic_multiwriter_snapshots.ads
 --  Description     : M-component N-process snapshot implementation based on
@@ -27,13 +29,14 @@
 --                    Proceedings of STOC'05, ACM, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri May 11 15:58:30 2007
---  $Id: nbada-atomic_multiwriter_snapshots.ads,v 1.1 2007/05/15 14:02:15 andersg Exp $
+--  $Id: nbada-atomic_multiwriter_snapshots.ads,v 1.2 2007/08/31 15:03:14 andersg Exp $
 -------------------------------------------------------------------------------
+pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
-with Process_Identification;
-with Primitives;
+with NBAda.Process_Identification;
+with NBAda.Primitives;
 
 generic
 
@@ -44,7 +47,7 @@ generic
      new Process_Identification (<>);
    --  Process identification.
 
-package Atomic_Multiwriter_Snapshots is
+package NBAda.Atomic_Multiwriter_Snapshots is
 
    pragma Elaborate_Body;
 
@@ -88,4 +91,4 @@ private
 
    type Snapshot is new Component_Array;
 
-end Atomic_Multiwriter_Snapshots;
+end NBAda.Atomic_Multiwriter_Snapshots;

@@ -28,7 +28,7 @@
 --                    Proceedings of STOC'05, ACM, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue May 15 13:19:07 2007
--- $Id: snapshot_test.adb,v 1.3 2007/05/18 13:03:53 andersg Exp $
+-- $Id: snapshot_test.adb,v 1.4 2007/08/31 15:03:14 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -40,11 +40,13 @@ with Ada.Real_Time;
 
 with System.Task_Info;
 
-with Process_Identification;
-with Primitives;
-with Atomic_Multiwriter_Snapshots;
+with NBAda.Process_Identification;
+with NBAda.Primitives;
+with NBAda.Atomic_Multiwriter_Snapshots;
 
 procedure Snapshot_Test is
+
+   use NBAda;
 
    package PID is
       new Process_Identification (Max_Number_Of_Processes => 32);

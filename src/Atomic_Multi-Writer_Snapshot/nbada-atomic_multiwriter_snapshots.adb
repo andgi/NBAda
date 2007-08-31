@@ -20,6 +20,8 @@
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 -------------------------------------------------------------------------------
+pragma Style_Checks (Off);
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : atomic_multiwriter_snapshots.adb
 --  Description     : M-component N-process snapshot implementation based on
@@ -27,15 +29,16 @@
 --                    Proceedings of STOC'05, ACM, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Mon May 14 13:54:44 2007
---  $Id: nbada-atomic_multiwriter_snapshots.adb,v 1.1 2007/05/15 14:02:15 andersg Exp $
+--  $Id: nbada-atomic_multiwriter_snapshots.adb,v 1.2 2007/08/31 15:03:14 andersg Exp $
 -------------------------------------------------------------------------------
+pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
-with Large_Primitives;
+with NBAda.Large_Primitives;
 with Ada.Unchecked_Conversion;
 
-package body Atomic_Multiwriter_Snapshots is
+package body NBAda.Atomic_Multiwriter_Snapshots is
 
    ----------------------------------------------------------------------------
    type Component_State is (Free, Reserved, Active);
@@ -322,4 +325,4 @@ begin
                                           (False, 0));
       end loop;
    end loop;
-end Atomic_Multiwriter_Snapshots;
+end NBAda.Atomic_Multiwriter_Snapshots;
