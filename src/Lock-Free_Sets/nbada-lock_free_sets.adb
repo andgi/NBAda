@@ -30,7 +30,7 @@ pragma Style_Checks (Off);
 --                    pages 73-82, August 2002.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Mar 10 12:23:47 2006
---  $Id: nbada-lock_free_sets.adb,v 1.3 2007/04/24 15:45:36 andersg Exp $
+--  $Id: nbada-lock_free_sets.adb,v 1.4 2007/08/31 15:53:15 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -40,6 +40,8 @@ with Lock_Free_Growing_Storage_Pools;
 
 with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
+
+with Ada.Text_IO;
 
 package body Lock_Free_Sets is
 
@@ -51,7 +53,7 @@ package body Lock_Free_Sets is
      (Block_Size => List_Node'Max_Size_In_Storage_Elements);
 
    type New_List_Node_Access is access List_Node;
-   for New_List_Node_Access'Storage_Pool use Node_Pool;
+--   for New_List_Node_Access'Storage_Pool use Node_Pool;
 
    function Create_List_Node is new MRS_Ops.Create (New_List_Node_Access);
 
@@ -89,14 +91,38 @@ package body Lock_Free_Sets is
             Prev, Cur, Next : List_Node_Access;
             Found           : Boolean;
          begin
-            Find (Into, Key,
-                  Found,
-                  Prev, Cur, Next);
+            begin
+               Find (Into, Key,
+                     Found,
+                     Prev, Cur, Next);
+
+            exception
+               when Constraint_Error =>
+                  Ada.Text_IO.Put_Line ("Lock_Free_Set.Insert: " &
+                                        "Release exception in " &
+                                        "Find call!");
+                  raise;
+            end;
             if Found then
-               Release (Prev);
-               Release (Cur);
-               Release (Next);
-               Delete  (Node);
+               declare
+                  Step : Natural := 0;
+               begin
+                  Release (Prev);
+                  Step := Step + 1;
+                  Release (Cur);
+                  Step := Step + 1;
+                  Release (Next);
+                  Step := Step + 1;
+                  Delete  (Node);
+
+               exception
+                  when Constraint_Error =>
+                     Ada.Text_IO.Put_Line ("Lock_Free_Set.Insert: " &
+                                           "Release exception at " &
+                                           "Already_Present! (Step " &
+                                           Natural'Image (Step) & ")");
+                     raise;
+               end;
                raise Already_Present;
             end if;
             Store ("+"(Node).Next'Access, Unmark (Cur));
@@ -105,15 +131,39 @@ package body Lock_Free_Sets is
                                         Old_Value => Unmark (Cur),
                                         New_Value => Node)
             then
-               Release (Prev);
-               Release (Cur);
-               Release (Next);
-               Release (Node);
+               declare
+                  Step : Natural := 0;
+               begin
+                  Release (Prev);
+                  Step := Step + 1;
+                  Release (Next);
+                  Step := Step + 1;
+                  Release (Cur);
+                  Step := Step + 1;
+                  Release (Node);
+
+               exception
+                  when Constraint_Error =>
+                     Ada.Text_IO.Put_Line ("Lock_Free_Set.Insert: " &
+                                           "Release exception at " &
+                                           "done! (Step " &
+                                           Natural'Image (Step) & ")");
+                     raise;
+               end;
                return;
             else
-               Release (Prev);
-               Release (Cur);
-               Release (Next);
+               begin
+                  Release (Prev);
+                  Release (Cur);
+                  Release (Next);
+
+               exception
+                  when Constraint_Error =>
+                     Ada.Text_IO.Put_Line ("Lock_Free_Set.Insert: " &
+                                           "Release exception in " &
+                                           "loop iteration!");
+                     raise;
+               end;
             end if;
          end;
       end loop;
@@ -174,13 +224,13 @@ package body Lock_Free_Sets is
    end Delete;
 
    ----------------------------------------------------------------------------
-   function  Find    (Set : in Set_Type;
-                      Key : in Key_Type) return Value_Type is
+   function  Find    (In_Set : in Set_Type;
+                      Key    : in Key_Type) return Value_Type is
       use MRS_Ops;
       Prev, Cur, Next : List_Node_Access;
       Found           : Boolean;
    begin
-      Find (Set, Key,
+      Find (In_Set, Key,
             Found,
             Prev, Cur, Next);
       if Found then
@@ -238,7 +288,11 @@ package body Lock_Free_Sets is
       Mutable_Set_Head : constant Mutable_Access :=
         To_Mutable (Set.Head'Access);
    begin
+      Prev := Null_Reference;
+      Cur  := Null_Reference;
+      Next := Null_Reference;
       loop
+
          declare
             Previous : List_Node_Access := Dereference (Mutable_Set_Head);
             Current  : List_Node_Access := Null_Reference;
@@ -276,9 +330,13 @@ package body Lock_Free_Sets is
                         Cur  := Current;
                         return;
                      else
-                        Release (Previous);
-                        Previous := Current;
-                        Current  := Null_Reference;
+                        declare
+                           Tmp : constant Private_Reference := Previous;
+                        begin
+                           Previous := Current;
+                           Current  := Null_Reference;
+                           Release (Tmp);
+                        end;
                      end if;
                   else
                      --  Current.Next is marked, i.e. Current is logically
@@ -306,6 +364,7 @@ package body Lock_Free_Sets is
             Release (Previous);
             Release (Current);
             Release (Next);
+            Next := Null_Reference;
          end;
       end loop;
    end Find;

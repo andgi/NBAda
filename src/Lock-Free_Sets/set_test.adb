@@ -24,7 +24,7 @@
 --  Description     : Test application for the lock-free sets.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Mar 10 17:51:23 2006
---  $Id: set_test.adb,v 1.5 2007/04/24 17:09:51 andersg Exp $
+--  $Id: set_test.adb,v 1.6 2007/08/31 15:53:15 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -51,7 +51,7 @@ procedure Set_Test is
    --  Test application.
    ----------------------------------------------------------------------------
 
-   No_Of_Elements : constant := 1_000;
+   No_Of_Elements : constant := 10_000;
    subtype Key_Universe is My_Set.Key_Type range 0 .. No_Of_Elements * 100;
 
    Output_File : Ada.Text_IO.File_Type renames
@@ -72,10 +72,10 @@ procedure Set_Test is
       pragma Task_Info (Pinned_Task);
       pragma Storage_Size (Default_Stack_Size);
    end Remover;
---   task type Finder is
---      pragma Task_Info (Pinned_Task);
---      pragma Storage_Size (Default_Stack_Size);
---   end Finder;
+   task type Finder is
+      pragma Task_Info (Pinned_Task);
+      pragma Storage_Size (Default_Stack_Size);
+   end Finder;
 
    Set                    : aliased Sets.Set_Type;
 
@@ -83,7 +83,9 @@ procedure Set_Test is
    Insert_Count           : aliased Primitives.Unsigned_32 := 0;
    Delete_Count           : aliased Primitives.Unsigned_32 := 0;
    Find_Count             : aliased Primitives.Unsigned_32 := 0;
+   Found_Count            : aliased Primitives.Unsigned_32 := 0;
    No_Inserters_Running   : aliased Primitives.Unsigned_32 := 0;
+   No_Finders_Running     : aliased Primitives.Unsigned_32 := 0;
    No_Removers_Running    : aliased Primitives.Unsigned_32 := 0;
 
 --   Task_Count : aliased Primitives.Unsigned_32 := 0;
@@ -273,6 +275,92 @@ procedure Set_Test is
          Ada.Text_IO.New_Line (Output_File);
    end Remover;
 
+   ----------------------------------------------------------------------------
+   task body Finder is
+      No_Finds  : Primitives.Unsigned_32 := 0;
+      No_Founds : Primitives.Unsigned_32 := 0;
+   begin
+      PID.Register;
+      Primitives.Fetch_And_Add_32 (No_Finders_Running'Access, 1);
+
+      declare
+         ID   : constant PID.Process_ID_Type := PID.Process_ID;
+         Gen  : Random.Generator;
+      begin
+         Random.Reset (Gen);
+
+         Ada.Text_IO.Put_Line (Output_File,
+                               "Finder (" &
+                               PID.Process_ID_Type'Image (ID) &
+                               ") started.");
+
+
+         declare
+            use type Primitives.Unsigned_32;
+         begin
+            while Start = 0 loop
+               null;
+            end loop;
+         end;
+
+         loop
+
+            begin
+               No_Finds := Primitives.Unsigned_32'Succ (No_Finds);
+               declare
+                  X : constant Value_Type :=
+                    Find (In_Set => Set,
+                          Key   =>
+                            Random.Random (Gen) mod (Key_Universe'Last + 1)
+                          );
+               begin
+                  null;
+               end;
+               No_Founds := Primitives.Unsigned_32'Succ (No_Founds);
+
+            exception
+               when Sets.Not_Found =>
+                  declare
+                     use type Primitives.Unsigned_32;
+                  begin
+                     exit when No_Removers_Running = 0;
+                  end;
+            end;
+         end loop;
+
+      exception
+         when E : others =>
+            Ada.Text_IO.New_Line (Output_File);
+            Ada.Text_IO.Put_Line (Output_File,
+                                  "Finder (" &
+                                  PID.Process_ID_Type'Image (ID) &
+                                  "): raised " &
+                                  Ada.Exceptions.Exception_Name (E) &
+                                  " : " &
+                                  Ada.Exceptions.Exception_Message (E));
+            Ada.Text_IO.New_Line (Output_File);
+      end;
+      declare
+         use type Primitives.Unsigned_32;
+      begin
+         Primitives.Fetch_And_Add_32 (Find_Count'Access, No_Finds);
+         Primitives.Fetch_And_Add_32 (Found_Count'Access, No_Founds);
+         Primitives.Fetch_And_Add_32 (No_Finders_Running'Access, -1);
+      end;
+
+      Ada.Text_IO.Put_Line (Output_File,
+                            "Finder (?): exited.");
+   exception
+      when E : others =>
+         Ada.Text_IO.New_Line (Output_File);
+         Ada.Text_IO.Put_Line (Output_File,
+                               "Finder (?): raised " &
+                               Ada.Exceptions.Exception_Name (E) &
+                               " : " &
+                               Ada.Exceptions.Exception_Message (E));
+         Ada.Text_IO.New_Line (Output_File);
+   end Finder;
+
    use type Ada.Real_Time.Time;
    T1, T2 : Ada.Real_Time.Time;
 begin
@@ -283,12 +371,14 @@ begin
    Ada.Text_IO.Put_Line (" Set ");
 
    Ada.Text_IO.Put_Line
-     ("Testing with Inserters / Removers tasks.");
+     ("Testing with Inserters / Finders / Removers tasks.");
    declare
       use type Primitives.Unsigned_32;
-      P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
+      P0, P1, P2, P3, P4, P5--, P6, P7, P8, P9, P10, P11, P12, P13, P14
         : Inserter;
-      C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
+      F0, F1--, F2, F3, F4--, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14
+        : Finder;
+      C0, C1, C2, C3, C4, C5--, C6, C7, C8, C9, C10, C11, C12, C13, C14
         : Remover;
    begin
       delay 5.0;
@@ -300,6 +390,10 @@ begin
    delay 1.0;
    Ada.Text_IO.Put_Line ("Insert count: " &
                          Primitives.Unsigned_32'Image (Insert_Count));
+   Ada.Text_IO.Put_Line ("Find count: " &
+                         Primitives.Unsigned_32'Image (Find_Count));
+   Ada.Text_IO.Put_Line ("Found count: " &
+                         Primitives.Unsigned_32'Image (Found_Count));
    Ada.Text_IO.Put_Line ("Delete count: " &
                          Primitives.Unsigned_32'Image (Delete_Count));
    Ada.Text_IO.Put_Line ("Elapsed time:" &
@@ -338,6 +432,10 @@ begin
 
    Ada.Text_IO.Put_Line ("Final insert count: " &
                          Primitives.Unsigned_32'Image (Insert_Count));
+   Ada.Text_IO.Put_Line ("Final find count: " &
+                         Primitives.Unsigned_32'Image (Find_Count));
+   Ada.Text_IO.Put_Line ("Final found count: " &
+                         Primitives.Unsigned_32'Image (Found_Count));
    Ada.Text_IO.Put_Line ("Final delete count: " &
                          Primitives.Unsigned_32'Image (Delete_Count));
    MRS.Print_Statistics;

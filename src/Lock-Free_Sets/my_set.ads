@@ -24,7 +24,7 @@
 --  Description     : Test of the lock-free set.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Mar 10 17:48:33 2006
---  $Id: my_set.ads,v 1.2 2007/04/24 15:45:36 andersg Exp $
+--  $Id: my_set.ads,v 1.3 2007/08/31 15:53:15 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -35,7 +35,7 @@ with Lock_Free_Sets;
 package My_Set is
 
    package PID is
-      new Process_Identification (Max_Number_Of_Processes => 32);
+      new Process_Identification (Max_Number_Of_Processes => 64);
 
    subtype Key_Type is Natural;
    type Value_Type is

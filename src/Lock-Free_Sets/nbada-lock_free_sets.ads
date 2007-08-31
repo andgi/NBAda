@@ -30,7 +30,7 @@ pragma Style_Checks (Off);
 --                    pages 73-82, August 2002.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Mar 10 11:54:37 2006
---  $Id: nbada-lock_free_sets.ads,v 1.3 2007/04/24 15:45:36 andersg Exp $
+--  $Id: nbada-lock_free_sets.ads,v 1.4 2007/08/31 15:53:15 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -38,8 +38,9 @@ pragma License (GPL);
 
 with Process_Identification;
 
-with Epoch_Based_Memory_Reclamation;
---  with Hazard_Pointers;
+with
+--  Epoch_Based_Memory_Reclamation;
+  Hazard_Pointers;
 
 generic
 
@@ -72,16 +73,15 @@ package Lock_Free_Sets is
    procedure Delete  (From : in out Set_Type;
                       Key  : in     Key_Type);
 
-   function  Find    (Set : in Set_Type;
-                      Key : in Key_Type) return Value_Type;
+   function  Find    (In_Set : in Set_Type;
+                      Key    : in Key_Type) return Value_Type;
 
 --  private
 
    package Memory_Reclamation_Scheme is
-      new Epoch_Based_Memory_Reclamation (Process_Ids => Process_Ids);
---   package Memory_Reclamation_Scheme is
---      new Hazard_Pointers (Process_Ids                => Process_Ids,
---                           Max_Number_Of_Dereferences => 4);
+--      new Epoch_Based_Memory_Reclamation (Process_Ids => Process_Ids);
+        new Hazard_Pointers (Process_Ids                => Process_Ids,
+                             Max_Number_Of_Dereferences => 4);
    package MRS renames Memory_Reclamation_Scheme;
 
 private
