@@ -35,7 +35,7 @@
 --                    architectures (SPAA), 134--143, ACM, July 2001.
 --  Author          : Anders Gidenstam
 --  Created On      : Mon Jun 27 17:21:50 2005
---  $Id: nbada-lock_free_bounded_queues.ads,v 1.6 2007/04/17 17:56:38 andersg Exp $
+--  $Id: nbada-lock_free_bounded_queues.ads,v 1.7 2007/08/31 09:45:21 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -64,6 +64,9 @@ package Lock_Free_Bounded_Queues is
    function  Dequeue (Queue : access Lock_Free_Queue) return Element_Type;
 
    function Is_Empty (Queue : access Lock_Free_Queue) return Boolean;
+
+   procedure Make_Empty (Queue : in out Lock_Free_Queue);
+   --  NOTE: Make_Empty SHOULD NOT be used when concurrent access is possible.
 
    Queue_Full  : exception;
    Queue_Empty : exception;

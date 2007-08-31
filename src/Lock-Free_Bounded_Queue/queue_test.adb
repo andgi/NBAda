@@ -29,7 +29,7 @@
 --  Description     : Example application for lock-free FIFO queue.
 --  Author          : Anders Gidenstam
 --  Created On      : Mon Jun 27 19:09:40 2005
---  $Id: queue_test.adb,v 1.5 2007/04/17 17:56:38 andersg Exp $
+--  $Id: queue_test.adb,v 1.6 2007/08/31 09:45:21 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -117,9 +117,9 @@ procedure Queue_Test is
 --           Integer (Primitives.Fetch_And_Add (Task_Count'Access, 1))
 --         );
       --  GNAT/Linux
---      return System.Task_Info.System_Scope;
+      return System.Task_Info.System_Scope;
       --  GNAT/Solaris
-      return System.Task_Info.New_Bound_Thread_Attributes;
+--      return System.Task_Info.New_Bound_Thread_Attributes;
    end Pinned_Task;
 
    ----------------------------------------------------------------------------

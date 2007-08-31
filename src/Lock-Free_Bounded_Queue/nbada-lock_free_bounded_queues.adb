@@ -35,7 +35,7 @@
 --                    architectures (SPAA), 134--143, ACM, July 2001.
 --  Author          : Anders Gidenstam
 --  Created On      : Mon Jun 27 17:55:38 2005
---  $Id: nbada-lock_free_bounded_queues.adb,v 1.6 2007/04/17 17:56:38 andersg Exp $
+--  $Id: nbada-lock_free_bounded_queues.adb,v 1.7 2007/08/31 09:45:21 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (Modified_GPL);
@@ -314,5 +314,15 @@ package body Lock_Free_Bounded_Queues is
       end loop;
 
    end Is_Empty;
+
+   ----------------------------------------------------------------------------
+   procedure Make_Empty (Queue : in out Lock_Free_Queue) is
+   begin
+      Queue.Head    := 0;
+      Queue.Tail    := 1;
+      Queue.Element := (0      => Null_1,
+                        others => Null_0);
+      Queue.Vnull   := Null_1;
+   end Make_Empty;
 
 end Lock_Free_Bounded_Queues;
