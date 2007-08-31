@@ -24,12 +24,12 @@
 --  Description     : Test application for the lock-free sets.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Mar 10 17:51:23 2006
---  $Id: set_test.adb,v 1.6 2007/08/31 15:53:15 andersg Exp $
+--  $Id: set_test.adb,v 1.7 2007/08/31 16:49:16 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Primitives;
+with NBAda.Primitives;
 
 with Ada.Text_IO;
 with Ada.Exceptions;
@@ -44,6 +44,8 @@ with My_Set;
 
 procedure Set_Test is
 
+   use NBAda;
+
    use My_Set;
    use My_Set.Sets;
 
@@ -51,7 +53,7 @@ procedure Set_Test is
    --  Test application.
    ----------------------------------------------------------------------------
 
-   No_Of_Elements : constant := 10_000;
+   No_Of_Elements : constant := 1_000;
    subtype Key_Universe is My_Set.Key_Type range 0 .. No_Of_Elements * 100;
 
    Output_File : Ada.Text_IO.File_Type renames
@@ -374,11 +376,11 @@ begin
      ("Testing with Inserters / Finders / Removers tasks.");
    declare
       use type Primitives.Unsigned_32;
-      P0, P1, P2, P3, P4, P5--, P6, P7, P8, P9, P10, P11, P12, P13, P14
+      P0, P1, P2, P3, P4, P5 --  , P6, P7, P8, P9, P10, P11, P12, P13, P14
         : Inserter;
-      F0, F1--, F2, F3, F4--, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14
+      F0, F1 --  , F2, F3, F4 --, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14
         : Finder;
-      C0, C1, C2, C3, C4, C5--, C6, C7, C8, C9, C10, C11, C12, C13, C14
+      C0, C1, C2, C3, C4, C5 --  , C6, C7, C8, C9, C10, C11, C12, C13, C14
         : Remover;
    begin
       delay 5.0;

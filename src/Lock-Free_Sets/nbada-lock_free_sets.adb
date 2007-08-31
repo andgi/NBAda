@@ -30,20 +30,20 @@ pragma Style_Checks (Off);
 --                    pages 73-82, August 2002.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Mar 10 12:23:47 2006
---  $Id: nbada-lock_free_sets.adb,v 1.4 2007/08/31 15:53:15 andersg Exp $
+--  $Id: nbada-lock_free_sets.adb,v 1.5 2007/08/31 16:49:16 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
-with Lock_Free_Growing_Storage_Pools;
+with NBAda.Lock_Free_Growing_Storage_Pools;
 
 with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
 
 with Ada.Text_IO;
 
-package body Lock_Free_Sets is
+package body NBAda.Lock_Free_Sets is
 
    -------------------------------------------------------------------------
    --  Storage pool for the nodes.
@@ -369,5 +369,4 @@ package body Lock_Free_Sets is
       end loop;
    end Find;
 
-end Lock_Free_Sets;
-
+end NBAda.Lock_Free_Sets;

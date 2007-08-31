@@ -30,17 +30,17 @@ pragma Style_Checks (Off);
 --                    pages 73-82, August 2002.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Mar 10 11:54:37 2006
---  $Id: nbada-lock_free_sets.ads,v 1.4 2007/08/31 15:53:15 andersg Exp $
+--  $Id: nbada-lock_free_sets.ads,v 1.5 2007/08/31 16:49:16 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
-with Process_Identification;
+with NBAda.Process_Identification;
 
 with
---  Epoch_Based_Memory_Reclamation;
-  Hazard_Pointers;
+--  NBAda.Epoch_Based_Memory_Reclamation;
+  NBAda.Hazard_Pointers;
 
 generic
 
@@ -54,7 +54,7 @@ generic
      new Process_Identification (<>);
    --  Process identification.
 
-package Lock_Free_Sets is
+package NBAda.Lock_Free_Sets is
 
    ----------------------------------------------------------------------------
    --  Lock-free Set.
@@ -109,4 +109,4 @@ private
          pragma Atomic (Head);
       end record;
 
-end Lock_Free_Sets;
+end NBAda.Lock_Free_Sets;

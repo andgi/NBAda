@@ -24,18 +24,18 @@
 --  Description     : Test of the lock-free set.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Mar 10 17:48:33 2006
---  $Id: my_set.ads,v 1.3 2007/08/31 15:53:15 andersg Exp $
+--  $Id: my_set.ads,v 1.4 2007/08/31 16:49:16 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Process_Identification;
-with Lock_Free_Sets;
+with NBAda.Process_Identification;
+with NBAda.Lock_Free_Sets;
 
 package My_Set is
 
    package PID is
-      new Process_Identification (Max_Number_Of_Processes => 64);
+      new NBAda.Process_Identification (Max_Number_Of_Processes => 64);
 
    subtype Key_Type is Natural;
    type Value_Type is
@@ -44,8 +44,8 @@ package My_Set is
          Index   : Integer;
       end record;
 
-   package Sets is new Lock_Free_Sets (Key_Type    => Key_Type,
-                                       Value_Type  => Value_Type,
-                                       Process_Ids => PID);
+   package Sets is new NBAda.Lock_Free_Sets (Key_Type    => Key_Type,
+                                             Value_Type  => Value_Type,
+                                             Process_Ids => PID);
 
 end My_Set;
