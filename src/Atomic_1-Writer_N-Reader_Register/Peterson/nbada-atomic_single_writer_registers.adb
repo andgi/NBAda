@@ -28,19 +28,19 @@ pragma Style_Checks (Off);
 --                    1983.
 --  Author          : Anders Gidenstam
 --  Created On      : Sat Oct 20 00:04:58 2001
---  $Id: nbada-atomic_single_writer_registers.adb,v 1.6 2007/08/28 16:05:12 andersg Exp $
+--  $Id: nbada-atomic_single_writer_registers.adb,v 1.7 2007/08/31 13:49:36 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
-with Primitives;
+with NBAda.Primitives;
 
-package body Atomic_Single_Writer_Registers is
+package body NBAda.Atomic_Single_Writer_Registers is
 
    procedure Write (Register : in out Atomic_1_M_Register;
                     Value    : in     Element_Type) is
-      procedure MB renames Primitives.Membar;
+      procedure MB renames NBAda.Primitives.Membar;
    begin
       MB;
       Register.Wflag  := True;
@@ -67,7 +67,7 @@ package body Atomic_Single_Writer_Registers is
    procedure Read  (Register  : in out Atomic_1_M_Register;
                     Reader_No : in     Positive;
                     Value     :    out Element_Type) is
-      procedure MB renames Primitives.Membar;
+      procedure MB renames NBAda.Primitives.Membar;
       Sflag       : Boolean;
       Sflag2      : Boolean;
       Sswitch     : Boolean;
@@ -101,5 +101,4 @@ package body Atomic_Single_Writer_Registers is
       end if;
    end Read;
 
-end Atomic_Single_Writer_Registers;
-
+end NBAda.Atomic_Single_Writer_Registers;

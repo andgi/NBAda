@@ -33,13 +33,13 @@ pragma Style_Checks (Off);
 --                    Symposium on Algorithms, LNCS 3221 pages 736--748, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Aug 28 20:26:15 2007
---  $Id: nbada-atomic_single_writer_registers.adb,v 1.1 2007/08/29 14:25:44 andersg Exp $
+--  $Id: nbada-atomic_single_writer_registers.adb,v 1.2 2007/08/31 13:49:36 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
-package body Atomic_Single_Writer_Registers is
+package body NBAda.Atomic_Single_Writer_Registers is
 
    use type Primitives.Standard_Unsigned;
    subtype Standard_Unsigned is Primitives.Standard_Unsigned;
@@ -171,4 +171,4 @@ package body Atomic_Single_Writer_Registers is
       return 2**(Natural (R) - 1);
    end Reader_Bit;
 
-end Atomic_Single_Writer_Registers;
+end NBAda.Atomic_Single_Writer_Registers;

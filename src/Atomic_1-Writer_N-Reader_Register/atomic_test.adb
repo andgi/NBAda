@@ -23,20 +23,21 @@
 --  Description     : Test of wait-free register constructions.
 --  Author          : Anders Gidenstam
 --  Created On      : Sat Oct 20 00:43:30 2001
---  $Id: atomic_test.adb,v 1.5 2007/08/28 16:05:12 andersg Exp $
+--  $Id: atomic_test.adb,v 1.6 2007/08/31 13:49:36 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
 with Ada.Text_IO; use Ada.Text_IO;
 
-with Atomic_Single_Writer_Registers;
+with NBAda.Atomic_Single_Writer_Registers;
 
 procedure Atomic_Test is
 
    type My_String is new String (1 .. 255);
 
-   package Wait_Free_Strings is new Atomic_Single_Writer_Registers (My_String);
+   package Wait_Free_Strings is
+      new NBAda.Atomic_Single_Writer_Registers (My_String);
    use Wait_Free_Strings;
 
    task Writer;

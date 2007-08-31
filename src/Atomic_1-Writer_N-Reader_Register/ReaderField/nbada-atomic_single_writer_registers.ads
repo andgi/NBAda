@@ -33,20 +33,20 @@ pragma Style_Checks (Off);
 --                    Symposium on Algorithms, LNCS 3221 pages 736--748, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Aug 28 18:12:00 2007
---  $Id: nbada-atomic_single_writer_registers.ads,v 1.1 2007/08/29 14:25:44 andersg Exp $
+--  $Id: nbada-atomic_single_writer_registers.ads,v 1.2 2007/08/31 13:49:36 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
-with Primitives;
+with NBAda.Primitives;
 
 generic
    type Element_Type is private;
 
-package Atomic_Single_Writer_Registers is
+package NBAda.Atomic_Single_Writer_Registers is
 
-   pragma Pure;
+   pragma Preelaborate (NBAda.Atomic_Single_Writer_Registers);
 
    type Atomic_1_M_Register (No_Of_Readers : Positive) is limited private;
 
@@ -68,11 +68,11 @@ private
    type Atomic_1_M_Register (No_Of_Readers : Positive) is
       record
          SYNC  : aliased Primitives.Standard_Unsigned := 0;
+         pragma Atomic (SYNC);
          BUF   : Element_Array (Index'First .. No_Of_Readers);
          --  Persistent state for the writer.
          Trace : Trace_Array (1 .. No_Of_Readers) := (others => 0);
          Last  : Index := 0;
       end record;
 
-end Atomic_Single_Writer_Registers;
-
+end NBAda.Atomic_Single_Writer_Registers;

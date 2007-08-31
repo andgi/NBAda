@@ -28,7 +28,7 @@ pragma Style_Checks (Off);
 --                    1983.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Oct 19 23:57:47 2001
---  $Id: nbada-atomic_single_writer_registers.ads,v 1.5 2007/08/29 14:25:09 andersg Exp $
+--  $Id: nbada-atomic_single_writer_registers.ads,v 1.6 2007/08/31 13:49:36 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -37,9 +37,9 @@ pragma License (GPL);
 generic
    type Element_Type is private;
 
-package Atomic_Single_Writer_Registers is
+package NBAda.Atomic_Single_Writer_Registers is
 
-   pragma Pure;
+   pragma Preelaborate (NBAda.Atomic_Single_Writer_Registers);
 
    type Atomic_1_M_Register (No_Of_Readers : Positive) is limited private;
 
@@ -72,5 +72,4 @@ private
          pragma Volatile (Copybuff);
       end record;
 
-end Atomic_Single_Writer_Registers;
-
+end NBAda.Atomic_Single_Writer_Registers;
