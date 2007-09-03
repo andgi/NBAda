@@ -28,13 +28,13 @@ pragma Style_Checks (Off);
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:42:38 2006
---  $Id: nbada-lock_free_reference_counting.ads,v 1.9 2007/08/23 17:29:11 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.ads,v 1.10 2007/09/03 15:23:08 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
-with Primitives;
+with NBAda.Primitives;
 
 generic
 
@@ -48,7 +48,7 @@ generic
    Collect_Statistics : Boolean := True;
    --  Enable some statics gathering.
 
-package Lock_Free_Reference_Counting is
+package NBAda.Lock_Free_Reference_Counting is
 
    pragma Elaborate_Body;
 
@@ -285,4 +285,4 @@ private
    Mark_Mask  : constant Shared_Reference_Base_Impl := 2 ** Mark_Bits - 1;
    Ref_Mask   : constant Shared_Reference_Base_Impl := -(2 ** Mark_Bits);
 
-end Lock_Free_Reference_Counting;
+end NBAda.Lock_Free_Reference_Counting;

@@ -23,19 +23,19 @@
 --                    schemes.
 --  Author          : Anders Gidenstam
 --  Created On      : Sat May  7 20:54:49 2005
---  $Id: example_queue.ads,v 1.4 2007/05/25 09:22:12 andersg Exp $
+--  $Id: example_queue.ads,v 1.5 2007/09/03 15:23:08 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Lock_Free_Reference_Counting;
-with Process_Identification;
+with NBAda.Lock_Free_Reference_Counting;
+with NBAda.Process_Identification;
 
 generic
    type Value_Type is private;
    --  Value type.
    with package Process_Ids is
-     new Process_Identification (<>);
+     new NBAda.Process_Identification (<>);
    --  Process identification.
 package Example_Queue is
 
@@ -52,7 +52,7 @@ package Example_Queue is
                       Value : in     Value_Type);
 
 
-   package LFMR is new Lock_Free_Reference_Counting
+   package LFMR is new NBAda.Lock_Free_Reference_Counting
      (Max_Number_Of_Guards => 128,
       Integrity_Checking   => True,
       Collect_Statistics   => True);

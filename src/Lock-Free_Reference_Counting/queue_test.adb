@@ -23,12 +23,12 @@
 --  Description     : Example application for lock-free reference counting.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Apr 13 22:09:40 2005
---  $Id: queue_test.adb,v 1.3 2007/05/16 18:07:48 andersg Exp $
+--  $Id: queue_test.adb,v 1.4 2007/09/03 15:23:08 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Primitives;
+with NBAda.Primitives;
 
 with Ada.Text_IO;
 with Ada.Exceptions;
@@ -40,6 +40,8 @@ with System.Task_Info;
 with My_Queue;
 
 procedure Queue_Test is
+
+   use NBAda;
 
    use My_Queue;
    use My_Queue.Queues;

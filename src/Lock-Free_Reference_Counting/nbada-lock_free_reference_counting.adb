@@ -29,20 +29,20 @@ pragma Style_Checks (Off);
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:55:18 2006
---  $Id: nbada-lock_free_reference_counting.adb,v 1.8 2007/08/23 16:52:11 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.adb,v 1.9 2007/09/03 15:23:08 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
-with Pass_The_Buck;
+with NBAda.Pass_The_Buck;
 
 with Ada.Unchecked_Conversion;
 
 with Ada.Exceptions;
 with Ada.Text_IO;
 
-package body Lock_Free_Reference_Counting is
+package body NBAda.Lock_Free_Reference_Counting is
 
    ----------------------------------------------------------------------------
    --  Types.
@@ -682,4 +682,4 @@ package body Lock_Free_Reference_Counting is
    end Image;
 
 
-end Lock_Free_Reference_Counting;
+end NBAda.Lock_Free_Reference_Counting;

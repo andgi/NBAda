@@ -23,12 +23,12 @@
 --                    schemes.
 --  Author          : Anders Gidenstam
 --  Created On      : Sat May  7 20:54:49 2005
---  $Id: example_queue.adb,v 1.3 2007/05/16 18:07:48 andersg Exp $
+--  $Id: example_queue.adb,v 1.4 2007/09/03 15:23:08 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Lock_Free_Growing_Storage_Pools;
+with NBAda.Lock_Free_Growing_Storage_Pools;
 
 with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
@@ -39,7 +39,7 @@ package body Example_Queue is
    --  Storage pool for the nodes.
    -------------------------------------------------------------------------
 
-   Node_Pool : Lock_Free_Growing_Storage_Pools.Lock_Free_Storage_Pool
+   Node_Pool : NBAda.Lock_Free_Growing_Storage_Pools.Lock_Free_Storage_Pool
      (Block_Size => Queue_Node'Max_Size_In_Storage_Elements);
 
    type New_Queue_Node_Access is access Queue_Node;
