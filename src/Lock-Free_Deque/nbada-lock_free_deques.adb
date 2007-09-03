@@ -25,21 +25,21 @@
 --                    by H. Sundell and P. Tsigas.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 15 18:59:45 2006
---  $Id: nbada-lock_free_deques.adb,v 1.10 2007/09/03 16:49:49 andersg Exp $
+--  $Id: nbada-lock_free_deques.adb,v 1.11 2007/09/03 17:11:53 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Lock_Free_Growing_Storage_Pools;
+with NBAda.Lock_Free_Growing_Storage_Pools;
 
 with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
 with Ada.Text_IO;
 
-with Primitives;
+with NBAda.Primitives;
 
-package body Lock_Free_Deques is
+package body NBAda.Lock_Free_Deques is
 
    ----------------------------------------------------------------------------
    --  Storage pool for the nodes.
@@ -825,4 +825,4 @@ package body Lock_Free_Deques is
    end Different_Nodes;
 
 
-end Lock_Free_Deques;
+end NBAda.Lock_Free_Deques;

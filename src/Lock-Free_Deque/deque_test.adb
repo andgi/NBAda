@@ -24,12 +24,12 @@
 --  Description     : Test program for the lock-free deque.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 16 16:06:25 2006
--- $Id: deque_test.adb,v 1.9 2007/09/03 16:49:49 andersg Exp $
+-- $Id: deque_test.adb,v 1.10 2007/09/03 17:11:53 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Primitives;
+with NBAda.Primitives;
 
 with Ada.Text_IO;
 with Ada.Exceptions;
@@ -41,6 +41,8 @@ with System.Task_Info;
 with My_Deque;
 
 procedure Deque_Test is
+
+   use NBAda;
 
    use My_Deque;
    use My_Deque.Deques;

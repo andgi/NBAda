@@ -25,17 +25,16 @@
 --                    by H. Sundell and P. Tsigas.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 15 18:46:02 2006
---  $Id: nbada-lock_free_deques.ads,v 1.6 2007/04/26 15:49:32 andersg Exp $
+--  $Id: nbada-lock_free_deques.ads,v 1.7 2007/09/03 17:11:53 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Lock_Free_Reference_Counting;
-pragma Elaborate_All (Lock_Free_Reference_Counting);
+with NBAda.Lock_Free_Reference_Counting;
+pragma Elaborate_All (NBAda.Lock_Free_Reference_Counting);
 --  with Lock_Free_Memory_Reclamation;
 
-with Process_Identification;
-
+with NBAda.Process_Identification;
 
 generic
 
@@ -43,9 +42,9 @@ generic
    --  Value type.
 
    with package Process_Ids is
-     new Process_Identification (<>);
+     new NBAda.Process_Identification (<>);
    --  Process identification.
-package Lock_Free_Deques is
+package NBAda.Lock_Free_Deques is
 
    ----------------------------------------------------------------------------
    --  Lock-free double-ended queue (a.k.a deque).
@@ -126,4 +125,4 @@ private
          pragma Atomic (Tail);
       end record;
 
-end Lock_Free_Deques;
+end NBAda.Lock_Free_Deques;

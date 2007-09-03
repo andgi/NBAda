@@ -24,16 +24,16 @@
 --  Description     : Instantiation of the lock-free deque.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Mar  2 16:41:48 2006
---  $Id: my_deque.ads,v 1.2 2007/04/26 14:52:16 andersg Exp $
+--  $Id: my_deque.ads,v 1.3 2007/09/03 17:11:53 andersg Exp $
 -------------------------------------------------------------------------------
 
-with Process_Identification;
-with Lock_Free_Deques;
+with NBAda.Process_Identification;
+with NBAda.Lock_Free_Deques;
 
 package My_Deque is
 
    package PID is
-      new Process_Identification (Max_Number_Of_Processes => 64);
+      new NBAda.Process_Identification (Max_Number_Of_Processes => 64);
 
    type Value_Type is
       record
@@ -41,7 +41,7 @@ package My_Deque is
          Index   : Integer;
       end record;
 
-   package Deques is new Lock_Free_Deques (Value_Type  => Value_Type,
-                                           Process_Ids => PID);
+   package Deques is new NBAda.Lock_Free_Deques (Value_Type  => Value_Type,
+                                                 Process_Ids => PID);
 
 end My_Deque;
