@@ -24,7 +24,7 @@
 --  Description     : Test of non-blocking priority queue.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 20 16:39:08 2003
---  $Id: priority_queue_test.adb,v 1.1 2007/09/03 12:16:47 andersg Exp $
+--  $Id: priority_queue_test.adb,v 1.2 2007/09/03 15:42:57 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -37,9 +37,11 @@ with System.Task_Info;
 
 with My_Priority_Queue;
 
-with Primitives;
+with NBAda.Primitives;
 
 procedure Priority_Queue_Test is
+
+   use NBAda;
 
    use My_Priority_Queue.Priority_Queues;
    use My_Priority_Queue;

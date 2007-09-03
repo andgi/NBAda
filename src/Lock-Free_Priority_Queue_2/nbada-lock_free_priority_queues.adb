@@ -26,20 +26,20 @@
 --                    ",
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jun  6 15:51:34 2007
---  $Id: nbada-lock_free_priority_queues.adb,v 1.2 2007/06/11 18:08:23 andersg Exp $
+--  $Id: nbada-lock_free_priority_queues.adb,v 1.3 2007/09/03 15:42:57 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Lock_Free_Growing_Storage_Pools;
-with Primitives;
+with NBAda.Lock_Free_Growing_Storage_Pools;
+with NBAda.Primitives;
 
 with Ada.Unchecked_Conversion;
 with Ada.Unchecked_Deallocation;
 
 with Ada.Text_IO;
 
-package body Lock_Free_Priority_Queues is
+package body NBAda.Lock_Free_Priority_Queues is
 
    ----------------------------------------------------------------------------
    --  Storage pool for the nodes.
@@ -633,4 +633,4 @@ package body Lock_Free_Priority_Queues is
       return Unmark (Left) = Right;
    end Same_Node;
 
-end Lock_Free_Priority_Queues;
+end NBAda.Lock_Free_Priority_Queues;

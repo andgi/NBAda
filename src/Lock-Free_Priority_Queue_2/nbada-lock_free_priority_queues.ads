@@ -19,6 +19,8 @@
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 -------------------------------------------------------------------------------
+pragma Style_Checks (OFF);
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : lock_free_priority_queues.ads
 --  Description     : Lock-free priority queue based on Håkan Sundell,
@@ -26,14 +28,15 @@
 --                    ",
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jun  6 15:26:34 2007
---  $Id: nbada-lock_free_priority_queues.ads,v 1.3 2007/06/11 18:08:24 andersg Exp $
+--  $Id: nbada-lock_free_priority_queues.ads,v 1.4 2007/09/03 15:42:57 andersg Exp $
 -------------------------------------------------------------------------------
+pragma Style_Checks (ALL_CHECKS);
 
 pragma License (GPL);
 
-with Process_Identification;
+with NBAda.Process_Identification;
 
-with Lock_Free_Reference_Counting;
+with NBAda.Lock_Free_Reference_Counting;
 
 generic
 
@@ -43,10 +46,10 @@ generic
    --  Note: Element_Type must be totally ordered.
 
    with package Process_Ids is
-     new Process_Identification (<>);
+     new NBAda.Process_Identification (<>);
    --  Process identification.
 
-package Lock_Free_Priority_Queues is
+package NBAda.Lock_Free_Priority_Queues is
 
    type Priority_Queue_Type is limited private;
 
@@ -147,4 +150,4 @@ private
       end record;
 
 
-end Lock_Free_Priority_Queues;
+end NBAda.Lock_Free_Priority_Queues;

@@ -29,13 +29,13 @@
 
 pragma License (GPL);
 
-with Lock_Free_Priority_Queues;
-with Process_Identification;
+with NBAda.Lock_Free_Priority_Queues;
+with NBAda.Process_Identification;
 
 package My_Priority_Queue is
 
    package PID is
-      new Process_Identification (Max_Number_Of_Processes => 64);
+      new NBAda.Process_Identification (Max_Number_Of_Processes => 64);
 
    type Value_Type is
       record
@@ -47,7 +47,7 @@ package My_Priority_Queue is
    function Image (X : Value_Type) return String;
 
    package Priority_Queues is new
-     Lock_Free_Priority_Queues
+     NBAda.Lock_Free_Priority_Queues
      (Element_Type => Value_Type,
       "<"          => "<",
       Process_Ids  => PID);
