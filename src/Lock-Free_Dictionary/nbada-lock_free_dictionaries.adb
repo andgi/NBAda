@@ -28,7 +28,7 @@
 --                    pages 73-82, August 2002.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri May 18 17:44:46 2007
---  $Id: nbada-lock_free_dictionaries.adb,v 1.1 2007/05/18 16:33:01 andersg Exp $
+--  $Id: nbada-lock_free_dictionaries.adb,v 1.2 2007/09/03 09:22:01 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -81,8 +81,8 @@ package body Lock_Free_Dictionaries is
       Bucket : constant Bucket_Index :=
         Hash (Key, From.Hash_Bucket'Last);
    begin
-      return Sets.Find (Set  => From.Hash_Bucket (Bucket),
-                        Key   => Key);
+      return Sets.Find (In_Set => From.Hash_Bucket (Bucket),
+                        Key    => Key);
 
    exception
       when Sets.Not_Found =>
