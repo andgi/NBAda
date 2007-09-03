@@ -2,7 +2,7 @@
 --  Lock-Free Dicitionaries - An implementation of the lock-free hash table
 --                            algorithm by M. Michael.
 --
---  Copyright (C) 2006 - 2007  Anders Gidenstam
+--  Copyright (C) 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -20,16 +20,16 @@
 --
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
---  Filename        : set_test.adb
---  Description     : Test application for the lock-free set.
+--  Filename        : dictionary_test.adb
+--  Description     : Test application for the lock-free dictionary.
 --  Author          : Anders Gidenstam
---  Created On      : Fri Mar 10 17:51:23 2006
---  $Id: dictionary_test.adb,v 1.2 2007/09/03 09:22:01 andersg Exp $
+--  Created On      : Fri May 18 14:51:23 2006
+--  $Id: dictionary_test.adb,v 1.3 2007/09/03 09:56:27 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Primitives;
+with NBAda.Primitives;
 
 with Ada.Text_IO;
 with Ada.Exceptions;
@@ -43,6 +43,8 @@ with System.Task_Info;
 with My_Dictionary;
 
 procedure Dictionary_Test is
+
+   use NBAda;
 
    use My_Dictionary;
    use My_Dictionary.Dictionaries;
@@ -375,11 +377,11 @@ begin
      ("Testing with Inserters / Finders/ Removers tasks.");
    declare
       use type Primitives.Unsigned_32;
-      P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
+      P0, P1, P2, P3, P4 --  , P5, P6, P7, P8, P9, P10, P11, P12, P13, P14
         : Inserter;
-      F0, F1--, F2, F3, F4--, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14
+      F0, F1 --  , F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14
         : Finder;
-      C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
+      C0, C1, C2, C3, C4 --  , C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
         : Remover;
    begin
       delay 5.0;

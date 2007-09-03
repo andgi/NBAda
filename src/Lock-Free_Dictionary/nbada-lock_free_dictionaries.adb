@@ -19,6 +19,8 @@
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 -------------------------------------------------------------------------------
+pragma Style_Checks (OFF);
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : lock_free_dictionaries.adb
 --  Description     : Lock-free dictionary based on Maged Michael,
@@ -28,13 +30,14 @@
 --                    pages 73-82, August 2002.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri May 18 17:44:46 2007
---  $Id: nbada-lock_free_dictionaries.adb,v 1.2 2007/09/03 09:22:01 andersg Exp $
+--  $Id: nbada-lock_free_dictionaries.adb,v 1.3 2007/09/03 09:56:27 andersg Exp $
 -------------------------------------------------------------------------------
+pragma Style_Checks (ALL_CHECKS);
 
 pragma License (GPL);
 
 
-package body Lock_Free_Dictionaries is
+package body NBAda.Lock_Free_Dictionaries is
 
    ----------------------------------------------------------------------------
    procedure Init    (Dictionary : in out Dictionary_Type) is
@@ -89,4 +92,4 @@ package body Lock_Free_Dictionaries is
          raise Not_Found;
    end Lookup;
 
-end Lock_Free_Dictionaries;
+end NBAda.Lock_Free_Dictionaries;

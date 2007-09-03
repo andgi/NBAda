@@ -19,6 +19,8 @@
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 -------------------------------------------------------------------------------
+pragma Style_Checks (OFF);
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : lock_free_dictionaries.ads
 --  Description     : Lock-free dictionary based on Maged Michael,
@@ -28,14 +30,15 @@
 --                    pages 73-82, August 2002.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri May 18 17:01:34 2007
---  $Id: nbada-lock_free_dictionaries.ads,v 1.1 2007/05/18 16:33:02 andersg Exp $
+--  $Id: nbada-lock_free_dictionaries.ads,v 1.2 2007/09/03 09:56:27 andersg Exp $
 -------------------------------------------------------------------------------
+pragma Style_Checks (ALL_CHECKS);
 
 pragma License (GPL);
 
-with Process_Identification;
+with NBAda.Process_Identification;
 
-with Lock_Free_Sets;
+with NBAda.Lock_Free_Sets;
 
 generic
 
@@ -49,10 +52,10 @@ generic
    --  Note: Key_Type must be totally ordered.
 
    with package Process_Ids is
-     new Process_Identification (<>);
+     new NBAda.Process_Identification (<>);
    --  Process identification.
 
-package Lock_Free_Dictionaries is
+package NBAda.Lock_Free_Dictionaries is
 
    type Dictionary_Type (No_Buckets : Natural) is limited private;
 
@@ -88,4 +91,4 @@ private
          Hash_Bucket : Set_Array (0 .. No_Buckets);
       end record;
 
-end Lock_Free_Dictionaries;
+end NBAda.Lock_Free_Dictionaries;

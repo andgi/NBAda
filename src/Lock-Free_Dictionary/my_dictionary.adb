@@ -2,7 +2,7 @@
 --  Lock-Free Dicitionaries - An implementation of the lock-free hash table
 --                            algorithm by M. Michael.
 --
---  Copyright (C) 2006 - 2007  Anders Gidenstam
+--  Copyright (C) 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -20,11 +20,11 @@
 --
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
---  Filename        : my_set.ads
+--  Filename        : my_dictionary.ads
 --  Description     : Test of the lock-free set.
 --  Author          : Anders Gidenstam
---  Created On      : Fri Mar 10 17:48:33 2006
---  $Id: my_dictionary.adb,v 1.1 2007/05/21 09:01:17 andersg Exp $
+--  Created On      : Fri May 18 14:48:33 2006
+--  $Id: my_dictionary.adb,v 1.2 2007/09/03 09:56:27 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
