@@ -23,7 +23,7 @@
 --  Description     : Benchmark application for lock-free queues.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Apr 13 22:09:40 2005
---  $Id: queue_test.adb,v 1.3 2007/09/03 10:23:04 andersg Exp $
+--  $Id: queue_test.adb,v 1.4 2007/09/03 10:52:09 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -44,7 +44,7 @@ with Ada.Command_Line;
 
 procedure Queue_Test is
 
-   use NBada;
+   use NBAda;
 
    package PID is
       new Process_Identification (Max_Number_Of_Processes => 65);
@@ -62,7 +62,7 @@ procedure Queue_Test is
    --  Test application.
    ----------------------------------------------------------------------------
 
-   No_Of_Elements : constant := 10_000;
+   No_Of_Elements : constant := 100_000;
    QUEUE_FIFO_PROPERTY_VIOLATION : exception;
 
    Output_File : Ada.Text_IO.File_Type renames
