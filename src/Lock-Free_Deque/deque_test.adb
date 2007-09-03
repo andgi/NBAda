@@ -24,7 +24,7 @@
 --  Description     : Test program for the lock-free deque.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 16 16:06:25 2006
--- $Id: deque_test.adb,v 1.8 2007/04/26 14:52:16 andersg Exp $
+-- $Id: deque_test.adb,v 1.9 2007/09/03 16:49:49 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -49,7 +49,7 @@ procedure Deque_Test is
    --  Test application.
    ----------------------------------------------------------------------------
 
-   No_Of_Elements : constant := 1_000;
+   No_Of_Elements : constant := 10_000;
    type Test_Type is (QUEUE_RIGHT, QUEUE_LEFT, STACK_RIGHT, STACK_LEFT,
                       ALL_TESTS);
    DEQUE_FIFO_PROPERTY_VIOLATION  : exception;

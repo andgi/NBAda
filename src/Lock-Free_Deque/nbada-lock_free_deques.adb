@@ -25,7 +25,7 @@
 --                    by H. Sundell and P. Tsigas.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 15 18:59:45 2006
---  $Id: nbada-lock_free_deques.adb,v 1.9 2007/04/26 15:49:32 andersg Exp $
+--  $Id: nbada-lock_free_deques.adb,v 1.10 2007/09/03 16:49:49 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -49,7 +49,7 @@ package body Lock_Free_Deques is
        (Block_Size => Deque_Node'Max_Size_In_Storage_Elements);
 
    type New_Deque_Node_Access is access Deque_Node;
-   for New_Deque_Node_Access'Storage_Pool use Node_Pool;
+   --  for New_Deque_Node_Access'Storage_Pool use Node_Pool;
 
    function Create_Deque_Node is new LFRC_Ops.Create (New_Deque_Node_Access);
 
@@ -72,13 +72,18 @@ package body Lock_Free_Deques is
    --  Note: Uses at most 2 + Help_Delete additional dereferences.
    --        (With recursive helping disabled).
 
-   procedure Help_Delete (Node : in     Deque_Node_Access);
-   --  Fully mark Node as logically deleted and unliks Node from the active
+   procedure Help_Delete (Node    : in Deque_Node_Access;
+                          Recurse : in Boolean := True);
+   --  Fully mark Node as logically deleted and unlinks Node from the active
    --  forward list structure.
    --  Note: The reference to Node is not released by Help_Delete.
    --        Node.Next should be marked before the call to Help_Delete.
    --  Note: Uses at most 3 additional dereferences.
 
+   function Same_Node (Left  : Deque_Node_Access;
+                       Right : Deque_Node_Access) return Boolean;
+   --  Returns true if Left and Right refer to the same node.
+   pragma Inline (Same_Node);
    function Same_Node (Left  : Deque_Node_Access;
                        Right : Deque_Node_Reference) return Boolean;
    --  Returns true if Left and Right refer to the same node.
@@ -664,7 +669,8 @@ package body Lock_Free_Deques is
    end Help_Insert;
 
    ----------------------------------------------------------------------
-   procedure Help_Delete (Node : in     Deque_Node_Access) is
+   procedure Help_Delete (Node    : in Deque_Node_Access;
+                          Recurse : in Boolean := True) is
       use LFRC_Ops;
    begin
       --  Set logically deleted mark on Node.Previous.
@@ -710,7 +716,7 @@ package body Lock_Free_Deques is
 
          Find : loop
             --  Exit if we didn't find Node, i.e. it is already unlinked.
-            exit Find when Unmark (Prev) = Unmark (Next);
+            exit Find when Same_Node (Prev, Next);
 
             if Is_Marked ("+"(Next).Next) then
                --  Next is deleted. Move Next to the next next node.
@@ -736,7 +742,9 @@ package body Lock_Free_Deques is
                      --  Prev has been marked deleted.
 
                      if not Last_Link then
-                        Help_Delete (Prev);
+--                        if Recurse then
+                           Help_Delete (Prev, Recurse => False);
+--                        end if;
                         Last_Link := True;
                      end if;
 
@@ -792,6 +800,14 @@ package body Lock_Free_Deques is
       end;
 
    end Help_Delete;
+
+   ----------------------------------------------------------------------------
+   function Same_Node (Left  : Deque_Node_Access;
+                       Right : Deque_Node_Access) return Boolean is
+      use LFRC_Ops;
+   begin
+      return Unmark (Left) = Unmark (Right);
+   end Same_Node;
 
    ----------------------------------------------------------------------------
    function Same_Node (Left  : Deque_Node_Access;
