@@ -23,14 +23,15 @@
 --                    lock-free queue algorithm.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Nov 28 10:55:38 2006
---  $Id: nbada-lock_free_queues.ads,v 1.4 2007/05/16 12:41:22 andersg Exp $
+--  $Id: nbada-lock_free_queues.ads,v 1.5 2007/09/03 10:23:04 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Process_Identification;
-with Epoch_Based_Memory_Reclamation;
---  with Hazard_Pointers;
+with NBAda.Process_Identification;
+with
+  NBAda.Epoch_Based_Memory_Reclamation;
+--  NBAda.Hazard_Pointers;
 
 generic
 
@@ -41,7 +42,7 @@ generic
      new Process_Identification (<>);
    --  Process identification.
 
-package Lock_Free_Queues is
+package NBAda.Lock_Free_Queues is
 
    ----------------------------------------------------------------------------
    --  Lock-free Queue.
@@ -90,4 +91,4 @@ private
         pragma Atomic (Tail);
      end record;
 
-end Lock_Free_Queues;
+end NBAda.Lock_Free_Queues;

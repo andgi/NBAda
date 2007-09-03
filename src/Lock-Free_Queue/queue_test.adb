@@ -23,13 +23,13 @@
 --  Description     : Benchmark application for lock-free queues.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Apr 13 22:09:40 2005
---  $Id: queue_test.adb,v 1.2 2007/05/16 12:28:51 andersg Exp $
+--  $Id: queue_test.adb,v 1.3 2007/09/03 10:23:04 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Process_Identification;
-with Primitives;
+with NBAda.Process_Identification;
+with NBAda.Primitives;
 
 with Ada.Text_IO;
 with Ada.Exceptions;
@@ -38,11 +38,13 @@ with Ada.Real_Time;
 
 with System.Task_Info;
 
-with Lock_Free_Queues;
+with NBAda.Lock_Free_Queues;
 
 with Ada.Command_Line;
 
 procedure Queue_Test is
+
+   use NBada;
 
    package PID is
       new Process_Identification (Max_Number_Of_Processes => 65);

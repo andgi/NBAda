@@ -23,7 +23,7 @@
 --                    lock-free queue algorithm.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Nov 28 14:35:35 2006
---  $Id: nbada-lock_free_queues.adb,v 1.3 2007/05/16 12:28:51 andersg Exp $
+--  $Id: nbada-lock_free_queues.adb,v 1.4 2007/09/03 10:23:04 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -31,9 +31,9 @@ pragma License (GPL);
 with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
 
-with Lock_Free_Growing_Storage_Pools;
+with NBAda.Lock_Free_Growing_Storage_Pools;
 
-package body Lock_Free_Queues is
+package body NBAda.Lock_Free_Queues is
 
    -------------------------------------------------------------------------
    --  Storage pool for the nodes.
@@ -176,4 +176,4 @@ package body Lock_Free_Queues is
       Reclaim (X);
    end Free;
 
-end Lock_Free_Queues;
+end NBAda.Lock_Free_Queues;
