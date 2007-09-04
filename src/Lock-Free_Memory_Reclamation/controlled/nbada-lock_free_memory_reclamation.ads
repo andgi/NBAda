@@ -20,6 +20,8 @@
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 -------------------------------------------------------------------------------
+pragma Style_Checks (Off);
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : lock_free_memory_reclamation.ads
 --  Description     : Ada implementation of the lock-free garbage reclamation
@@ -32,13 +34,14 @@
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 13:54:45 2004
---  $Id: nbada-lock_free_memory_reclamation.ads,v 1.2 2006/11/23 19:02:50 andersg Exp $
+--  $Id: nbada-lock_free_memory_reclamation.ads,v 1.3 2007/09/04 12:06:18 andersg Exp $
 -------------------------------------------------------------------------------
+pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
-with Process_Identification;
-with Primitives;
+with NBAda.Process_Identification;
+with NBAda.Primitives;
 
 with Ada.Finalization;
 
@@ -51,7 +54,7 @@ generic
    --  Maximum number of links in a shared node.
 
    with package Process_Ids is
-     new Process_Identification (<>);
+     new NBAda.Process_Identification (<>);
    --  Process identification.
 
    Max_Delete_List_Size         : Natural :=
@@ -67,7 +70,7 @@ generic
    Scan_Threshold               : Natural := Clean_Up_Threshold;
    --  The threshold on the delete list size for Scan to be done.
 
-package Lock_Free_Memory_Reclamation is
+package NBAda.Lock_Free_Memory_Reclamation is
 
    pragma Elaborate_Body;
 
@@ -248,4 +251,4 @@ private
    Mark_Mask  : constant Shared_Reference_Base_Impl := 2 ** Mark_Bits - 1;
    Ref_Mask   : constant Shared_Reference_Base_Impl := -(2 ** Mark_Bits);
 
-end Lock_Free_Memory_Reclamation;
+end NBAda.Lock_Free_Memory_Reclamation;

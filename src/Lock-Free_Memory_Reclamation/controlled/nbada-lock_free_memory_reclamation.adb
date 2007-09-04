@@ -20,6 +20,8 @@
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 -------------------------------------------------------------------------------
+pragma Style_Checks (Off);
+-------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : lock_free_memory_reclamation.adb
 --  Description     : Ada implementation of the lock-free garbage reclamation
@@ -32,19 +34,20 @@
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 14:07:58 2004
---  $Id: nbada-lock_free_memory_reclamation.adb,v 1.2 2006/11/23 19:02:50 andersg Exp $
+--  $Id: nbada-lock_free_memory_reclamation.adb,v 1.3 2007/09/04 12:06:18 andersg Exp $
 -------------------------------------------------------------------------------
+pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
-with Primitives;
-with Hash_Tables;
+with NBAda.Primitives;
+with NBAda.Internals.Hash_Tables;
 
 with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
 
-package body Lock_Free_Memory_Reclamation is
+package body NBAda.Lock_Free_Memory_Reclamation is
 
    ----------------------------------------------------------------------------
    --  Types.
@@ -73,7 +76,7 @@ package body Lock_Free_Memory_Reclamation is
      renames Primitives.Fetch_And_Add;
 
    package HP_Sets is
-      new Hash_Tables (Managed_Node_Access, "=", Hash_Ref);
+      new Internals.Hash_Tables (Managed_Node_Access, "=", Hash_Ref);
 
    ----------------------------------------------------------------------------
    --  Internal data structures.
@@ -670,4 +673,4 @@ package body Lock_Free_Memory_Reclamation is
       return Natural ((To_Unsigned (Ref) / 4) mod Unsigned (Size));
    end Hash_Ref;
 
-end Lock_Free_Memory_Reclamation;
+end NBAda.Lock_Free_Memory_Reclamation;
