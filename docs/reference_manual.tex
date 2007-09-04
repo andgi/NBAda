@@ -8,7 +8,7 @@
 %  Stuhlsatzenhausweg 85
 %  66123 Saarbrücken, Germany
 %
-% $Id: reference_manual.tex,v 1.1 2007/08/27 18:12:54 andersg Exp $
+% $Id: reference_manual.tex,v 1.2 2007/09/04 10:11:00 andersg Exp $
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -24,6 +24,10 @@
 \usepackage{subfigure}  % To be able to use \subfigure
 \usepackage{fancyhdr}
 \usepackage{makeidx}    % To make an index
+\usepackage{float}
+\usepackage{a4wide}
+\usepackage{listings}
+\lstloadlanguages{Ada}
 %\usepackage[chapter]{algorithm}
 %\usepackage[noend]{algorithmic}
 %\usepackage{color}
@@ -56,7 +60,15 @@
 %% Ada
 \newcommand{\ada}{{\sc Ada}}
 
+%% Program float environment
+\floatstyle{ruled}
+\newfloat{AdaProgram}{thp}{lop}
+\floatname{AdaProgram}{Program}
 
+%% Ada code environment
+\newenvironment{AdaCode}
+               {\begin{small}}
+               {\end{small}}
 
 %%%%% Make index
 %\makeindex
@@ -73,12 +85,14 @@
 \begin{titlepage}
   
   \title{%
-    \Huge Non-blocking Ada\\
+    \Huge \nbada\\
+    \vspace{5mm}
+    \huge Non-blocking Algorithms and Data Structures Library\\
     \vspace{5mm}
     \huge Reference Manual
   }
   \author{%
-    Anders Gidenstam  (andersg@mpi-inf.mpg.de)
+    Anders Gidenstam  (andersg(at)mpi-inf.mpg.de)
   }
 
   \date{
@@ -98,6 +112,13 @@
   \maketitle
 \end{titlepage}
 
+\lstset{language=Ada,
+        basicstyle=\footnotesize,
+        numbers=left,
+        numberstyle=\tiny,
+        stepnumber=2,
+        numbersep=5pt}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Introduction}
 
@@ -109,20 +130,159 @@
 
 \subsection{Large Register}
 
-\cite{Pet83}
+\cite{Pet83,LaGiHaPaTs:ESA04}
+
+\subsubsection*{The package Atomic\_Single\_Writer\_Registers}
+
+\begin{AdaCode}
+\begin{lstlisting}
+generic
+   type Element_Type is private;
+
+package NBAda.Atomic_Single_Writer_Registers is
+
+   pragma Preelaborate (NBAda.Atomic_Single_Writer_Registers);
+
+   type Atomic_1_M_Register (No_Of_Readers : Positive) is limited private;
+
+   procedure Write (Register : in out Atomic_1_M_Register;
+                    Value    : in     Element_Type);
+   procedure Read  (Register  : in out Atomic_1_M_Register;
+                    Reader_No : in     Positive;
+                    Value     :    out Element_Type);
+
+private
+
+   ...  --  Implementation details.
+
+end NBAda.Atomic_Single_Writer_Registers;
+\end{lstlisting}
+\end{AdaCode}
 
 \subsection{Linearizable Snapshot}
 
 \cite{Jayanti:2005:MWS}
 
-\subsection{Software Load-Linked/Store-Conditional}
+\subsubsection*{The package Atomic\_Multiwriter\_Snapshots}
+
+\begin{AdaCode}
+\begin{lstlisting}
+generic
+   Max_Number_Of_Components : Natural;
+   --  Maximum number of components in the snapshot.
+   with package Process_Ids is
+     new Process_Identification (<>);
+   --  Process identification.
+package NBAda.Atomic_Multiwriter_Snapshots is
+
+   pragma Elaborate_Body;
+
+   type Snapshot (<>) is private;
+
+   function Scan return Snapshot;
+
+   Maximum_Number_Of_Components_Exceeded : exception;
+
+   generic
+      --  Use pragma Atomic and pragma Volatile for Target.
+      --  Element'Object_Size MUST be System.Word_Size.
+      type Element is private;
+   package Element_Components is
+
+      type Element_Component is private;
+
+      function Create (Default_Value : in Element) return Element_Component;
+
+      procedure Write (To    : in Element_Component;
+                       Value : in Element);
+
+      function Read (Component : in Element_Component;
+                     From      : in Snapshot) return Element;
+
+   private
+
+      ...  --  Implementation details.
+
+   end Element_Components;
+
+private
+
+   ...  --  Implementation details.
+
+end NBAda.Atomic_Multiwriter_Snapshots;
+\end{lstlisting}
+\end{AdaCode}
+
+\subsection{Software Load-Linked/Store-Conditional for Objects}
 
 \cite{Michael:2004:PLFLL}
+
+\subsubsection*{The package Large\_Primitives}
+
+\begin{AdaCode}
+\begin{lstlisting}
+generic
+   Max_Number_Of_Links : Natural;
+   --  Maximum number of simultaneous LL/SC per thread.
+   with package Process_Ids is
+     new Process_Identification (<>);
+   --  Process identification.
+package NBAda.Large_Primitives is
+
+   package MR is < Implementation defined >
+
+   generic
+      type Element is private;
+   package Load_Linked_Store_Conditional is
+
+      type Shared_Element is limited private;
+
+      function  Load_Linked (Target : in Shared_Element) return Element;
+      function  Load_Linked (Target : access Shared_Element) return Element;
+
+      function  Store_Conditional (Target : in     Shared_Element;
+                                   Value  : in     Element) return Boolean;
+      function  Store_Conditional (Target : access Shared_Element;
+                                   Value  : in     Element) return Boolean;
+
+      procedure Store_Conditional (Target : in out Shared_Element;
+                                   Value  : in     Element);
+      procedure Store_Conditional (Target : access Shared_Element;
+                                   Value  : in     Element);
+
+
+      function  Verify_Link (Target : in Shared_Element) return Boolean;
+      function  Verify_Link (Target : access Shared_Element) return Boolean;
+
+
+      procedure Initialize (Target : in out Shared_Element;
+                            Value  : in     Element);
+      procedure Initialize (Target : access Shared_Element;
+                            Value  : in     Element);
+      --  Note: Initialize is only safe to use when there are no
+      --        concurrent updates.
+
+   private
+
+      ...  --  Implementation specific
+
+   end Load_Linked_Store_Conditional;
+
+   procedure Print_Statistics;
+
+end NBAda.Large_Primitives;
+\end{lstlisting}
+\end{AdaCode}
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Containers}
 
-\subsection{}
+\subsection{Stacks}
+
+\subsection{Queues}
+
+\subsection{Dictionaries}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Support Packages}
@@ -130,9 +290,13 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Memory Reclamation Schemes}
 
+\subsection{}
+
 \cite{Fraser:2004:PLF,Hart:2005:CPMR}
 
 \cite{Michael:2002:SMR,Michael:2004:SMR}
+
+\subsection{Reference Counting}
 
 \cite{Herlihy:2002:ROP,HerlihyLuMaMo:2002:DSLF,HerlihyLuMaMo:2005:NBMM}
 
@@ -143,11 +307,209 @@
 
 \cite{IBM:1983}
 
+\subsubsection*{The package NBAda.Lock\_Free\_Fixed\_Size\_Storage\_Pools}
+
+\begin{AdaCode}
+\begin{lstlisting}
+with System.Storage_Elements;
+with System.Storage_Pools;
+
+package NBAda.Lock_Free_Fixed_Size_Storage_Pools is
+
+   pragma Preelaborate (NBAda.Lock_Free_Fixed_Size_Storage_Pools);
+
+   type Block_Count is range 0 .. 2**16 - 1;
+
+   type Lock_Free_Storage_Pool
+     (Pool_Size  : Block_Count;
+      Block_Size : System.Storage_Elements.Storage_Count) is
+     new System.Storage_Pools.Root_Storage_Pool with private;
+
+   procedure Allocate
+     (Pool                     : in out Lock_Free_Storage_Pool;
+      Storage_Address          :    out System.Address;
+      Size_In_Storage_Elements : in     System.Storage_Elements.Storage_Count;
+      Alignment                : in     System.Storage_Elements.Storage_Count);
+
+   procedure Deallocate
+     (Pool                     : in out Lock_Free_Storage_Pool;
+      Storage_Address          : in     System.Address;
+      Size_In_Storage_Elements : in     System.Storage_Elements.Storage_Count;
+      Alignment                : in     System.Storage_Elements.Storage_Count);
+
+   function Storage_Size (Pool : Lock_Free_Storage_Pool)
+                         return System.Storage_Elements.Storage_Count;
+
+   function Validate (Pool : Lock_Free_Storage_Pool)
+                     return Block_Count;
+
+   function Belongs_To (Pool            : Lock_Free_Storage_Pool;
+                        Storage_Address : System.Address)
+                       return Boolean;
+
+   Storage_Exhausted    : exception;
+   Implementation_Error : exception;
+
+private
+
+   ...  --  Implementation details.
+
+end NBAda.Lock_Free_Fixed_Size_Storage_Pools;
+\end{lstlisting}
+\end{AdaCode}
+
 \cite{Dice:2002:MLFM,Michael:2004:SLFDMA,GiPaTs:2005:AMLF,SchneiderAnNi:2006:SLCMMA}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Hardware Abstraction Interface}
 
+\subsubsection*{The package Primitives}
+
+\begin{AdaCode}
+\begin{lstlisting}
+with System;
+
+package NBAda.Primitives is
+
+   pragma Preelaborate (Primitives);
+
+   Not_Implemented : exception;
+
+   procedure Membar;
+
+   type Standard_Unsigned is mod 2**System.Word_Size;
+   pragma Atomic (Standard_Unsigned);
+
+   generic
+      --  Element'Object_Size MUST be System.Word_Size.
+      type Element is private;
+   function Standard_Atomic_Read (Target : access Element) return Element;
+
+   generic
+      --  Element'Object_Size MUST be System.Word_Size.
+      type Element is private;
+   procedure Standard_Atomic_Write (Target : access Element;
+                                    Value  : in     Element);
+
+   generic
+      --  Element'Object_Size MUST be System.Word_Size.
+      type Element is private;
+   procedure Standard_Compare_And_Swap (Target    : access Element;
+                                        Old_Value : in     Element;
+                                        New_Value : in out Element);
+
+   generic
+      --  Element'Object_Size MUST be System.Word_Size.
+      type Element is private;
+   function Standard_Boolean_Compare_And_Swap (Target    : access Element;
+                                               Old_Value : in     Element;
+                                               New_Value : in     Element)
+                                              return Boolean;
+
+   generic
+      --  Element'Object_Size MUST be System.Word_Size.
+      type Element is private;
+   procedure Standard_Void_Compare_And_Swap (Target    : access Element;
+                                             Old_Value : in     Element;
+                                             New_Value : in     Element);
+
+   procedure Fetch_And_Add (Target    : access Standard_Unsigned;
+                            Increment : in     Standard_Unsigned);
+
+   function  Fetch_And_Add (Target    : access Standard_Unsigned;
+                            Increment : in     Standard_Unsigned)
+                           return Standard_Unsigned;
+
+
+   type Unsigned_32 is mod 2**32;
+   pragma Atomic (Unsigned_32);
+
+   generic
+      --  Element'Object_Size MUST be 32.
+      type Element is private;
+   function Atomic_Read_32 (Target : access Element) return Element;
+
+   generic
+      --  Element'Object_Size MUST be 32.
+      type Element is private;
+   procedure Atomic_Write_32 (Target : access Element;
+                              Value  : in     Element);
+
+   generic
+      --  Element'Object_Size MUST be 32.
+      type Element is private;
+   procedure Compare_And_Swap_32 (Target    : access Element;
+                                  Old_Value : in     Element;
+                                  New_Value : in out Element);
+
+   generic
+      --  Element'Object_Size MUST be 32.
+      type Element is private;
+   function Boolean_Compare_And_Swap_32 (Target    : access Element;
+                                         Old_Value : in     Element;
+                                         New_Value : in     Element)
+                                        return Boolean;
+
+   generic
+      --  Element'Object_Size MUST be 32.
+      type Element is private;
+   procedure Void_Compare_And_Swap_32 (Target    : access Element;
+                                       Old_Value : in     Element;
+                                       New_Value : in     Element);
+
+   procedure Fetch_And_Add_32 (Target    : access Unsigned_32;
+                               Increment : in     Unsigned_32);
+
+   function  Fetch_And_Add_32 (Target    : access Unsigned_32;
+                               Increment : in     Unsigned_32)
+                              return Unsigned_32;
+
+   type Unsigned_64 is mod 2**64;
+   pragma Atomic (Unsigned_64);
+
+   generic
+      --  Element'Object_Size MUST be 64.
+      type Element is private;
+   function Atomic_Read_64 (Target : access Element) return Element;
+
+   generic
+      --  Element'Object_Size MUST be 64.
+      type Element is private;
+   procedure Atomic_Write_64 (Target : access Element;
+                              Value  : in     Element);
+
+   generic
+      --  Element'Object_Size MUST be 64.
+      type Element is private;
+   procedure Compare_And_Swap_64 (Target    : access Element;
+                                  Old_Value : in     Element;
+                                  New_Value : in out Element);
+
+   generic
+      --  Element'Object_Size MUST be 64.
+      type Element is private;
+   function Boolean_Compare_And_Swap_64 (Target    : access Element;
+                                         Old_Value : in     Element;
+                                         New_Value : in     Element)
+                                        return Boolean;
+
+   generic
+      --  Element'Object_Size MUST be 64.
+      type Element is private;
+   procedure Void_Compare_And_Swap_64 (Target    : access Element;
+                                       Old_Value : in     Element;
+                                       New_Value : in     Element);
+
+   procedure Fetch_And_Add_64 (Target    : access Unsigned_64;
+                               Increment : in     Unsigned_64);
+
+   function  Fetch_And_Add_64 (Target    : access Unsigned_64;
+                               Increment : in     Unsigned_64)
+                              return Unsigned_64;
+
+end NBAda.Primitives;
+\end{lstlisting}
+\end{AdaCode}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
