@@ -25,18 +25,18 @@
 -- Description     : Example application for lock-free reference counting.
 -- Author          : Anders Gidenstam
 -- Created On      : Thu Mar  2 18:49:40 2006
--- $Id: my_queue.ads,v 1.1 2006/03/02 17:52:00 anders Exp $
+-- $Id: my_queue.ads,v 1.2 2007/09/04 12:03:59 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Process_Identification;
+with NBAda.Process_Identification;
 with Example_Queue;
 
 package My_Queue is
 
    package PID is
-      new Process_Identification (Max_Number_Of_Processes => 32);
+      new NBAda.Process_Identification (Max_Number_Of_Processes => 32);
 
    type Value_Type is
       record

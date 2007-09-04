@@ -26,21 +26,21 @@
 --                    scheme.
 --  Author          : Anders Gidenstam
 --  Created On      : Sat May  7 20:54:49 2005
---  $Id: example_queue.ads,v 1.10 2006/11/30 20:02:10 andersg Exp $
+--  $Id: example_queue.ads,v 1.11 2007/09/04 12:03:59 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Lock_Free_Memory_Reclamation;
-with Process_Identification;
+with NBAda.Lock_Free_Memory_Reclamation;
+with NBAda.Process_Identification;
 
-pragma Elaborate_All (Lock_Free_Memory_Reclamation);
+pragma Elaborate_All (NBAda.Lock_Free_Memory_Reclamation);
 
 generic
    type Value_Type is private;
    --  Value type.
    with package Process_Ids is
-     new Process_Identification (<>);
+     new NBAda.Process_Identification (<>);
    --  Process identification.
 package Example_Queue is
 
@@ -56,7 +56,7 @@ package Example_Queue is
    procedure Enqueue (Queue : in out Queue_Type;
                       Value : in     Value_Type);
 
-   package LFMR is new Lock_Free_Memory_Reclamation
+   package LFMR is new NBAda.Lock_Free_Memory_Reclamation
      (Max_Number_Of_Dereferences   => 4,
       --  Remember to account for the dereferences in the
       --  callbacks Clean_Up and Dispose (which are invoked by Delete).
