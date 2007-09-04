@@ -23,7 +23,7 @@
 --  Description     : NBAda build config.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Aug 30 11:18:46 2007
--- $Id: nbada_config.adb,v 1.5 2007/09/03 15:25:15 andersg Exp $
+-- $Id: nbada_config.adb,v 1.6 2007/09/04 12:07:18 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Command_Line;
@@ -46,6 +46,7 @@ procedure NBAda_Config is
                    HAZARD_POINTERS,
                    PTB,
                    LFRC,
+                   LFMR,
                    SW_LL_SC,
                    LF_SETS);
    type Architecture is (IA32, SPARCV8PLUS, SPARCV9, MIPSN32);
@@ -80,6 +81,10 @@ procedure NBAda_Config is
         "+" ("-I" & Install_Base & "/Pass_The_Buck"),
       LFRC =>
         "+" ("-I" & Install_Base & "/Lock-Free_Reference_Counting"),
+      LFMR =>
+        "+" ("-I" & Install_Base & "/Lock-Free_Memory_Reclamation " &
+             "-I" & Install_Base &
+             "/Lock-Free_Memory_Reclamation/uncontrolled"),
       SW_LL_SC        =>
         "+" ("-I" & Install_Base & "/Lock-Free_LL_SC"),
       LF_SETS         =>
@@ -100,6 +105,8 @@ procedure NBAda_Config is
       LFRC            => (PRIMITIVES => True,
                           LF_POOLS   => True,
                           PTB        => True, others => False),
+      LFMR            => (PRIMITIVES => True,
+                          LF_POOLS   => True, others => False),
       SW_LL_SC        => (PRIMITIVES      => True,
                           LF_POOLS        => True,
                           HAZARD_POINTERS => True, others => False),
