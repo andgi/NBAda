@@ -30,7 +30,7 @@ pragma Style_Checks (Off);
 --                    pages 73-82, August 2002.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Mar 10 11:54:37 2006
---  $Id: nbada-lock_free_sets.ads,v 1.5 2007/08/31 16:49:16 andersg Exp $
+--  $Id: nbada-lock_free_sets.ads,v 1.6 2007/09/05 15:24:58 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -38,9 +38,7 @@ pragma License (GPL);
 
 with NBAda.Process_Identification;
 
-with
---  NBAda.Epoch_Based_Memory_Reclamation;
-  NBAda.Hazard_Pointers;
+with NBAda.Lock_Free_Sets_Memory_Reclamation_Adapter;
 
 generic
 
@@ -78,11 +76,9 @@ package NBAda.Lock_Free_Sets is
 
 --  private
 
-   package Memory_Reclamation_Scheme is
---      new Epoch_Based_Memory_Reclamation (Process_Ids => Process_Ids);
-        new Hazard_Pointers (Process_Ids                => Process_Ids,
-                             Max_Number_Of_Dereferences => 4);
-   package MRS renames Memory_Reclamation_Scheme;
+   package MR_Adapter is new
+     Lock_Free_Sets_Memory_Reclamation_Adapter (Process_Ids => Process_Ids);
+   package MRS renames MR_Adapter.Memory_Reclamation;
 
 private
 
