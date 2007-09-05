@@ -1,0 +1,19 @@
+Status of the NBAda components
+
+Component                          Status                               Release
+
+Atomic_1-Writer_N-Reader_Register  OK. Not thoroughly tested.                 Y
+Atomic_Multi-Writer_Snapshot       OK. Not thoroughly tested.                 Y
+Epoch-Based_Memory_Reclamation     OK. Fairly well tested.                    Y
+Hazard_Pointers                    OK. Fairly well tested.                    Y
+Lock-Free_Bounded_Queue            Maybe OK. Some oddities.                   Y
+Lock-Free_Deque                    Uncertain, not well tested.
+Lock-Free_Dictionary               Uncertain, not well tested.
+Lock-Free_LL_SC                    OK. Fairly well tested.                    Y
+Lock-Free_Priority_Queue           Uncertain, not well tested.
+Lock-Free_Queue                    OK. Fairly well tested.                    Y
+Lock-Free_Reference_Counting       Uncertain, not well tested. Oddities.
+Lock-Free_Sets                     Maybe OK.  Some oddities.
+Lock-Free_Storage_Pools            Ok. Fairly well tested. Some oddities.     Y
+Pass_The_Buck                      OK, not well tested.                       
+Primitives                         OK. Fairly well tested.                    Y
