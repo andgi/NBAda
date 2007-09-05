@@ -23,15 +23,13 @@
 --                    lock-free queue algorithm.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Nov 28 10:55:38 2006
---  $Id: nbada-lock_free_queues.ads,v 1.5 2007/09/03 10:23:04 andersg Exp $
+--  $Id: nbada-lock_free_queues.ads,v 1.6 2007/09/05 12:19:47 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
 with NBAda.Process_Identification;
-with
-  NBAda.Epoch_Based_Memory_Reclamation;
---  NBAda.Hazard_Pointers;
+with NBAda.Lock_Free_Queues_Memory_Reclamation_Adapter;
 
 generic
 
@@ -56,16 +54,11 @@ package NBAda.Lock_Free_Queues is
    procedure Enqueue (On      : in out Queue_Type;
                       Element : in     Element_Type);
 
-
-   package MR is new Epoch_Based_Memory_Reclamation
-     (Epoch_Update_Threshold     => 100,
-      --  Suitable number for epoch-based reclamation.
-      Process_Ids                => Process_Ids);
---     package MR is new Hazard_Pointers
---       (Max_Number_Of_Dereferences => 3,
---        Process_Ids                => Process_Ids);
-
 private
+
+   package MR_Adapter is
+      new Lock_Free_Queues_Memory_Reclamation_Adapter (Process_Ids);
+   package MR renames MR_Adapter.Memory_Reclamation;
 
    type Queue_Node_Reference is new MR.Shared_Reference_Base;
 
