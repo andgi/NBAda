@@ -23,7 +23,7 @@
 --  Description     : NBAda build config.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Aug 30 11:18:46 2007
--- $Id: nbada_config.adb,v 1.6 2007/09/04 12:07:18 andersg Exp $
+-- $Id: nbada_config.adb,v 1.7 2007/09/05 16:16:24 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Command_Line;
@@ -40,15 +40,22 @@ procedure NBAda_Config is
      Ada.Strings.Unbounded.To_Unbounded_String;
 
    --  Types.
-   type Target is (PRIMITIVES,
-                   LF_POOLS,
-                   EBMR,
-                   HAZARD_POINTERS,
-                   PTB,
-                   LFRC,
-                   LFMR,
-                   SW_LL_SC,
-                   LF_SETS);
+   type Target is
+     (
+      --  Support packages.
+      PRIMITIVES,
+      LF_POOLS,
+      --  Memory reclamation schemes.
+      EBMR,
+      HPMR,
+      PTB,
+      LFRC,
+      LFMR,
+      --  Algorithms and data structures.
+      SW_LL_SC,
+      LF_SETS,
+      LF_QUEUES
+      );
    type Architecture is (IA32, SPARCV8PLUS, SPARCV9, MIPSN32);
    type Target_Array is array (Target) of Boolean;
 
@@ -70,12 +77,13 @@ procedure NBAda_Config is
 
    --  Component include directories.
    Include : constant array (Target) of Unbounded_String :=
-     (PRIMITIVES      => "+" ("-I" & Install_Base & "/Primitives"),
-      LF_POOLS        =>
+     (PRIMITIVES =>
+        "+" ("-I" & Install_Base & "/Primitives"),
+      LF_POOLS =>
         "+" ("-I" & Install_Base & "/Lock-Free_Storage_Pools"),
-      EBMR            =>
+      EBMR =>
         "+" ("-I" & Install_Base & "/Epoch-Based_Memory_Reclamation"),
-      HAZARD_POINTERS =>
+      HPMR =>
         "+" ("-I" & Install_Base & "/Hazard_Pointers"),
       PTB =>
         "+" ("-I" & Install_Base & "/Pass_The_Buck"),
@@ -85,10 +93,14 @@ procedure NBAda_Config is
         "+" ("-I" & Install_Base & "/Lock-Free_Memory_Reclamation " &
              "-I" & Install_Base &
              "/Lock-Free_Memory_Reclamation/uncontrolled"),
-      SW_LL_SC        =>
+      SW_LL_SC =>
         "+" ("-I" & Install_Base & "/Lock-Free_LL_SC"),
-      LF_SETS         =>
-        "+" ("-I" & Install_Base & "/Lock-Free_Sets")
+      LF_SETS =>
+        "+" ("-I" & Install_Base & "/Lock-Free_Sets " &
+             "-I" & Install_Base & "/Lock-Free_Sets/HPMR"),
+      LF_QUEUES =>
+        "+" ("-I" & Install_Base & "/Lock-Free_Queues " &
+             "-I" & Install_Base & "/Lock-Free_Queues/EBMR")
       );
 
    --  Component dependencies.
@@ -98,7 +110,7 @@ procedure NBAda_Config is
       LF_POOLS        => (PRIMITIVES => True, others => False),
       EBMR            => (PRIMITIVES => True,
                           LF_POOLS   => True, others => False),
-      HAZARD_POINTERS => (PRIMITIVES => True,
+      HPMR            => (PRIMITIVES => True,
                           LF_POOLS   => True, others => False),
       PTB             => (PRIMITIVES => True,
                           LF_POOLS   => True, others => False),
@@ -109,10 +121,13 @@ procedure NBAda_Config is
                           LF_POOLS   => True, others => False),
       SW_LL_SC        => (PRIMITIVES      => True,
                           LF_POOLS        => True,
-                          HAZARD_POINTERS => True, others => False),
+                          HPMR            => True, others => False),
       LF_SETS         => (PRIMITIVES      => True,
                           LF_POOLS        => True,
-                          HAZARD_POINTERS => True, others => False)
+                          HPMR            => True, others => False),
+      LF_QUEUES       => (PRIMITIVES      => True,
+                          LF_POOLS        => True,
+                          EBMR            => True, others => False)
       );
 
    ----------------------------------------------------------------------
