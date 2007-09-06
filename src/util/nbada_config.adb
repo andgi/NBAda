@@ -23,7 +23,7 @@
 --  Description     : NBAda build config.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Aug 30 11:18:46 2007
--- $Id: nbada_config.adb,v 1.7 2007/09/05 16:16:24 andersg Exp $
+-- $Id: nbada_config.adb,v 1.8 2007/09/06 10:30:56 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Command_Line;
@@ -46,15 +46,20 @@ procedure NBAda_Config is
       PRIMITIVES,
       LF_POOLS,
       --  Memory reclamation schemes.
+      --    Non-traversable.
       EBMR,
       HPMR,
       PTB,
+      --    Traversable.
       LFRC,
       LFMR,
       --  Algorithms and data structures.
+      --    Released.
       SW_LL_SC,
       LF_SETS,
-      LF_QUEUES
+      LF_QUEUES,
+      --    Under development.
+      LF_DEQUES
       );
    type Architecture is (IA32, SPARCV8PLUS, SPARCV9, MIPSN32);
    type Target_Array is array (Target) of Boolean;
@@ -81,6 +86,7 @@ procedure NBAda_Config is
         "+" ("-I" & Install_Base & "/Primitives"),
       LF_POOLS =>
         "+" ("-I" & Install_Base & "/Lock-Free_Storage_Pools"),
+      --  Memory reclamation schemes.
       EBMR =>
         "+" ("-I" & Install_Base & "/Epoch-Based_Memory_Reclamation"),
       HPMR =>
@@ -93,6 +99,7 @@ procedure NBAda_Config is
         "+" ("-I" & Install_Base & "/Lock-Free_Memory_Reclamation " &
              "-I" & Install_Base &
              "/Lock-Free_Memory_Reclamation/uncontrolled"),
+      --  Algorithms and data structures.
       SW_LL_SC =>
         "+" ("-I" & Install_Base & "/Lock-Free_LL_SC"),
       LF_SETS =>
@@ -100,7 +107,10 @@ procedure NBAda_Config is
              "-I" & Install_Base & "/Lock-Free_Sets/HPMR"),
       LF_QUEUES =>
         "+" ("-I" & Install_Base & "/Lock-Free_Queues " &
-             "-I" & Install_Base & "/Lock-Free_Queues/EBMR")
+             "-I" & Install_Base & "/Lock-Free_Queues/EBMR"),
+      LF_DEQUES =>
+        "+" ("-I" & Install_Base & "/Lock-Free_Deque " &
+             "-I" & Install_Base & "/Lock-Free_Deque/LFRC")
       );
 
    --  Component dependencies.
@@ -108,6 +118,7 @@ procedure NBAda_Config is
    Depends : constant array (Target) of Target_Array :=
      (PRIMITIVES      => (others => False),
       LF_POOLS        => (PRIMITIVES => True, others => False),
+      --  Memory reclamation schemes.
       EBMR            => (PRIMITIVES => True,
                           LF_POOLS   => True, others => False),
       HPMR            => (PRIMITIVES => True,
@@ -119,6 +130,7 @@ procedure NBAda_Config is
                           PTB        => True, others => False),
       LFMR            => (PRIMITIVES => True,
                           LF_POOLS   => True, others => False),
+      --  Algorithms and data structures.
       SW_LL_SC        => (PRIMITIVES      => True,
                           LF_POOLS        => True,
                           HPMR            => True, others => False),
@@ -127,7 +139,12 @@ procedure NBAda_Config is
                           HPMR            => True, others => False),
       LF_QUEUES       => (PRIMITIVES      => True,
                           LF_POOLS        => True,
-                          EBMR            => True, others => False)
+                          EBMR            => True, others => False),
+      LF_DEQUES       => (PRIMITIVES => True,
+                          LF_POOLS   => True,
+                          PTB        => True,
+                          LFRC       => True,
+                          others => False)
       );
 
    ----------------------------------------------------------------------
