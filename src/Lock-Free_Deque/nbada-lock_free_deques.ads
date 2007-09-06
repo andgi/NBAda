@@ -25,15 +25,12 @@
 --                    by H. Sundell and P. Tsigas.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 15 18:46:02 2006
---  $Id: nbada-lock_free_deques.ads,v 1.7 2007/09/03 17:11:53 andersg Exp $
+--  $Id: nbada-lock_free_deques.ads,v 1.8 2007/09/06 10:12:39 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with NBAda.Lock_Free_Reference_Counting;
-pragma Elaborate_All (NBAda.Lock_Free_Reference_Counting);
---  with Lock_Free_Memory_Reclamation;
-
+with NBAda.Lock_Free_Deques_Memory_Reclamation_Adapter;
 with NBAda.Process_Identification;
 
 generic
@@ -63,24 +60,9 @@ package NBAda.Lock_Free_Deques is
    procedure Push_Left (Deque : in out Deque_Type;
                         Value : in     Value_Type);
 
-   package LFRC is new Lock_Free_Reference_Counting
-     (Max_Number_Of_Guards => 128);
---     package LFRC is new Lock_Free_Memory_Reclamation
---       (Max_Number_Of_Dereferences   => 8,
---        --  Remember to account for the dereferences in the
---        --  callbacks Clean_Up and Dispose (which are invoked by Delete).
---        --  Here: PushRight <= ?
---        --        PopRight  <= ?
---        --        PushLeft  <= ?
---        --        PopLeft   <= ?
---        --        Dispose   <= ?
---        --        Clean_up  <= ?
---        --  Delete is called from Pop* on a dereferenced node so the
---        --  maximum number of simultaneous dereferences is ?.
---        Max_Number_Of_Links_Per_Node => 2,
---        Clean_Up_Threshold           => 256,
---        --  Clean up and scan often.
---        Process_Ids                  => Process_Ids);l
+   package MR_Adapter is
+      new Lock_Free_Deques_Memory_Reclamation_Adapter (Process_Ids);
+   package LFRC renames MR_Adapter.Memory_Reclamation;
 
    procedure Verify (Deque : in out Deque_Type;
                      Print : in     Boolean := False);
@@ -101,7 +83,6 @@ private
          --  done before Next has been marked.
          Value    : Value_Type;
       end record;
-   --  Note:
 
    procedure Dispose  (Node       : access Deque_Node;
                        Concurrent : in     Boolean);
