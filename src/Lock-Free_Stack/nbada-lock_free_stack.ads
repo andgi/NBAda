@@ -22,13 +22,13 @@
 --  Description     : A lock-free stack using lock-free memory reclamation.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 17:55:38 2005
---  $Id: nbada-lock_free_stack.ads,v 1.4 2007/05/16 12:54:22 andersg Exp $
+--  $Id: nbada-lock_free_stack.ads,v 1.5 2007/09/07 11:45:42 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
-with Process_Identification;
-with Lock_Free_Memory_Reclamation;
+with NBAda.Process_Identification;
+with NBAda.Lock_Free_Stacks_Memory_Reclamation_Adapter;
 
 generic
 
@@ -36,10 +36,10 @@ generic
    --  Element type.
 
    with package Process_Ids is
-     new Process_Identification (<>);
+     new NBAda.Process_Identification (<>);
    --  Process identification.
 
-package Lock_Free_Stack is
+package NBAda.Lock_Free_Stack is
 
    ----------------------------------------------------------------------------
    --  Lock-free Stack.
@@ -60,12 +60,9 @@ package Lock_Free_Stack is
 
 private
 
-   package MR is new Lock_Free_Memory_Reclamation
-     (Max_Number_Of_Dereferences => 1,
-      --  Each operation on the stack only accesses one element on the stack.
-      Epoch_Update_Threshold     => 100,
-      --  Suitable number for epoch-based reclamation.
-      Process_Ids         => Process_Ids);
+   package MR_Adapter is
+      new Lock_Free_Stacks_Memory_Reclamation_Adapter (Process_Ids);
+   package MR renames MR_Adapter.Memory_Reclamation;
 
    type Stack_Node;
    type Stack_Node_No_Access is access all Stack_Node;
@@ -91,4 +88,4 @@ private
         pragma Atomic (Head);
      end record;
 
-end Lock_Free_Stack;
+end NBAda.Lock_Free_Stack;

@@ -1,16 +1,16 @@
-with Lock_Free_Stack;
-with Process_Identification;
+with NBAda.Lock_Free_Stack;
+with NBAda.Process_Identification;
 
 generic
    type Element_Type is private;
    --  Element type.
    with package Process_Ids is
-     new Process_Identification (<>);
+     new NBAda.Process_Identification (<>);
    --  Process identification.
 package Test_Stack is
 
    package Stack is new
-     Lock_Free_Stack (Element_Type, Process_Ids);
+     NBAda.Lock_Free_Stack (Element_Type, Process_Ids);
 
    ----------------------------------------------------------------------------
    --  Stack.

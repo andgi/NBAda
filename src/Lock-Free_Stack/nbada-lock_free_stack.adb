@@ -23,7 +23,7 @@
 --                    memory management and ABA prevention.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 18:15:38 2005
---  $Id: nbada-lock_free_stack.adb,v 1.5 2007/05/16 12:54:22 andersg Exp $
+--  $Id: nbada-lock_free_stack.adb,v 1.6 2007/09/07 11:45:42 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -31,9 +31,9 @@ pragma License (GPL);
 with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
 
-with Lock_Free_Growing_Storage_Pools;
+with NBAda.Lock_Free_Growing_Storage_Pools;
 
-package body Lock_Free_Stack is
+package body NBAda.Lock_Free_Stack is
 
    -------------------------------------------------------------------------
    --  Storage pool for the nodes.
@@ -165,4 +165,4 @@ package body Lock_Free_Stack is
       Reclaim (X);
    end Free;
 
-end Lock_Free_Stack;
+end NBAda.Lock_Free_Stack;
