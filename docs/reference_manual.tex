@@ -8,7 +8,7 @@
 %  Stuhlsatzenhausweg 85
 %  66123 Saarbrücken, Germany
 %
-% $Id: reference_manual.tex,v 1.2 2007/09/04 10:11:00 andersg Exp $
+% $Id: reference_manual.tex,v 1.3 2007/09/10 08:54:21 andersg Exp $
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -290,13 +290,187 @@ end NBAda.Large_Primitives;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Memory Reclamation Schemes}
 
-\subsection{}
+\subsection{Safe reclamation of statically linked shared blocks}
+
+Dereference of shared reference value, a.k.a link, contained in a
+dereferenced \emph{statically linked} shared block is not guaranteed
+to yield a valid reference value, the obtained value can point to
+a block that has already been reclaimed.
+
+
+\begin{AdaCode}
+\begin{lstlisting}
+package NBAda.Hazard_Pointers is
+
+   type Managed_Node_Base is abstract tagged limited private;
+   --  Inherit from this base type to create your own managed types.
+
+   procedure Free (Object : access Managed_Node_Base) is abstract;
+
+   generic
+      type Managed_Node is new Managed_Node_Base with private;
+   package Operations is
+
+      type Shared_Reference is limited private;
+      --  Note: All shared variables of type Shared_Reference MUST be
+      --        declared atomic by 'pragma Atomic (Variable_Name);' .
+
+      type Node_Access is access all Managed_Node;
+      --  Note: There SHOULD NOT be any shared variables of type
+      --        Node_Access.
+
+      function  Dereference (Shared : access Shared_Reference)
+                            return Node_Access;
+      --  Note:
+
+      procedure Release     (Local  : in Node_Access);
+      --  Note: Each dereferenced shared pointer MUST be released
+      --        eventually.
+
+      procedure Delete      (Local  : in Node_Access);
+      --  Note: Delete may only be called when the caller can
+      --        guarantee that there are NO and WILL NOT BE any more shared
+      --        references to the node. The memory management scheme makes
+      --        sure the node is not freed until all local references have
+      --        been released.
+
+      function  Boolean_Compare_And_Swap (Shared    : access Shared_Reference;
+                                          Old_Value : in     Node_Access;
+                                          New_Value : in     Node_Access)
+                                         return Boolean;
+
+      procedure Value_Compare_And_Swap   (Shared    : access Shared_Reference;
+                                          Old_Value : in     Node_Access;
+                                          New_Value : in out Node_Access);
+
+      procedure Void_Compare_And_Swap    (Shared    : access Shared_Reference;
+                                          Old_Value : in     Node_Access;
+                                          New_Value : in     Node_Access);
+
+
+      procedure Initialize (Shared    : access Shared_Reference;
+                            New_Value : in     Node_Access);
+      --  Note: Initialize is only safe to use when there are no
+      --        concurrent updates.
+
+   private
+
+      type Shared_Reference is new Node_Access;
+      --   pragma Atomic (Shared_Reference);
+      --   pragma Volatile (Shared_Reference);
+      --  Note: All shared variables of type Shared_Reference MUST be
+      --        declared atomic by 'pragma Atomic (Variable_Name);' .
+
+   end Operations;
+
+
+   type Shared_Reference_Base is limited private;
+   --  For type separation between shared references to different
+   --  managed types derive your own shared reference types from
+   --  Shared_Reference_Base and instantiate the memory management
+   --  operation package below for each of them.
+
+   generic
+
+      type Managed_Node is
+        new Managed_Node_Base with private;
+
+      type Shared_Reference is new Shared_Reference_Base;
+      --  All shared variables of type Shared_Reference MUST be declared
+      --  atomic by 'pragma Atomic (Variable_Name);' .
+
+   package Reference_Operations is
+
+      type Node_Access is access all Managed_Node;
+      --  Note: There SHOULD NOT be any shared variables of type
+      --        Node_Access.
+
+      type Private_Reference is private;
+      --  Note: There SHOULD NOT be any shared variables of type
+      --        Private_Reference.
+      Null_Reference : constant Private_Reference;
+      --  Note: A marked null reference is not equal to Null_Reference.
+
+      function  Dereference (Link : access Shared_Reference)
+                            return Private_Reference;
+
+      procedure Release (Node : in Private_Reference);
+
+      function  "+"     (Node : in Private_Reference)
+                        return Node_Access;
+      function  Deref   (Node : in Private_Reference)
+                        return Node_Access;
+
+      function  Boolean_Compare_And_Swap (Link      : access Shared_Reference;
+                                          Old_Value : in Private_Reference;
+                                          New_Value : in Private_Reference)
+                                         return Boolean;
+
+      procedure Void_Compare_And_Swap    (Link      : access Shared_Reference;
+                                          Old_Value : in Private_Reference;
+                                          New_Value : in Private_Reference);
+
+      procedure Delete  (Node : in Private_Reference);
+
+      procedure Store   (Link : access Shared_Reference;
+                         Node : in Private_Reference);
+      --  Note: Store is only safe to use when there cannot be any
+      --        concurrent updates to Link.
+
+      generic
+         type User_Node_Access is access Managed_Node;
+         --  Select an appropriate (preferably non-blocking) storage
+         --  pool by the "for User_Node_Access'Storage_Pool use ..."
+         --  construct.
+         --  Note: The nodes allocated in this way must have an
+         --        implementation of Free that use the same storage pool.
+      function Create return Private_Reference;
+      --  Creates a new User_Node and returns a safe reference to it.
+
+      procedure Mark      (Node : in out Private_Reference);
+      function  Mark      (Node : in     Private_Reference)
+                          return Private_Reference;
+      procedure Unmark    (Node : in out Private_Reference);
+      function  Unmark    (Node : in     Private_Reference)
+                          return Private_Reference;
+      function  Is_Marked (Node : in     Private_Reference)
+                          return Boolean;
+
+      function  Is_Marked (Node : in     Shared_Reference)
+                          return Boolean;
+
+      function "=" (Link : in     Shared_Reference;
+                    Ref  : in     Private_Reference) return Boolean;
+      function "=" (Ref  : in     Private_Reference;
+                    Link : in     Shared_Reference) return Boolean;
+
+   private
+
+      ...  --  Implementation details.
+
+   end Reference_Operations;
+
+   procedure Print_Statistics;
+
+private
+
+   ...  --  Implementation details.
+
+end NBAda.Hazard_Pointers;
+\end{lstlisting}
+\end{AdaCode}
+
 
 \cite{Fraser:2004:PLF,Hart:2005:CPMR}
 
 \cite{Michael:2002:SMR,Michael:2004:SMR}
 
-\subsection{Reference Counting}
+\subsection{Safe reclamation of dynamically linked shared blocks}
+
+Dereference of a shared reference value, a.k.a link, contained in a
+dereferenced \emph{dynamically linked} shared block is guaranteed
+to yield a valid reference value.
+
 
 \cite{Herlihy:2002:ROP,HerlihyLuMaMo:2002:DSLF,HerlihyLuMaMo:2005:NBMM}
 
