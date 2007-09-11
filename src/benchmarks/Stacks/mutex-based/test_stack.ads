@@ -1,11 +1,11 @@
 with Mutex_Based_Stack;
-with Process_Identification;
+with NBAda.Process_Identification;
 
 generic
    type Element_Type is private;
    --  Element type.
    with package Process_Ids is
-     new Process_Identification (<>);
+     new NBAda.Process_Identification (<>);
    --  Process identification.
 package Test_Stack is
 

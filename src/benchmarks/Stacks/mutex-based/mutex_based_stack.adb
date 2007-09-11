@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Mutex-based Stack - A mutex-based concurrent stack.
---  Copyright (C) 2005 - 2006  Anders Gidenstam
+--  Copyright (C) 2005 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -16,31 +16,26 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
---  As a special exception, if other files instantiate generics from this
---  unit, or you link this unit with other files to produce an executable,
---  this unit does not by itself cause the resulting executable to be
---  covered by the GNU General Public License. This exception does not
---  however invalidate any other reasons why the executable file might be
---  covered by the GNU Public License.
---
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : mutex_based_stack.adb
 --  Description     : A mutex-based concurrent stack.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 18:15:38 2005
---  $Id: mutex_based_stack.adb,v 1.1 2006/10/18 17:18:47 andersg Exp $
+--  $Id: mutex_based_stack.adb,v 1.2 2007/09/11 12:27:50 andersg Exp $
 -------------------------------------------------------------------------------
 
-pragma License (Modified_GPL);
+pragma License (GPL);
 
 with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
 
-with Lock_Free_Growing_Storage_Pools;
-with Primitives;
+with NBAda.Lock_Free_Growing_Storage_Pools;
+with NBAda.Primitives;
 
 package body Mutex_Based_Stack is
+
+   use NBAda;
 
    -------------------------------------------------------------------------
    --  Storage pool for the nodes.
