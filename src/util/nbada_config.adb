@@ -23,7 +23,7 @@
 --  Description     : NBAda build config.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Aug 30 11:18:46 2007
--- $Id: nbada_config.adb,v 1.8 2007/09/06 10:30:56 andersg Exp $
+-- $Id: nbada_config.adb,v 1.9 2007/09/11 10:24:02 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Command_Line;
@@ -56,6 +56,8 @@ procedure NBAda_Config is
       --  Algorithms and data structures.
       --    Released.
       SW_LL_SC,
+      LF_STACKS_EBMR,
+      LF_STACKS_HPMR,
       LF_SETS,
       LF_QUEUES,
       --    Under development.
@@ -69,7 +71,7 @@ procedure NBAda_Config is
 
    --  NBAda source code base directory.
    Install_Base : constant String :=
-     "/home/andersg/projects/Ada/Non-Blocking/src";
+     "/home/andersg/projects/Ada/Non-Blocking/NBAda/src";
 
    --  Architecture dependent compiler flags.
    Compiler_Flags : constant array (Architecture) of Unbounded_String :=
@@ -102,6 +104,12 @@ procedure NBAda_Config is
       --  Algorithms and data structures.
       SW_LL_SC =>
         "+" ("-I" & Install_Base & "/Lock-Free_LL_SC"),
+      LF_STACKS_EBMR =>
+        "+" ("-I" & Install_Base & "/Lock-Free_Stack " &
+             "-I" & Install_Base & "/Lock-Free_Stack/EBMR"),
+      LF_STACKS_HPMR =>
+        "+" ("-I" & Install_Base & "/Lock-Free_Stack " &
+             "-I" & Install_Base & "/Lock-Free_Stack/HPMR"),
       LF_SETS =>
         "+" ("-I" & Install_Base & "/Lock-Free_Sets " &
              "-I" & Install_Base & "/Lock-Free_Sets/HPMR"),
@@ -132,6 +140,12 @@ procedure NBAda_Config is
                           LF_POOLS   => True, others => False),
       --  Algorithms and data structures.
       SW_LL_SC        => (PRIMITIVES      => True,
+                          LF_POOLS        => True,
+                          HPMR            => True, others => False),
+      LF_STACKS_EBMR  => (PRIMITIVES      => True,
+                          LF_POOLS        => True,
+                          EBMR            => True, others => False),
+      LF_STACKS_HPMR  => (PRIMITIVES      => True,
                           LF_POOLS        => True,
                           HPMR            => True, others => False),
       LF_SETS         => (PRIMITIVES      => True,
