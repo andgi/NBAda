@@ -23,7 +23,7 @@
 --  Description     : NBAda build config.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Aug 30 11:18:46 2007
--- $Id: nbada_config.adb,v 1.9 2007/09/11 10:24:02 andersg Exp $
+-- $Id: nbada_config.adb,v 1.10 2007/09/11 13:12:38 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Command_Line;
@@ -59,7 +59,8 @@ procedure NBAda_Config is
       LF_STACKS_EBMR,
       LF_STACKS_HPMR,
       LF_SETS,
-      LF_QUEUES,
+      LF_QUEUES_EBMR,
+      LF_QUEUES_HPMR,
       --    Under development.
       LF_DEQUES
       );
@@ -113,9 +114,12 @@ procedure NBAda_Config is
       LF_SETS =>
         "+" ("-I" & Install_Base & "/Lock-Free_Sets " &
              "-I" & Install_Base & "/Lock-Free_Sets/HPMR"),
-      LF_QUEUES =>
+      LF_QUEUES_EBMR =>
         "+" ("-I" & Install_Base & "/Lock-Free_Queues " &
              "-I" & Install_Base & "/Lock-Free_Queues/EBMR"),
+      LF_QUEUES_HPMR =>
+        "+" ("-I" & Install_Base & "/Lock-Free_Queues " &
+             "-I" & Install_Base & "/Lock-Free_Queues/HPMR"),
       LF_DEQUES =>
         "+" ("-I" & Install_Base & "/Lock-Free_Deque " &
              "-I" & Install_Base & "/Lock-Free_Deque/LFRC")
@@ -151,14 +155,16 @@ procedure NBAda_Config is
       LF_SETS         => (PRIMITIVES      => True,
                           LF_POOLS        => True,
                           HPMR            => True, others => False),
-      LF_QUEUES       => (PRIMITIVES      => True,
+      LF_QUEUES_EBMR  => (PRIMITIVES      => True,
                           LF_POOLS        => True,
                           EBMR            => True, others => False),
+      LF_QUEUES_HPMR  => (PRIMITIVES      => True,
+                          LF_POOLS        => True,
+                          HPMR            => True, others => False),
       LF_DEQUES       => (PRIMITIVES => True,
                           LF_POOLS   => True,
                           PTB        => True,
-                          LFRC       => True,
-                          others => False)
+                          LFRC       => True, others => False)
       );
 
    ----------------------------------------------------------------------
