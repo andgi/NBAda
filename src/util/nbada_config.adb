@@ -23,7 +23,7 @@
 --  Description     : NBAda build config.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Aug 30 11:18:46 2007
--- $Id: nbada_config.adb,v 1.10 2007/09/11 13:12:38 andersg Exp $
+-- $Id: nbada_config.adb,v 1.11 2007/09/11 13:33:51 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Command_Line;
@@ -115,11 +115,11 @@ procedure NBAda_Config is
         "+" ("-I" & Install_Base & "/Lock-Free_Sets " &
              "-I" & Install_Base & "/Lock-Free_Sets/HPMR"),
       LF_QUEUES_EBMR =>
-        "+" ("-I" & Install_Base & "/Lock-Free_Queues " &
-             "-I" & Install_Base & "/Lock-Free_Queues/EBMR"),
+        "+" ("-I" & Install_Base & "/Lock-Free_Queue " &
+             "-I" & Install_Base & "/Lock-Free_Queue/EBMR"),
       LF_QUEUES_HPMR =>
-        "+" ("-I" & Install_Base & "/Lock-Free_Queues " &
-             "-I" & Install_Base & "/Lock-Free_Queues/HPMR"),
+        "+" ("-I" & Install_Base & "/Lock-Free_Queue " &
+             "-I" & Install_Base & "/Lock-Free_Queue/HPMR"),
       LF_DEQUES =>
         "+" ("-I" & Install_Base & "/Lock-Free_Deque " &
              "-I" & Install_Base & "/Lock-Free_Deque/LFRC")
