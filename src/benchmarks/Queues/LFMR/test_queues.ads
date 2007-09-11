@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --  Lock-free Queue Test - Test benchmark for lock-free queues.
 --
---  Copyright (C) 2006  Anders Gidenstam
+--  Copyright (C) 2006 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -17,30 +17,25 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
---  As a special exception, if other files instantiate generics from this
---  unit, or you link this unit with other files to produce an executable,
---  this unit does not by itself cause the resulting executable to be
---  covered by the GNU General Public License. This exception does not
---  however invalidate any other reasons why the executable file might be
---  covered by the GNU Public License.
---
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : queue_test.adb
 --  Description     : Benchmark application for lock-free queues.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 30 19:49:40 2006
---  $Id: test_queues.ads,v 1.1 2006/11/30 19:48:59 andersg Exp $
+--  $Id: test_queues.ads,v 1.2 2007/09/11 14:47:37 andersg Exp $
 -------------------------------------------------------------------------------
 
+pragma License (GPL);
+
 with Example_Queue;
-with Process_Identification;
+with NBAda.Process_Identification;
 
 generic
    type Element_Type is private;
    --  Element type.
    with package Process_Ids is
-     new Process_Identification (<>);
+     new NBAda.Process_Identification (<>);
    --  Process identification.
 package Test_Queues is
 

@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --  Lock-free Queue Test - Test benchmark for lock-free queues.
 --
---  Copyright (C) 2004 - 2006  Anders Gidenstam
+--  Copyright (C) 2004 - 2007  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -17,26 +17,19 @@
 --  along with this program; if not, write to the Free Software
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
---  As a special exception, if other files instantiate generics from this
---  unit, or you link this unit with other files to produce an executable,
---  this unit does not by itself cause the resulting executable to be
---  covered by the GNU General Public License. This exception does not
---  however invalidate any other reasons why the executable file might be
---  covered by the GNU Public License.
---
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : queue_test.adb
 --  Description     : Benchmark application for lock-free queues.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Apr 13 22:09:40 2005
---  $Id: queue_test.adb,v 1.12 2006/11/30 19:48:59 andersg Exp $
+--  $Id: queue_test.adb,v 1.13 2007/09/11 14:47:37 andersg Exp $
 -------------------------------------------------------------------------------
 
-pragma License (Modified_GPL);
+pragma License (GPL);
 
-with Process_Identification;
-with Primitives;
+with NBAda.Process_Identification;
+with NBAda.Primitives;
 
 with Ada.Text_IO;
 with Ada.Exceptions;
@@ -51,6 +44,8 @@ with Ada.Command_Line;
 
 procedure Queue_Test is
 
+   use NBAda;
+
    package PID is
       new Process_Identification (Max_Number_Of_Processes => 31);
 
@@ -63,20 +58,18 @@ procedure Queue_Test is
                                       Process_Ids   => PID);
    use Queues;
 
+
    ----------------------------------------------------------------------------
    --  Test application.
    ----------------------------------------------------------------------------
 
-   No_Of_Elements : constant := 10_000;
+   No_Of_Elements : constant := 100_000;
    QUEUE_FIFO_PROPERTY_VIOLATION : exception;
-
-   Output_File : Ada.Text_IO.File_Type renames
-     Ada.Text_IO.Standard_Output;
---     Ada.Text_IO.Standard_Error;
 
    function Pinned_Task return System.Task_Info.Task_Info_Type;
    procedure Print_Usage;
    procedure Put_Line (S : in String);
+   procedure Put (S : in String);
 
    task type Producer is
       pragma Task_Info (Pinned_Task);
@@ -107,10 +100,12 @@ procedure Queue_Test is
 --           Priority    => System.Task_Info.No_Specified_Priority,
 --           Runon_CPU   =>
 --             --System.Task_Info.ANY_CPU
---             Integer (Primitives.Fetch_And_Add (Task_Count'Access, 1))
+--             Integer (Primitives.Fetch_And_Add_32 (Task_Count'Access, 1))
 --           );
       --  GNAT/Linux
       return System.Task_Info.System_Scope;
+      --  GNAT/Solaris
+--      return System.Task_Info.New_Bound_Thread_Attributes;
    end Pinned_Task;
 
    ----------------------------------------------------------------------------
@@ -118,7 +113,7 @@ procedure Queue_Test is
       No_Enqueues : Primitives.Unsigned_32 := 0;
    begin
       PID.Register;
-      Primitives.Fetch_And_Add (No_Producers_Running'Access, 1);
+      Primitives.Fetch_And_Add_32 (No_Producers_Running'Access, 1);
 
       declare
          use type Primitives.Unsigned_32;
@@ -138,34 +133,31 @@ procedure Queue_Test is
 
       exception
          when E : others =>
-            Ada.Text_IO.New_Line (Output_File);
-            Ada.Text_IO.Put_Line (Output_File,
-                                  "Producer (" &
+            Ada.Text_IO.New_Line;
+            Ada.Text_IO.Put_Line ("Producer (" &
                                   PID.Process_ID_Type'Image (ID) &
                                   "): raised " &
                                   Ada.Exceptions.Exception_Name (E) &
                                   " : " &
                                   Ada.Exceptions.Exception_Message (E));
-            Ada.Text_IO.New_Line (Output_File);
+            Ada.Text_IO.New_Line;
       end;
       declare
          use type Primitives.Unsigned_32;
       begin
-         Primitives.Fetch_And_Add (Enqueue_Count'Access, No_Enqueues);
-         Primitives.Fetch_And_Add (No_Producers_Running'Access, -1);
+         Primitives.Fetch_And_Add_32 (Enqueue_Count'Access, No_Enqueues);
+         Primitives.Fetch_And_Add_32 (No_Producers_Running'Access, -1);
       end;
-      Ada.Text_IO.Put_Line (Output_File,
-                            "Producer (?): exited.");
+      Put_Line ("Producer (?): exited.");
 
    exception
       when E : others =>
-         Ada.Text_IO.New_Line (Output_File);
-         Ada.Text_IO.Put_Line (Output_File,
-                               "Producer (?): raised " &
+         Ada.Text_IO.New_Line;
+         Ada.Text_IO.Put_Line ("Producer (?): raised " &
                                Ada.Exceptions.Exception_Name (E) &
                                " : " &
                                Ada.Exceptions.Exception_Message (E));
-         Ada.Text_IO.New_Line (Output_File);
+         Ada.Text_IO.New_Line;
    end Producer;
 
    ----------------------------------------------------------------------------
@@ -173,7 +165,7 @@ procedure Queue_Test is
       No_Dequeues : Primitives.Unsigned_32 := 0;
    begin
       PID.Register;
-      Primitives.Fetch_And_Add (No_Consumers_Running'Access, 1);
+      Primitives.Fetch_And_Add_32 (No_Consumers_Running'Access, 1);
 
       declare
          ID   : constant PID.Process_ID_Type := PID.Process_ID;
@@ -205,7 +197,7 @@ procedure Queue_Test is
 
             exception
                when Queues.Queue_Empty =>
-                  Ada.Text_IO.Put (".");
+                  Put (".");
                   declare
                      use type Primitives.Unsigned_32;
                   begin
@@ -219,35 +211,32 @@ procedure Queue_Test is
 
       exception
          when E : others =>
-            Ada.Text_IO.New_Line (Output_File);
-            Ada.Text_IO.Put_Line (Output_File,
-                                  "Consumer (" &
+            Ada.Text_IO.New_Line;
+            Ada.Text_IO.Put_Line ("Consumer (" &
                                   PID.Process_ID_Type'Image (ID) &
                                   "): raised " &
                                   Ada.Exceptions.Exception_Name (E) &
                                   " : " &
                                   Ada.Exceptions.Exception_Message (E));
-            Ada.Text_IO.New_Line (Output_File);
+            Ada.Text_IO.New_Line;
       end;
 
       declare
          use type Primitives.Unsigned_32;
       begin
-         Primitives.Fetch_And_Add (Dequeue_Count'Access, No_Dequeues);
-         Primitives.Fetch_And_Add (No_Consumers_Running'Access, -1);
+         Primitives.Fetch_And_Add_32 (Dequeue_Count'Access, No_Dequeues);
+         Primitives.Fetch_And_Add_32 (No_Consumers_Running'Access, -1);
       end;
 
-      Ada.Text_IO.Put_Line (Output_File,
-                            "Consumer (?): exited.");
+      Put_Line ("Consumer (?): exited.");
    exception
       when E : others =>
-            Ada.Text_IO.New_Line (Output_File);
-            Ada.Text_IO.Put_Line (Output_File,
-                                  "Consumer (?): raised " &
+            Ada.Text_IO.New_Line;
+            Ada.Text_IO.Put_Line ("Consumer (?): raised " &
                                   Ada.Exceptions.Exception_Name (E) &
                                   " : " &
                                   Ada.Exceptions.Exception_Message (E));
-            Ada.Text_IO.New_Line (Output_File);
+            Ada.Text_IO.New_Line;
    end Consumer;
 
    ----------------------------------------------------------------------
@@ -269,12 +258,19 @@ procedure Queue_Test is
 
    ----------------------------------------------------------------------
    Silent : Boolean := False;
+
    procedure Put_Line (S : in String) is
    begin
       if not Silent then
          Ada.Text_IO.Put_Line (S);
       end if;
    end Put_Line;
+   procedure Put (S : in String) is
+   begin
+      if not Silent then
+         Ada.Text_IO.Put (S);
+      end if;
+   end Put;
 
 
    use type Ada.Real_Time.Time;
@@ -323,13 +319,13 @@ begin
       end loop;
    end;
 
-   Ada.Text_IO.Put ("Initializing: ");
+   Put ("Initializing: ");
    Init (Queue);
-   Ada.Text_IO.Put_Line (" Queue ");
+   Put_Line (" Queue ");
 
-   Ada.Text_IO.Put_Line ("Testing with " &
-                         Integer'Image (No_Producers) & " producer and " &
-                         Integer'Image (No_Consumers) & " consumer tasks.");
+   Put_Line ("Testing with " &
+             Integer'Image (No_Producers) & " producer and " &
+             Integer'Image (No_Consumers) & " consumer tasks.");
    declare
       use type Primitives.Unsigned_32;
       Producer_Array : array (1 .. No_Producers) of Producer;
@@ -337,7 +333,7 @@ begin
    begin
       delay 5.0;
       T1 := Ada.Real_Time.Clock;
-      Primitives.Fetch_And_Add (Start'Access, 1);
+      Primitives.Fetch_And_Add_32 (Start'Access, 1);
    end;
    T2 := Ada.Real_Time.Clock;
 
@@ -347,7 +343,7 @@ begin
    Put_Line ("Dequeue count: " &
              Primitives.Unsigned_32'Image (Dequeue_Count));
    Put_Line ("Elapsed time:" &
-             Duration'Image (Ada.Real_Time.To_Duration (T2 - T1)));
+             Duration'Image (Ada.Real_Time.To_Duration (T2 - T1)) & " sec.");
 
    if Silent then
       Ada.Text_IO.Put (Integer'Image (No_Producers)  & "  " &
@@ -369,19 +365,18 @@ begin
          Put_Line ("Dequeue() = (" &
                    PID.Process_ID_Type'Image (V.Creator) & ", " &
                    Integer'Image (V.Index) & ")");
-         Primitives.Fetch_And_Add (Dequeue_Count'Access, 1);
+         Primitives.Fetch_And_Add_32 (Dequeue_Count'Access, 1);
       end loop;
    exception
       when Queues.Queue_Empty =>
          null;
       when E : others =>
-         Ada.Text_IO.New_Line (Output_File);
-         Ada.Text_IO.Put_Line (Output_File,
-                               "raised " &
+         Ada.Text_IO.New_Line;
+         Ada.Text_IO.Put_Line ("raised " &
                                Ada.Exceptions.Exception_Name (E) &
                                " : " &
                                Ada.Exceptions.Exception_Message (E));
-         Ada.Text_IO.New_Line (Output_File);
+         Ada.Text_IO.New_Line;
    end;
 
    Put_Line ("Final enqueue count: " &
@@ -395,6 +390,6 @@ begin
       Ada.Text_IO.New_Line;
    end if;
 
-   Queues.Print_Statistics;
+   --  Queues.Print_Statistics;
 
 end Queue_Test;
