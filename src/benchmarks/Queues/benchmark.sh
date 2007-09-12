@@ -1,5 +1,5 @@
 #!/bin/bash
-# $Id: benchmark.sh,v 1.2 2007/09/12 15:35:18 andersg Exp $
+# $Id: benchmark.sh,v 1.3 2007/09/12 18:32:03 andersg Exp $
 # Benchmark batch job
 # Copyright (C) 2007  Anders Gidenstam  
 #
@@ -24,7 +24,7 @@ for T in $THREADS; do
   for S in $SAMPLES; do
     for PRG in $PROGS; do
       LOG=${PRG}_${LOGBASE}
-      echo $PRG $THREADS threads sample $S
+      echo $PRG $T threads sample $S
       echo "% Sample: "$S >> $LOG
       $BIN/$PRG -p $T -c $T -s >> $LOG
     done
