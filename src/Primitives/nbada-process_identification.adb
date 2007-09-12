@@ -24,13 +24,14 @@ pragma Style_Checks (Off);
 --  Description     : Process IDs.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 16:06:16 2004
---  $Id: nbada-process_identification.adb,v 1.6 2007/08/30 14:19:56 andersg Exp $
+--  $Id: nbada-process_identification.adb,v 1.7 2007/09/12 10:08:15 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
 with Ada.Task_Attributes;
+with Ada.Exceptions;
 with NBAda.Primitives;
 
 package body NBAda.Process_Identification is
@@ -41,7 +42,7 @@ package body NBAda.Process_Identification is
       new Ada.Task_Attributes (Attribute     => Process_ID_Base,
                                Initial_Value => 0);
    --  In GNAT some of the operations in Ada.Task_Attributes are
-   --  blocking,  in particular, Set_Value. Value is non-blocking for
+   --  blocking, in particular, Set_Value. Value is non-blocking for
    --  small values, though.
 
    Process_Count : aliased Process_ID_Base := 0;
@@ -53,9 +54,22 @@ package body NBAda.Process_Identification is
       use type Process_ID_Base;
    begin
       if Process_IDs.Value = 0 then
-         Process_IDs.Set_Value
-           (Primitives.Fetch_And_Add (Target    => Process_Count'Access,
-                                      Increment => 1) + 1);
+         declare
+            ID : constant Process_ID_Base :=
+              Primitives.Fetch_And_Add (Target    => Process_Count'Access,
+                                        Increment => 1) + 1;
+         begin
+            if ID in Process_ID_Base (Process_ID_Type'First) ..
+              Process_ID_Base (Process_ID_Type'Last)
+            then
+               Process_IDs.Set_Value (ID);
+            else
+               Ada.Exceptions.Raise_Exception
+                 (Constraint_Error'Identity,
+                  "nbada-process_identification.adb: " &
+                  "Maximum number of registered threads exceeded!");
+            end if;
+         end;
       end if;
    end Register;
 
