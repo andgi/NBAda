@@ -23,7 +23,7 @@
 --  Description     : Benchmark application for lock-free queues.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Apr 13 22:09:40 2005
---  $Id: queue_test.adb,v 1.13 2007/09/11 14:47:37 andersg Exp $
+--  $Id: queue_test.adb,v 1.14 2007/09/12 15:35:18 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -47,7 +47,7 @@ procedure Queue_Test is
    use NBAda;
 
    package PID is
-      new Process_Identification (Max_Number_Of_Processes => 31);
+      new Process_Identification (Max_Number_Of_Processes => 65);
 
    type Value_Type is
       record
@@ -89,7 +89,7 @@ procedure Queue_Test is
    No_Producers_Running : aliased Primitives.Unsigned_32 := 0;
    No_Consumers_Running : aliased Primitives.Unsigned_32 := 0;
 
-   Task_Count : aliased Primitives.Unsigned_32 := 0;
+--   Task_Count : aliased Primitives.Unsigned_32 := 0;
    function Pinned_Task return System.Task_Info.Task_Info_Type is
    begin
       --  GNAT/IRIX
@@ -331,6 +331,10 @@ begin
       Producer_Array : array (1 .. No_Producers) of Producer;
       Consumer_Array : array (1 .. No_Consumers) of Consumer;
    begin
+      if Producer_Array'First = Consumer_Array'Last then  --  Silence warnings.
+         null;
+      end if;
+
       delay 5.0;
       T1 := Ada.Real_Time.Clock;
       Primitives.Fetch_And_Add_32 (Start'Access, 1);
