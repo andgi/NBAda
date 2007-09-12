@@ -34,7 +34,7 @@ pragma Style_Checks (Off);
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 14:07:58 2004
---  $Id: nbada-lock_free_memory_reclamation.adb,v 1.30 2007/09/12 13:42:46 andersg Exp $
+--  $Id: nbada-lock_free_memory_reclamation.adb,v 1.31 2007/09/12 13:52:50 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -144,6 +144,7 @@ package body NBAda.Lock_Free_Memory_Reclamation is
      (others => new HP_Sets.Hash_Table
       (Size => 2 * Natural (Process_Ids.Max_Number_Of_Processes *
                             Max_Number_Of_Dereferences) + 1));
+   --  FIXME: Free these during finalization of the package.
 
    ----------------------------------------------------------------------------
    --  Operations.
@@ -683,15 +684,6 @@ package body NBAda.Lock_Free_Memory_Reclamation is
       use type Reference_Count;
       use HP_Sets;
 
---        type HP_Set_Access is access HP_Sets.Hash_Table;
---        procedure Free is new Ada.Unchecked_Deallocation (HP_Sets.Hash_Table,
---                                                          HP_Set_Access);
---        P_Set : HP_Set_Access :=
---          new HP_Sets.Hash_Table
---          (Size => 2 * Natural (Process_Ids.Max_Number_Of_Processes *
---                                Max_Number_Of_Dereferences) + 1);
---        --  The P_Set is allocated from the heap as it can easily become
---        --  too large to fit on the task stack.
       PS          : Persistent_Shared
         renames Persistent_Shared_Variables (ID).all;
       PL          : Persistent_Local
