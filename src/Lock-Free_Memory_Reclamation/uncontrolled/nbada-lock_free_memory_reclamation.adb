@@ -34,7 +34,7 @@ pragma Style_Checks (Off);
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 14:07:58 2004
---  $Id: nbada-lock_free_memory_reclamation.adb,v 1.29 2007/09/04 12:03:59 andersg Exp $
+--  $Id: nbada-lock_free_memory_reclamation.adb,v 1.30 2007/09/12 13:42:46 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -79,29 +79,43 @@ package body NBAda.Lock_Free_Memory_Reclamation is
    package HP_Sets is
       new Internals.Hash_Tables (Managed_Node_Access, "=", Hash_Ref);
 
+
    ----------------------------------------------------------------------------
    --  Internal data structures.
    ----------------------------------------------------------------------------
 
    --  Persistent shared variables.
-   Hazard_Pointer : array (Processes, HP_Index) of aliased Atomic_Node_Access;
-   pragma Volatile (Hazard_Pointer);
-   pragma Atomic_Components (Hazard_Pointer);
-
-   DL_Nodes  : array (Processes, Valid_Node_Index) of
+   type Hazard_Pointer_Array is array (HP_Index) of
      aliased Atomic_Node_Access;
-   pragma Volatile (DL_Nodes);
-   pragma Atomic_Components (DL_Nodes);
+   pragma Volatile (Hazard_Pointer_Array);
+   pragma Atomic_Components (Hazard_Pointer_Array);
 
-   DL_Claims : array (Processes, Valid_Node_Index) of aliased Claim_Count
-     := (others => (others => 0));
-   pragma Volatile (DL_Claims);
-   pragma Atomic_Components (DL_Claims);
+   type Node_Array is array (Valid_Node_Index) of
+     aliased Atomic_Node_Access;
+   pragma Volatile (Node_Array);
+   pragma Atomic_Components (Node_Array);
 
-   DL_Done : array (Processes, Valid_Node_Index) of aliased Boolean :=
-     (others => (others => False));
-   pragma Volatile (DL_Done);
-   pragma Atomic_Components (DL_Done);
+   type Claim_Array is array (Valid_Node_Index) of
+     aliased Claim_Count;
+   pragma Volatile (Claim_Array);
+   pragma Atomic_Components (Claim_Array);
+
+   type Done_Array is array (Valid_Node_Index) of aliased Boolean;
+   pragma Volatile (Done_Array);
+   pragma Atomic_Components (Done_Array);
+
+   type Persistent_Shared is
+      record
+         Hazard_Pointer : Hazard_Pointer_Array;
+         DL_Nodes       : Node_Array;
+         DL_Claims      : Claim_Array := (others => 0);
+         DL_Done        : Done_Array  := (others => False);
+      end record;
+   type Persistent_Shared_Access is access Persistent_Shared;
+
+   Persistent_Shared_Variables : constant array (Processes) of
+     Persistent_Shared_Access := (others => new Persistent_Shared);
+   --  FIXME: Free these during finalization of the package.
 
    --  Persistent process local variables.
    type DL_Nexts_Array is array (Valid_Node_Index) of Node_Index;
@@ -111,18 +125,11 @@ package body NBAda.Lock_Free_Memory_Reclamation is
         D_Count  : Node_Count := 0;
         DL_Nexts : DL_Nexts_Array := (others => 0);
      end record;
+   type Persistent_Local_Access is access Persistent_Local;
 
-   Persistent_Local_Variables : array (Processes) of Persistent_Local;
-
---     D_List   : array (Processes) of Node_Index :=
---       (others => 0);
---     pragma Atomic_Components (D_List);
---     D_Count  : array (Processes) of Node_Count :=
---       (others => 0);
---     pragma Atomic_Components (D_Count);
---     DL_Nexts : array (Processes, Valid_Node_Index) of Node_Index :=
---       (others => (others => 0));
---     pragma Atomic_Components (DL_Nexts);
+   Persistent_Local_Variables : constant array (Processes) of
+     Persistent_Local_Access := (others => new Persistent_Local);
+   --  FIXME: Free these during finalization of the package.
 
    No_Nodes_Created   : aliased Primitives.Unsigned_32 := 0;
    pragma Atomic (No_Nodes_Created);
@@ -180,13 +187,15 @@ package body NBAda.Lock_Free_Memory_Reclamation is
       function  Dereference (Link : access Shared_Reference)
                             return Private_Reference is
          ID       : constant Processes := Process_Ids.Process_ID;
+         PS       : Persistent_Shared renames
+           Persistent_Shared_Variables (ID).all;
          Index    : HP_Index;
          Found    : Boolean := False;
          Node_Ref : Private_Reference;
       begin
          --  Find a free hazard pointer.
-         for I in Hazard_Pointer'Range (2) loop
-            if Hazard_Pointer (ID, I) = null then
+         for I in PS.Hazard_Pointer'Range loop
+            if PS.Hazard_Pointer (I) = null then
                Index       := I;
                Node_Ref.HP := Natural (I);
                Found       := True;
@@ -202,7 +211,7 @@ package body NBAda.Lock_Free_Memory_Reclamation is
          else
             loop
                Node_Ref.Ref := To_Private_Reference (Link.all);
-               Hazard_Pointer (ID, Index) :=
+               PS.Hazard_Pointer (Index) :=
                  Atomic_Node_Access (To_Node_Access (Node_Ref));
 
                Primitives.Membar;
@@ -218,12 +227,14 @@ package body NBAda.Lock_Free_Memory_Reclamation is
       ----------------------------------------------------------------------
       procedure Release (Node : in Private_Reference) is
          ID : constant Processes := Process_Ids.Process_ID;
+         PS       : Persistent_Shared renames
+           Persistent_Shared_Variables (ID).all;
       begin
          --  Find and clear hazard pointer.
          Primitives.Membar;
          --  Complete all preceding memory operations before releasing
          --  the hazard pointer.
-         Hazard_Pointer (ID, HP_Index (Node.HP)) := null;
+         PS.Hazard_Pointer (HP_Index (Node.HP)) := null;
       end Release;
 
       ----------------------------------------------------------------------
@@ -237,9 +248,11 @@ package body NBAda.Lock_Free_Memory_Reclamation is
       ----------------------------------------------------------------------
       procedure Delete  (Node : in Private_Reference) is
          use type Node_Count;
-         ID        : constant Processes := Process_Ids.Process_ID;
-         PL        : Persistent_Local renames Persistent_Local_Variables (ID);
-         Index     : Node_Index;
+         ID    : constant Processes := Process_Ids.Process_ID;
+         PS    : Persistent_Shared
+           renames Persistent_Shared_Variables (ID).all;
+         PL    : Persistent_Local renames Persistent_Local_Variables (ID).all;
+         Index : Node_Index;
       begin
          Release (Node);
          declare
@@ -253,15 +266,15 @@ package body NBAda.Lock_Free_Memory_Reclamation is
 
          --  Find a free index in DL_Nodes.
          --  This is probably not the best search strategy.
-         for I in DL_Nodes'Range (2) loop
-            if DL_Nodes (ID, I) = null then
+         for I in PS.DL_Nodes'Range loop
+            if PS.DL_Nodes (I) = null then
                Index := I;
             end if;
          end loop;
 
-         DL_Done  (ID, Index) := False;
-         DL_Nodes (ID, Index) := Atomic_Node_Access (To_Node_Access (Node));
-         PL.DL_Nexts (Index)  := PL.D_List;
+         PS.DL_Done  (Index) := False;
+         PS.DL_Nodes (Index) := Atomic_Node_Access (To_Node_Access (Node));
+         PL.DL_Nexts (Index) := PL.D_List;
          PL.D_List  := Index;
          PL.D_Count := PL.D_Count + 1;
 
@@ -284,13 +297,15 @@ package body NBAda.Lock_Free_Memory_Reclamation is
       function  Copy (Node : in Private_Reference)
                      return Private_Reference is
          ID    : constant Processes := Process_Ids.Process_ID;
+         PS       : Persistent_Shared
+           renames Persistent_Shared_Variables (ID).all;
          Index : HP_Index;
          Found : Boolean := False;
          Copy  : Private_Reference;
       begin
          --  Find a free hazard pointer.
-         for I in Hazard_Pointer'Range (2) loop
-            if Hazard_Pointer (ID, I) = null then
+         for I in PS.Hazard_Pointer'Range loop
+            if PS.Hazard_Pointer (I) = null then
                Index   := I;
                Copy.HP := Natural (I);
                Found   := True;
@@ -305,7 +320,7 @@ package body NBAda.Lock_Free_Memory_Reclamation is
                "Maximum number of local dereferences exceeded!");
          else
             Copy.Ref := Node.Ref;
-            Hazard_Pointer (ID, Index) :=
+            PS.Hazard_Pointer (Index) :=
               Atomic_Node_Access (To_Node_Access (Copy));
 
             Primitives.Membar;
@@ -408,14 +423,16 @@ package body NBAda.Lock_Free_Memory_Reclamation is
       ----------------------------------------------------------------------
       function Create return Private_Reference is
          ID    : constant Processes        := Process_Ids.Process_ID;
+         PS    : Persistent_Shared
+           renames Persistent_Shared_Variables (ID).all;
          UNode : constant User_Node_Access := new Managed_Node;
          Node  : constant Node_Access      := UNode.all'Unchecked_Access;
          Index : HP_Index;
          Found : Boolean := False;
       begin
          --  Find a free hazard pointer.
-         for I in Hazard_Pointer'Range (2) loop
-            if Hazard_Pointer (ID, I) = null then
+         for I in PS.Hazard_Pointer'Range loop
+            if PS.Hazard_Pointer (I) = null then
                Index := I;
                Found := True;
                exit;
@@ -428,7 +445,7 @@ package body NBAda.Lock_Free_Memory_Reclamation is
                "lock_free_memory_reclamation.adb: " &
                "Maximum number of local dereferences exceeded!");
          else
-            Hazard_Pointer (ID, Index) := Atomic_Node_Access (Node);
+            PS.Hazard_Pointer (Index) := Atomic_Node_Access (Node);
          end if;
 
          if Debug then
@@ -675,7 +692,10 @@ package body NBAda.Lock_Free_Memory_Reclamation is
 --                                Max_Number_Of_Dereferences) + 1);
 --        --  The P_Set is allocated from the heap as it can easily become
 --        --  too large to fit on the task stack.
-      PL          : Persistent_Local renames Persistent_Local_Variables (ID);
+      PS          : Persistent_Shared
+        renames Persistent_Shared_Variables (ID).all;
+      PL          : Persistent_Local
+        renames Persistent_Local_Variables (ID).all;
       Index       : Node_Index;
       Node        : Atomic_Node_Access;
       New_D_List  : Node_Index := 0;
@@ -684,7 +704,7 @@ package body NBAda.Lock_Free_Memory_Reclamation is
       --  Set the trace bit on each deleted node with MM_RC = 0.
       Index := PL.D_List;
       while Index /= 0 loop
-         Node := DL_Nodes (ID, Index);
+         Node := PS.DL_Nodes (Index);
          if Node.MM_RC = 0 then
             Primitives.Membar;
             --  The read of MM_RC must precede the write of MM_trace.
@@ -704,9 +724,9 @@ package body NBAda.Lock_Free_Memory_Reclamation is
       Clear (P_Set (ID).all);
 
       --  Read all hazard pointers.
-      for P in Hazard_Pointer'Range (1) loop
-         for I in Hazard_Pointer'Range (2) loop
-            Node := Hazard_Pointer (P, I);
+      for P in Processes loop
+         for I in HP_Index loop
+            Node := Persistent_Shared_Variables (P).Hazard_Pointer (I);
             if Node /= null then
                declare
                   N : constant Managed_Node_Access :=
@@ -718,23 +738,23 @@ package body NBAda.Lock_Free_Memory_Reclamation is
          end loop;
       end loop;
       Primitives.Membar;
-      --  Make sure the memory operations of the algorithm phases are
+      --  Make sure the memory operations of the algorithm's phases are
       --  separated.
 
       --  Attempt to reclaim nodes.
       while PL.D_List /= 0 loop
          Index       := PL.D_List;
-         Node        := DL_Nodes (ID, Index);
+         Node        := PS.DL_Nodes (Index);
          PL.D_List   := PL.DL_Nexts (Index);
 
          if Node.MM_RC = 0 and Node.MM_Trace and
            not Member (Managed_Node_Access (Node), P_Set (ID).all)
          then
-            DL_Nodes (ID, Index) := null;
+            PS.DL_Nodes (Index) := null;
             Primitives.Membar;
             --  The write to DL_Nodes (ID, Index) must precede the
             --  read of DL_Claims (ID, Index).
-            if DL_Claims (ID, Index) = 0 then
+            if PS.DL_Claims (Index) = 0 then
                Dispose (Managed_Node_Access (Node),
                         Concurrent => False);
                Free (Managed_Node_Access (Node));
@@ -745,8 +765,8 @@ package body NBAda.Lock_Free_Memory_Reclamation is
             else
                Dispose (Managed_Node_Access (Node),
                         Concurrent => True);
-               DL_Done  (ID, Index) := True;
-               DL_Nodes (ID, Index) := Node;
+               PS.DL_Done  (Index) := True;
+               PS.DL_Nodes (Index) := Node;
 
                --  Keep Node in D_List.
                PL.DL_Nexts (Index) := New_D_List;
@@ -769,12 +789,13 @@ package body NBAda.Lock_Free_Memory_Reclamation is
 
    ----------------------------------------------------------------------------
    procedure Clean_Up_Local (ID : in Processes) is
-      PL    : Persistent_Local renames Persistent_Local_Variables (ID);
+      PS    : Persistent_Shared renames Persistent_Shared_Variables (ID).all;
+      PL    : Persistent_Local renames Persistent_Local_Variables (ID).all;
       Index : Node_Index := PL.D_List;
       Node  : Atomic_Node_Access;
    begin
       while Index /= 0 loop
-         Node  := DL_Nodes (ID, Index);
+         Node  := PS.DL_Nodes (Index);
          Clean_Up (Managed_Node_Access (Node));
          Index := PL.DL_Nexts (Index);
       end loop;
@@ -788,15 +809,24 @@ package body NBAda.Lock_Free_Memory_Reclamation is
    begin
       for P in Processes loop
          for Index in Valid_Node_Index loop
-            Node := DL_Nodes (P, Index);
-            if Node /= null and then not DL_Done (P, Index) then
-               Fetch_And_Add (Target    => DL_Claims (P, Index)'Access,
-                              Increment => 1);
-               if Node = DL_Nodes (P, Index) then
+            Node := Persistent_Shared_Variables (P).DL_Nodes (Index);
+            if
+              Node /= null and then
+              not Persistent_Shared_Variables (P).DL_Done (Index)
+            then
+               Fetch_And_Add
+                 (Target    =>
+                    Persistent_Shared_Variables (P).DL_Claims (Index)'Access,
+                  Increment => 1);
+               if
+                 Node = Persistent_Shared_Variables (P).DL_Nodes (Index)
+               then
                   Clean_Up (Managed_Node_Access (Node));
                end if;
-               Fetch_And_Add (Target    => DL_Claims (P, Index)'Access,
-                              Increment => -1);
+               Fetch_And_Add
+                 (Target    =>
+                    Persistent_Shared_Variables (P).DL_Claims (Index)'Access,
+                  Increment => -1);
             end if;
          end loop;
       end loop;
