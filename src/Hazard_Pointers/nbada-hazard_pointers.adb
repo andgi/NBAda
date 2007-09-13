@@ -27,7 +27,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:35:09 2004
---  $Id: nbada-hazard_pointers.adb,v 1.17 2007/09/12 18:58:00 andersg Exp $
+--  $Id: nbada-hazard_pointers.adb,v 1.18 2007/09/13 14:37:45 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -50,11 +50,11 @@ package body NBAda.Hazard_Pointers is
    type Node_Count   is new Primitives.Standard_Unsigned;
 
    procedure Scan (ID : in Processes);
-   function Hash_Ref (Ref  : in Shared_Reference_Base;
+   function Hash_Ref (Ref  : in Managed_Node_Access;
                       Size : in Natural) return Natural;
 
    package HP_Sets is
-      new NBAda.Internals.Hash_Tables (Shared_Reference_Base, "=", Hash_Ref);
+      new NBAda.Internals.Hash_Tables (Managed_Node_Access, "=", Hash_Ref);
 
    ----------------------------------------------------------------------------
    --  Internal data structures.
@@ -62,7 +62,7 @@ package body NBAda.Hazard_Pointers is
 
    --  Persistent shared variables.
    type Hazard_Pointer_Array is array (HP_Index) of
-     aliased Shared_Reference_Base;
+     aliased Managed_Node_Access;
    pragma Volatile (Hazard_Pointer_Array);
    pragma Atomic_Components (Hazard_Pointer_Array);
    type Persistent_Shared is
@@ -109,7 +109,7 @@ package body NBAda.Hazard_Pointers is
          --  Complete all preceding memory operations before releasing
          --  the hazard pointer.
          for I in PS.Hazard_Pointer'Range loop
-            if PS.Hazard_Pointer (I) = Shared_Reference_Base (Local) then
+            if PS.Hazard_Pointer (I) = Local then
                PS.Hazard_Pointer (I) := null;
                return;
             end if;
@@ -169,7 +169,7 @@ package body NBAda.Hazard_Pointers is
                begin
                   loop
                      Node := Node_Access (Shared.all);
-                     PS.Hazard_Pointer (Index) := Shared_Reference_Base (Node);
+                     PS.Hazard_Pointer (Index) := Managed_Node_Access (Node);
                      if Node /= null then
                         State := Node.MM_Magic;
                      end if;
@@ -189,7 +189,7 @@ package body NBAda.Hazard_Pointers is
             else
                loop
                   Node := Node_Access (Shared.all);
-                  PS.Hazard_Pointer (Index) := Shared_Reference_Base (Node);
+                  PS.Hazard_Pointer (Index) := Managed_Node_Access (Node);
 
                   Primitives.Membar;
                   --  The write to the hazard pointer must be visible before
@@ -213,8 +213,7 @@ package body NBAda.Hazard_Pointers is
          ID : constant Processes := Process_Ids.Process_ID;
       begin
          Release (Local);
-         Managed_Node_Base (Local.all).MM_Next  :=
-           Shared_Reference_Base (D_List (ID));
+         Managed_Node_Base (Local.all).MM_Next  := D_List (ID);
          Managed_Node_Base (Local.all).MM_Magic := MM_Deleted;
          D_List  (ID)      := Managed_Node_Access (Local);
          D_Count (ID)      := D_Count (ID) + 1;
@@ -277,21 +276,32 @@ package body NBAda.Hazard_Pointers is
 
       ----------------------------------------------------------------------
       function To_Private_Reference is
-         new Ada.Unchecked_Conversion (Shared_Reference, Private_Reference);
+         new Ada.Unchecked_Conversion (Shared_Reference,
+                                       Private_Reference_Impl);
       function To_Private_Reference is
-         new Ada.Unchecked_Conversion (Node_Access, Private_Reference);
+         new Ada.Unchecked_Conversion (Node_Access,
+                                       Private_Reference_Impl);
+
+      type Shared_Reference_Access is access all Shared_Reference;
+      type Shared_Reference_Base_Access is access all
+        Shared_Reference_Base_Impl;
+      function To_Shared_Reference_Base_Access is
+         new Ada.Unchecked_Conversion (Shared_Reference_Access,
+                                       Shared_Reference_Base_Access);
 
       ----------------------------------------------------------------------
-      function Boolean_Compare_And_Swap is
-         new Primitives.Standard_Boolean_Compare_And_Swap (Private_Reference);
-      procedure Void_Compare_And_Swap is
-         new Primitives.Standard_Void_Compare_And_Swap (Private_Reference);
+      function Boolean_Compare_And_Swap_Impl is new
+        Primitives.Standard_Boolean_Compare_And_Swap
+        (Shared_Reference_Base_Impl);
+      procedure Void_Compare_And_Swap_Impl is new
+        Primitives.Standard_Void_Compare_And_Swap
+        (Shared_Reference_Base_Impl);
 
       ----------------------------------------------------------------------
       function  Dereference (Link : access Shared_Reference)
                             return Private_Reference is
          ID    : constant Processes := Process_Ids.Process_ID;
-         PS       : Persistent_Shared renames
+         PS    : Persistent_Shared renames
            Persistent_Shared_Variables (ID).all;
          Index : HP_Index;
          Found : Boolean := False;
@@ -301,8 +311,9 @@ package body NBAda.Hazard_Pointers is
          for I in PS.Hazard_Pointer'Range loop
             if PS.Hazard_Pointer (I) = null then
                --  Found a free hazard pointer.
-               Index := I;
-               Found := True;
+               Index   := I;
+               Node.HP := Natural (I);
+               Found   := True;
                exit;
             end if;
          end loop;
@@ -316,21 +327,28 @@ package body NBAda.Hazard_Pointers is
             if Integrity_Checking then
                declare
                   use type Primitives.Unsigned_32;
-                  State : Primitives.Unsigned_32;
+                  State : Primitives.Unsigned_32 := 0;
                begin
                   loop
-                     Node := To_Private_Reference (Link.all);
+                     Node.Ref := To_Private_Reference (Link.all);
                      PS.Hazard_Pointer (Index) :=
-                       Shared_Reference_Base (Deref (Node));
+                       Managed_Node_Access (Deref (Node));
 
                      if Deref (Node) /= null then
-                        State := Deref (Node).MM_Magic;
+                        if Node.Ref = 16#ffffffff# then
+                           Ada.Exceptions.Raise_Exception
+                             (Constraint_Error'Identity,
+                              "hazard_pointers.adb: " &
+                              "Dereference found a nonsense reference value.");
+                        else
+                           State := Deref (Node).MM_Magic;
+                        end if;
                      end if;
 
                      Primitives.Membar;
                      --  The write to the hazard pointer must be visible
                      --  before Link is read again.
-                     exit when To_Private_Reference (Link.all) = Node;
+                     exit when To_Private_Reference (Link.all) = Node.Ref;
                   end loop;
                   if Deref (Node) /= null and then
                     not (State = MM_Live or State = MM_Deleted)  then
@@ -342,14 +360,14 @@ package body NBAda.Hazard_Pointers is
                end;
             else
                loop
-                  Node := To_Private_Reference (Link.all);
+                  Node.Ref := To_Private_Reference (Link.all);
                   PS.Hazard_Pointer (Index) :=
-                    Shared_Reference_Base (Deref (Node));
+                    Managed_Node_Access (Deref (Node));
 
                   Primitives.Membar;
                   --  The write to the hazard pointer must be visible before
                   --  Link is read again.
-                  exit when To_Private_Reference (Link.all) = Node;
+                  exit when To_Private_Reference (Link.all) = Node.Ref;
                end loop;
             end if;
          end if;
@@ -359,8 +377,28 @@ package body NBAda.Hazard_Pointers is
 
       ----------------------------------------------------------------------
       procedure Release     (Node : in Private_Reference) is
+         ID    : constant Processes := Process_Ids.Process_ID;
+         PS    : Persistent_Shared renames
+           Persistent_Shared_Variables (ID).all;
       begin
-         Release (Managed_Node_Access (Deref (Node)));
+         Primitives.Membar;
+         --  Complete all preceding memory operations before releasing
+         --  the hazard pointer.
+         if Integrity_Checking then
+            if PS.Hazard_Pointer (HP_Index (Node.HP)) =
+              Managed_Node_Access (Deref (Node))
+            then
+               PS.Hazard_Pointer (HP_Index (Node.HP)) := null;
+            else
+               Ada.Exceptions.Raise_Exception
+                 (Constraint_Error'Identity,
+                  "hazard_pointers.adb: " &
+                  "Released a private references that had not " &
+                  "been dereferenced!");
+            end if;
+         else
+            PS.Hazard_Pointer (HP_Index (Node.HP)) := null;
+         end if;
       end Release;
 
       ----------------------------------------------------------------------
@@ -372,11 +410,11 @@ package body NBAda.Hazard_Pointers is
                         return Node_Access is
 
          function To_Node_Access is
-            new Ada.Unchecked_Conversion (Private_Reference,
+            new Ada.Unchecked_Conversion (Private_Reference_Impl,
                                           Node_Access);
 
       begin
-         return To_Node_Access (Node and Ref_Mask);
+         return To_Node_Access (Node.Ref and Ref_Mask);
       end Deref;
 
       ----------------------------------------------------------------------
@@ -384,38 +422,40 @@ package body NBAda.Hazard_Pointers is
                                           Old_Value : in Private_Reference;
                                           New_Value : in Private_Reference)
                                          return Boolean is
-
-         type Shared_Reference_Access is access all Shared_Reference;
-         type Private_Reference_Access is access all Private_Reference;
-         function To_Private_Reference_Access is
-            new Ada.Unchecked_Conversion (Shared_Reference_Access,
-                                          Private_Reference_Access);
-
       begin
-         return Boolean_Compare_And_Swap
+         if Integrity_Checking then
+            if New_Value.Ref = 16#ffffffff# then
+               Ada.Exceptions.Raise_Exception
+                 (Constraint_Error'Identity,
+                  "hazard_pointers.adb: " &
+                  "Error: Attempting to CAS a nonsense reference value!");
+            end if;
+         end if;
+         return Boolean_Compare_And_Swap_Impl
            (Target =>
-              To_Private_Reference_Access (Shared_Reference_Access (Link)),
-            Old_Value => Old_Value,
-            New_Value => New_Value);
+              To_Shared_Reference_Base_Access (Link.all'Unchecked_Access),
+            Old_Value => Shared_Reference_Base_Impl (Old_Value.Ref),
+            New_Value => Shared_Reference_Base_Impl (New_Value.Ref));
       end Boolean_Compare_And_Swap;
 
       ----------------------------------------------------------------------
       procedure Void_Compare_And_Swap    (Link      : access Shared_Reference;
                                           Old_Value : in Private_Reference;
                                           New_Value : in Private_Reference) is
-
-         type Shared_Reference_Access is access all Shared_Reference;
-         type Private_Reference_Access is access all Private_Reference;
-         function To_Private_Reference_Access is
-            new Ada.Unchecked_Conversion (Shared_Reference_Access,
-                                          Private_Reference_Access);
-
       begin
-         Void_Compare_And_Swap
+         if Integrity_Checking then
+            if New_Value.Ref = 16#ffffffff# then
+               Ada.Exceptions.Raise_Exception
+                 (Constraint_Error'Identity,
+                  "hazard_pointers.adb: " &
+                  "Error: Attempting to CAS a nonsense reference value!");
+            end if;
+         end if;
+         Void_Compare_And_Swap_Impl
            (Target =>
-              To_Private_Reference_Access (Shared_Reference_Access (Link)),
-            Old_Value => Old_Value,
-            New_Value => New_Value);
+              To_Shared_Reference_Base_Access (Link.all'Unchecked_Access),
+            Old_Value => Shared_Reference_Base_Impl (Old_Value.Ref),
+            New_Value => Shared_Reference_Base_Impl (New_Value.Ref));
       end Void_Compare_And_Swap;
 
       ----------------------------------------------------------------------
@@ -432,8 +472,7 @@ package body NBAda.Hazard_Pointers is
          end if;
 
          Release (Node);
-         Managed_Node_Base (Deleted.all).MM_Next  :=
-           Shared_Reference_Base (D_List (ID));
+         Managed_Node_Base (Deleted.all).MM_Next  := D_List (ID);
          Managed_Node_Base (Deleted.all).MM_Magic := MM_Deleted;
          D_List  (ID)      := Managed_Node_Access (Deleted);
          D_Count (ID)      := D_Count (ID) + 1;
@@ -450,18 +489,30 @@ package body NBAda.Hazard_Pointers is
                          Node : in Private_Reference) is
 
          type Shared_Reference_Access is access all Shared_Reference;
-         type Private_Reference_Access is access all Private_Reference;
+         type Private_Reference_Access is access all Private_Reference_Impl;
          function To_Private_Reference_Access is
             new Ada.Unchecked_Conversion (Shared_Reference_Access,
                                           Private_Reference_Access);
 
-         Tmp : constant Private_Reference := To_Private_Reference (Link.all);
+         Old : constant Private_Reference :=
+           (Ref => To_Private_Reference (Link.all), HP => 0);
       begin
-         To_Private_Reference_Access (Shared_Reference_Access (Link)).all :=
-           Node;
+         if Integrity_Checking then
+            if Node.Ref = 16#ffffffff# then
+               Ada.Exceptions.Raise_Exception
+              (Constraint_Error'Identity,
+               "hazard_pointers.adb: " &
+               "Error: Storing a nonsense reference value!");
+            end if;
+         end if;
 
-         if "+"(Tmp) /= null then
-            Delete (Tmp);
+         To_Private_Reference_Access (Shared_Reference_Access (Link)).all :=
+           Node.Ref;
+
+         --  This will crash and burn since Old.HP = 0.
+         --  Does it even make sense to delete the old value?
+         if "+"(Old) /= null then
+            Delete (Old);
          end if;
       end Store;
 
@@ -489,11 +540,12 @@ package body NBAda.Hazard_Pointers is
                Node  : constant Node_Access      := UNode.all'Unchecked_Access;
             begin
                PS.Hazard_Pointer (Index) :=
-                 Shared_Reference_Base (Node);
+                 Managed_Node_Access (Node);
 
                Primitives.Fetch_And_Add (Created'Access, 1);
 
-               return To_Private_Reference (Node);
+               return (Ref => To_Private_Reference (Node),
+                       HP  => Natural (Index));
             end;
          else
             Ada.Exceptions.Raise_Exception
@@ -506,34 +558,34 @@ package body NBAda.Hazard_Pointers is
       ----------------------------------------------------------------------
       procedure Mark      (Node : in out Private_Reference) is
       begin
-         Node := Node or 1;
+         Node.Ref := Node.Ref or 1;
       end Mark;
 
       ----------------------------------------------------------------------
       function  Mark      (Node : in     Private_Reference)
                           return Private_Reference is
       begin
-         return Node or 1;
+         return (Ref => Node.Ref or 1, HP => Node.HP);
       end Mark;
 
       ----------------------------------------------------------------------
       procedure Unmark    (Node : in out Private_Reference) is
       begin
-         Node := Node and Ref_Mask;
+         Node.Ref := Node.Ref and Ref_Mask;
       end Unmark;
 
       ----------------------------------------------------------------------
       function  Unmark    (Node : in     Private_Reference)
                           return Private_Reference is
       begin
-         return Node and Ref_Mask;
+         return (Ref => Node.Ref and Ref_Mask, HP => Node.HP);
       end Unmark;
 
       ----------------------------------------------------------------------
       function  Is_Marked (Node : in     Private_Reference)
                           return Boolean is
       begin
-         return (Node and Mark_Mask) = 1;
+         return (Node.Ref and Mark_Mask) = 1;
       end Is_Marked;
 
       ----------------------------------------------------------------------
@@ -544,17 +596,23 @@ package body NBAda.Hazard_Pointers is
       end Is_Marked;
 
       ----------------------------------------------------------------------
+      function "=" (Left, Right : in     Private_Reference) return Boolean is
+      begin
+         return Left.Ref = Right.Ref;
+      end "=";
+
+      ----------------------------------------------------------------------
       function "=" (Link : in     Shared_Reference;
                     Ref  : in     Private_Reference) return Boolean is
       begin
-         return To_Private_Reference (Link) = Ref;
+         return To_Private_Reference (Link) = Ref.Ref;
       end "=";
 
       ----------------------------------------------------------------------
       function "=" (Ref  : in     Private_Reference;
                     Link : in     Shared_Reference) return Boolean is
       begin
-         return To_Private_Reference (Link) = Ref;
+         return To_Private_Reference (Link) = Ref.Ref;
       end "=";
 
    end Reference_Operations;
@@ -581,7 +639,7 @@ package body NBAda.Hazard_Pointers is
       New_D_List  : Managed_Node_Access := null;
       New_D_Count : Node_Count          := 0;
       Node        : Managed_Node_Access;
-      Ref         : Shared_Reference_Base;
+      Ref         : Managed_Node_Access;
    begin
       Clear (P_Set (ID).all);
       --  Snapshot all hazard pointers.
@@ -601,8 +659,8 @@ package body NBAda.Hazard_Pointers is
       while D_List (ID) /= null loop
          Node        := D_List (ID);
          D_List (ID) := Managed_Node_Access (Node.MM_Next);
-         if Member (Shared_Reference_Base (Node), P_Set (ID).all) then
-            Node.MM_Next := Shared_Reference_Base (New_D_List);
+         if Member (Node, P_Set (ID).all) then
+            Node.MM_Next := New_D_List;
             New_D_List   := Node;
             New_D_Count  := New_D_Count + 1;
          else
@@ -626,10 +684,10 @@ package body NBAda.Hazard_Pointers is
    end Scan;
 
    ----------------------------------------------------------------------------
-   function Hash_Ref (Ref  : in Shared_Reference_Base;
+   function Hash_Ref (Ref  : in Managed_Node_Access;
                       Size : in Natural) return Natural is
       function To_Unsigned is
-         new Ada.Unchecked_Conversion (Shared_Reference_Base,
+         new Ada.Unchecked_Conversion (Managed_Node_Access,
                                        Primitives.Standard_Unsigned);
       use type Primitives.Standard_Unsigned;
    begin

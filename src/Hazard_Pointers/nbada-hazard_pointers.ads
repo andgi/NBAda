@@ -27,7 +27,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:10:15 2004
---  $Id: nbada-hazard_pointers.ads,v 1.17 2007/09/13 09:37:06 andersg Exp $
+--  $Id: nbada-hazard_pointers.ads,v 1.18 2007/09/13 14:37:45 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -219,6 +219,9 @@ package NBAda.Hazard_Pointers is
                           return Boolean;
       pragma Inline_Always (Is_Marked);
 
+      function "=" (Left, Right : in     Private_Reference) return Boolean;
+      pragma Inline_Always ("=");
+      --  Private references are equal when they reference the same node.
       function "=" (Link : in     Shared_Reference;
                     Ref  : in     Private_Reference) return Boolean;
       pragma Inline_Always ("=");
@@ -229,15 +232,21 @@ package NBAda.Hazard_Pointers is
 
    private
 
-      type Private_Reference is new Primitives.Standard_Unsigned;
+      type Private_Reference_Impl is new Primitives.Standard_Unsigned;
+      subtype Index is Natural range 0 .. Max_Number_Of_Dereferences;
+      type Private_Reference is
+         record
+            Ref : Private_Reference_Impl := 0;
+            HP  : Index := 0;
+         end record;
 
-      Null_Reference : constant Private_Reference := 0;
+      Null_Reference : constant Private_Reference := (0, 0);
 
       Mark_Bits  : constant := 2;
       --  Note: Reference_Counted_Node_Base'Alignment >= 2 ** Mark_Bits
       --        MUST hold.
-      Mark_Mask  : constant Private_Reference := 2 ** Mark_Bits - 1;
-      Ref_Mask   : constant Private_Reference := -(2 ** Mark_Bits);
+      Mark_Mask  : constant Private_Reference_Impl := 2 ** Mark_Bits - 1;
+      Ref_Mask   : constant Private_Reference_Impl := -(2 ** Mark_Bits);
 
    end Reference_Operations;
    ----------------------------------------------------------------------------
@@ -259,9 +268,13 @@ package NBAda.Hazard_Pointers is
 
 private
 
-   type Shared_Reference_Base is new Managed_Node_Access;
-   --   pragma Atomic (Shared_Reference);
-   --   pragma Volatile (Shared_Reference);
+   type Shared_Reference_Base_Impl is new Primitives.Standard_Unsigned;
+   type Shared_Reference_Base is
+      record
+         Ref : Shared_Reference_Base_Impl := 0;
+      end record;
+   for Shared_Reference_Base'Size use Primitives.Standard_Unsigned'Size;
+   pragma Atomic (Shared_Reference_Base);
 
    MM_Live      : constant := 12121212;
    MM_Deleted   : constant := 21212121;
@@ -269,7 +282,7 @@ private
 
    type Managed_Node_Base is abstract tagged limited
       record
-         MM_Next : aliased Shared_Reference_Base;
+         MM_Next : aliased Managed_Node_Access;
          pragma Atomic (MM_Next);
          MM_Magic : Primitives.Unsigned_32 := MM_Live;
          pragma Atomic (MM_Magic);
