@@ -27,7 +27,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:10:15 2004
---  $Id: nbada-hazard_pointers.ads,v 1.16 2007/08/30 16:14:05 andersg Exp $
+--  $Id: nbada-hazard_pointers.ads,v 1.17 2007/09/13 09:37:06 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -263,10 +263,16 @@ private
    --   pragma Atomic (Shared_Reference);
    --   pragma Volatile (Shared_Reference);
 
+   MM_Live      : constant := 12121212;
+   MM_Deleted   : constant := 21212121;
+   MM_Reclaimed : constant := 88888888;
+
    type Managed_Node_Base is abstract tagged limited
       record
          MM_Next : aliased Shared_Reference_Base;
          pragma Atomic (MM_Next);
+         MM_Magic : Primitives.Unsigned_32 := MM_Live;
+         pragma Atomic (MM_Magic);
       end record;
 
 end NBAda.Hazard_Pointers;
