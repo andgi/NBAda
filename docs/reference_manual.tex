@@ -8,7 +8,7 @@
 %  Stuhlsatzenhausweg 85
 %  66123 Saarbrücken, Germany
 %
-% $Id: reference_manual.tex,v 1.4 2007/10/18 16:28:13 andersg Exp $
+% $Id: reference_manual.tex,v 1.5 2007/10/18 17:16:41 andersg Exp $
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -179,10 +179,10 @@ Libraries:
         LFRC
         LFMR
         SW_LL_SC
-        LF_STACKS_BOUNDED
         LF_STACKS_EBMR
         LF_STACKS_HPMR
         LF_SETS
+        LF_QUEUES_BOUNDED
         LF_QUEUES_EBMR
         LF_QUEUES_HPMR
         LF_DEQUES
@@ -190,8 +190,52 @@ Libraries:
 \end{TextOutput}
 
 \begin{table}
-
+  \center
+  \begin{small}
+    \begin{tabular}{|l|l|}
+      \hline
+      \cmd{IA32}        & 32-bit Intel x86 Architecture
+                          (Intel Pentium and above).\\
+      \cmd{SPARCV8PLUS} & 32-bit mode on SPARC v9 compatible processor.\\
+      \cmd{SPARCV9}     & 64-bit mode on SPARC v9 compatible processor.\\
+      \cmd{MIPSN32}     & 32-bit mode on 64-bit MIPS processor
+                          (e.g. R-$10000$)\\
+      \hline
+    \end{tabular}
+  \end{small}
+  \caption{Instruction set architectures.}
+  \label{table:isa}
 \end{table}
+
+\begin{table}
+  \center
+  \begin{small}
+    \begin{tabular}{|l|l|}
+      \hline
+      \cmd{PRIMITIVES}           & Hardware atomic primitives.\\
+      \cmd{LF\_POOLS}            & Lock-free storage pools.\\
+      \cmd{EBMR}                 & Epoch-based memory reclamation.\\
+      \cmd{HPMR}                 & Hazard pointers memory reclamation.\\
+      \cmd{PTB}                  & Pass the buck memory reclamation.\\
+      \cmd{LFRC}                 & Lock-free reference counting memory
+                                   reclamation.\\
+      \cmd{LFMR}                 & Lock-free memory reclamation.\\
+      \cmd{SW\_LL\_SC}           & Lock-free load-linked/store-conditional
+                                   primitive.\\
+      \cmd{LF\_STACKS\_EBMR}     & Lock-free dynamic stack.\\
+      \cmd{LF\_STACKS\_HPMR}     & Lock-free dynamic stack.\\
+      \cmd{LF\_SETS}             & Lock-free set.\\
+      \cmd{LF\_QUEUES\_BOUNDED}  & Lock-free bounded queue.\\
+      \cmd{LF\_QUEUES\_EBMR}     & Lock-free dynamic queue.\\
+      \cmd{LF\_QUEUES\_HPMR}     & Lock-free dynamic queue.\\
+      \cmd{LF\_DEQUES}           & Lock-free deque.\\
+      \hline
+    \end{tabular}
+  \end{small}
+  \caption{Include library options for \cmd{nbada\_config}.}
+  \label{table:modules}
+\end{table}
+
 
 \subsection*{Example}
 
