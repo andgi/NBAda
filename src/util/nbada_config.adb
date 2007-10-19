@@ -23,7 +23,7 @@
 --  Description     : NBAda build config.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Aug 30 11:18:46 2007
--- $Id: nbada_config.adb,v 1.12 2007/10/18 16:10:18 andersg Exp $
+-- $Id: nbada_config.adb,v 1.13 2007/10/19 09:29:07 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Command_Line;
@@ -74,6 +74,8 @@ procedure NBAda_Config is
    --  NBAda source code base directory.
    Install_Base : constant String :=
      "/home/andersg/projects/Ada/Non-Blocking/NBAda/src";
+   --  Default architecture.
+   Default_Architecture : constant Architecture := IA32;
 
    --  Architecture dependent compiler flags.
    Compiler_Flags : constant array (Architecture) of Unbounded_String :=
@@ -174,7 +176,7 @@ procedure NBAda_Config is
    ----------------------------------------------------------------------
    type Config_State is
       record
-         ISA    : Architecture  := IA32;
+         ISA    : Architecture  := Default_Architecture;
          Target : Target_Array := (PRIMITIVES => True, others => False);
       end record;
 
