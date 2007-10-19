@@ -8,7 +8,7 @@
 %  Stuhlsatzenhausweg 85
 %  66123 Saarbrücken, Germany
 %
-% $Id: reference_manual.tex,v 1.5 2007/10/18 17:16:41 andersg Exp $
+% $Id: reference_manual.tex,v 1.6 2007/10/19 10:36:47 andersg Exp $
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -127,18 +127,18 @@
         numbersep=5pt}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Introduction}\label{chpt:introduction}
+\chapter{Introduction}\label{chpt:Introduction}
 
 \nbada\ is a collection of non-blocking algorithms and data structures
 in a common infrastructure aiming to be accessible for use by
 non-expert programmers as well as providing support for implementation
 of further non-blocking algorithms. \nbada\ is implemented in \ada\ 95 and
 is distributed as free software under the terms of the GNU Public License
-(c.f. Appendix~\ref{chpt:license}).
+(c.f. Appendix~\ref{chpt:License}).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Installation}\label{chpt:install}
+\chapter{Installation}\label{chpt:Install}
 
 Installation of \nbada\ is simple: just extract the distribution
 archive anywhere you want. To make it convenient to compile programs
@@ -156,14 +156,100 @@ into \cmd{nbada\_config.adb} by modifying the following line in
    --  NBAda source code base directory.
    Install_Base : constant String :=
      "/usr/local/share/NBAda/src";  -- Change this line.
+   --  Default architecture.
+   Default_Architecture : constant Architecture := IA32;
 \end{lstlisting}
 \end{AdaCode}
+For convenience the default architecture can also be changed there, the
+full list of supported architectures is shown in Table~\ref{table:ISAs}.
 The \cmd{nbada\_config.adb} can be compiled, e.g. with the command
 `\cmd{gnatmake nbada\_config.adb}'.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Using \cmd{nbada\_config}}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{table}[t]
+  \center
+  \begin{small}
+    \begin{tabular}{|l|l|}
+      \hline
+      Architecture      & Description\\
+      \hline
+      \cmd{IA32}        & 32-bit Intel x86 Architecture
+                          (Intel Pentium and above).\\
+      \cmd{SPARCV8PLUS} & 32-bit mode on SPARC v9 compatible processor.\\
+      \cmd{SPARCV9}     & 64-bit mode on SPARC v9 compatible processor.\\
+      \cmd{MIPSN32}     & 32-bit mode on 64-bit MIPS processor
+                          (e.g. R-$10000$)\\
+      \hline
+    \end{tabular}
+  \end{small}
+  \caption{Supported instruction set architectures.}
+  \label{table:ISAs}
+\end{table}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{table}[t]
+  \center
+  \begin{small}
+    \begin{tabular}{|l|l|c|}
+      \hline
+      Option                     & Description & Chapter \\
+      \hline
+      \cmd{PRIMITIVES}           & Hardware atomic primitives.
+      & \ref{chpt:Primitives}\\
+      \cmd{LF\_POOLS}            & Lock-free storage pools.
+      & \ref{chpt:Memory-allocation}\\
+      \cmd{EBMR}                 & Epoch-based memory reclamation.
+      & \ref{chpt:Memory-reclamation}\\
+      \cmd{HPMR}                 & Hazard pointers memory reclamation.
+      & \ref{chpt:Memory-reclamation}\\
+      \cmd{PTB}                  & Pass the buck memory reclamation.
+      & \ref{chpt:Memory-reclamation}\\
+      \cmd{LFRC}                 & Lock-free reference counting memory
+                                   reclamation.
+      & \ref{chpt:Memory-reclamation}\\
+      \cmd{LFMR}                 & Lock-free memory reclamation.
+      & \ref{chpt:Memory-reclamation}\\
+      \cmd{SW\_LL\_SC}           & Lock-free load-linked/store-conditional
+                                   primitive.
+      & \ref{chpt:LFLLSC}\\
+      \cmd{LF\_STACKS\_EBMR}     & Lock-free dynamic stack.
+      & \ref{chpt:LFSTACKS}\\
+      \cmd{LF\_STACKS\_HPMR}     & Lock-free dynamic stack.
+      & \ref{chpt:LFSTACKS}\\
+      \cmd{LF\_SETS}             & Lock-free set.
+      & \ref{chpt:LFSETS}\\
+      \cmd{LF\_QUEUES\_BOUNDED}  & Lock-free bounded queue.
+      & \ref{chpt:LFQUEUES}\\
+      \cmd{LF\_QUEUES\_EBMR}     & Lock-free dynamic queue.
+      & \ref{chpt:LFQUEUES}\\
+      \cmd{LF\_QUEUES\_HPMR}     & Lock-free dynamic queue.
+      & \ref{chpt:LFQUEUES}\\
+      \cmd{LF\_DEQUES}           & Lock-free deque.
+      & \ref{chpt:LFDEQUES}\\
+      \hline
+    \end{tabular}
+  \end{small}
+  \caption{Include library options for \cmd{nbada\_config}.}
+  \label{table:modules}
+\end{table}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+As mentioned above, \cmd{nbada\_config} outputs command line options
+for use with \cmd{gnatmake}. A typical usage pattern would be:
+
+\begin{TextOutput}
+\begin{verbatim}
+% gnatmake myprogram.adb `nbada_config LF_SETS`
+\end{verbatim}
+\end{TextOutput}
+
+where the shell replaces \cmd{`nbada\_config LF\_SETS`} with the output of
+\cmd{nbada\_config LF\_SETS}.
+
+The full set of options recognized by \cmd{nbada\_config} is outlined below and
+explained in Table~\ref{table:ISAs} and Table~\ref{table:modules}.
 \begin{TextOutput}
 \begin{verbatim}
 Usage: nbada_config [OPTIONS] [LIBRARIES]
@@ -189,78 +275,49 @@ Libraries:
 \end{verbatim}
 \end{TextOutput}
 
-\begin{table}
-  \center
-  \begin{small}
-    \begin{tabular}{|l|l|}
-      \hline
-      \cmd{IA32}        & 32-bit Intel x86 Architecture
-                          (Intel Pentium and above).\\
-      \cmd{SPARCV8PLUS} & 32-bit mode on SPARC v9 compatible processor.\\
-      \cmd{SPARCV9}     & 64-bit mode on SPARC v9 compatible processor.\\
-      \cmd{MIPSN32}     & 32-bit mode on 64-bit MIPS processor
-                          (e.g. R-$10000$)\\
-      \hline
-    \end{tabular}
-  \end{small}
-  \caption{Instruction set architectures.}
-  \label{table:isa}
-\end{table}
-
-\begin{table}
-  \center
-  \begin{small}
-    \begin{tabular}{|l|l|}
-      \hline
-      \cmd{PRIMITIVES}           & Hardware atomic primitives.\\
-      \cmd{LF\_POOLS}            & Lock-free storage pools.\\
-      \cmd{EBMR}                 & Epoch-based memory reclamation.\\
-      \cmd{HPMR}                 & Hazard pointers memory reclamation.\\
-      \cmd{PTB}                  & Pass the buck memory reclamation.\\
-      \cmd{LFRC}                 & Lock-free reference counting memory
-                                   reclamation.\\
-      \cmd{LFMR}                 & Lock-free memory reclamation.\\
-      \cmd{SW\_LL\_SC}           & Lock-free load-linked/store-conditional
-                                   primitive.\\
-      \cmd{LF\_STACKS\_EBMR}     & Lock-free dynamic stack.\\
-      \cmd{LF\_STACKS\_HPMR}     & Lock-free dynamic stack.\\
-      \cmd{LF\_SETS}             & Lock-free set.\\
-      \cmd{LF\_QUEUES\_BOUNDED}  & Lock-free bounded queue.\\
-      \cmd{LF\_QUEUES\_EBMR}     & Lock-free dynamic queue.\\
-      \cmd{LF\_QUEUES\_HPMR}     & Lock-free dynamic queue.\\
-      \cmd{LF\_DEQUES}           & Lock-free deque.\\
-      \hline
-    \end{tabular}
-  \end{small}
-  \caption{Include library options for \cmd{nbada\_config}.}
-  \label{table:modules}
-\end{table}
 
 
-\subsection*{Example}
+\subsection*{Examples}
 
 To compile the \nbada\ \cmd{queue\_test} micro-benchmark
-(\cmd{src/benchmarks/Queues} using a lock-free queue algorithm with
-epoch-based memory reclamation the following command line could be used
+(\cmd{src/benchmarks/Queues}) using a lock-free queue algorithm with
+epoch-based memory reclamation the following command line could be used:
 
-\cmd{\% gnatmake queue\_test -ILock-Free\_Queue `nbada\_config LF\_QUEUES\_EBMR`}
+\begin{TextOutput}
+\begin{verbatim}
+% gnatmake queue_test -ILock-Free_Queue `nbada_config LF_QUEUES_EBMR`
+\end{verbatim}
+\end{TextOutput}
 
 The argument \cmd{-ILock-Free\_Queue} is used to select which queue
-implementation the benchmark will use. 
+implementation the benchmark will use as it can be compiled with several
+different ones. Here is the command line to build with the same lock-free queue
+algorithm but with the hazard pointers memory reclamation scheme:
 
-\cmd{\% gnatmake queue\_test -ILock-Free\_Queue `nbada\_config LF\_QUEUES\_HPMR`}
+\begin{TextOutput}
+\begin{verbatim}
+% gnatmake queue_test -ILock-Free_Queue `nbada_config LF_QUEUES_HPMR`
+\end{verbatim}
+\end{TextOutput}
 
-\cmd{\% gnatmake queue\_test -ILock-Free\_Bounded\_Queue `nbada\_config LF\_QUEUES\_BOUNDED LF\_POOLS`}
+This command line builds the \cmd{queue\_test} benchmark with a
+bounded lock-free queue algorithm:
+
+\begin{TextOutput}
+\begin{verbatim}
+% gnatmake queue_test -ILock-Free_Bounded_Queue `nbada_config LF_QUEUES_BOUNDED LF_POOLS`
+\end{verbatim}
+\end{TextOutput}
 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Data structures}\label{chpt:datastructures}
+\chapter{Data structures}\label{chpt:Datastructures}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Atomic Objects}
 
-\subsection{Large Register}
+\subsection{Large Register}\label{chpt:MWR}
 
 \cite{Pet83,LaGiHaPaTs:ESA04}
 
@@ -291,7 +348,7 @@ end NBAda.Atomic_Single_Writer_Registers;
 \end{lstlisting}
 \end{AdaCode}
 
-\subsection{Linearizable Snapshot}
+\subsection{Linearizable Snapshot}\label{chpt:MWSS}
 
 \cite{Jayanti:2005:MWS}
 
@@ -345,7 +402,8 @@ end NBAda.Atomic_Multiwriter_Snapshots;
 \end{lstlisting}
 \end{AdaCode}
 
-\subsection{Software Load-Linked/Store-Conditional for Objects}
+\subsection{Software Load-Linked/Store-Conditional for Objects}%
+\label{chpt:LFLLSC}
 
 \cite{Michael:2004:PLFLL}
 
@@ -410,17 +468,17 @@ end NBAda.Large_Primitives;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Containers}
 
-\subsection{Stacks}
+\subsection{Stacks}\label{chpt:LFSTACKS}
 
-\subsection{Queues}
+\subsection{Queues}\label{chpt:LFQUEUES}
 
-\subsection{Dictionaries}
+\subsection{Dictionaries}\label{chpt:LFMAPS}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Support Packages}\label{chpt:support-pkgs}
+\chapter{Support Packages}\label{chpt:Support-pkgs}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Memory Reclamation Schemes}\label{sec:memory-reclamation}
+\section{Memory Reclamation Schemes}\label{chpt:Memory-reclamation}
 
 \subsection{Safe reclamation of statically linked shared blocks}
 
@@ -609,7 +667,7 @@ to yield a valid reference value.
 \cite{GiPaSuTs:2005:LFGC}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Memory Allocation Pools}
+\section{Memory Allocation Pools}\label{chpt:Memory-allocation}
 
 \cite{IBM:1983}
 
@@ -667,7 +725,7 @@ end NBAda.Lock_Free_Fixed_Size_Storage_Pools;
 \cite{Dice:2002:MLFM,Michael:2004:SLFDMA,GiPaTs:2005:AMLF,SchneiderAnNi:2006:SLCMMA}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Hardware Abstraction Interface}
+\section{Hardware Abstraction Interface}\label{chpt:Primitives}
 
 \subsubsection*{The package Primitives}
 
@@ -827,7 +885,7 @@ end NBAda.Primitives;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \appendix
-\chapter{GNU General Public Licence}\label{chpt:license}
+\chapter{GNU General Public Licence}\label{chpt:License}
 
 \begin{TextOutput}
 \begin{verbatim}
