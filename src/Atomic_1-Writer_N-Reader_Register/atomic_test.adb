@@ -23,7 +23,7 @@
 --  Description     : Test of wait-free register constructions.
 --  Author          : Anders Gidenstam
 --  Created On      : Sat Oct 20 00:43:30 2001
---  $Id: atomic_test.adb,v 1.6 2007/08/31 13:49:36 andersg Exp $
+--  $Id: atomic_test.adb,v 1.7 2007/10/24 14:22:44 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -41,25 +41,25 @@ procedure Atomic_Test is
    use Wait_Free_Strings;
 
    task Writer;
-   task type Reader (No : Positive);
+   task type Reader;
 
    Reg : Atomic_1_M_Register (No_Of_Readers => 15);
 
-   R1  : Reader (1);
-   R2  : Reader (2);
-   R3  : Reader (3);
-   R4  : Reader (4);
-   R5  : Reader (5);
-   R6  : Reader (6);
-   R7  : Reader (7);
-   R8  : Reader (8);
-   R9  : Reader (9);
-   R10 : Reader (10);
-   R11 : Reader (11);
-   R12 : Reader (12);
-   R13 : Reader (13);
-   R14 : Reader (14);
-   R15 : Reader (15);
+   R1  : Reader;
+   R2  : Reader;
+   R3  : Reader;
+   R4  : Reader;
+   R5  : Reader;
+   R6  : Reader;
+   R7  : Reader;
+   R8  : Reader;
+   R9  : Reader;
+   R10 : Reader;
+   R11 : Reader;
+   R12 : Reader;
+   R13 : Reader;
+   R14 : Reader;
+   R15 : Reader;
 
    Str1 : constant My_String := (others => 'A');
    Str2 : constant My_String := (others => 'B');
@@ -75,13 +75,14 @@ procedure Atomic_Test is
    end Writer;
 
    task body Reader is
+      Id  : constant Reader_Id := Register_Reader (Reg);
       Str : My_String;
    begin
       delay 1.0;
       loop
-         Read (Reg, No, Str);
+         Read (Reg, Id, Str);
          if Str /= Str1 and Str /= Str2 then
-            Put_Line (Integer'Image (No) & ": " & String (Str));
+            Put_Line ("Bad value: " & String (Str));
          end if;
       end loop;
    end Reader;

@@ -33,11 +33,13 @@ pragma Style_Checks (Off);
 --                    Symposium on Algorithms, LNCS 3221 pages 736--748, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Aug 28 20:26:15 2007
---  $Id: nbada-atomic_single_writer_registers.adb,v 1.2 2007/08/31 13:49:36 andersg Exp $
+--  $Id: nbada-atomic_single_writer_registers.adb,v 1.3 2007/10/24 14:22:44 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
+
+with Ada.Exceptions;
 
 package body NBAda.Atomic_Single_Writer_Registers is
 
@@ -47,6 +49,10 @@ package body NBAda.Atomic_Single_Writer_Registers is
 
    function CAS is new Primitives.Standard_Boolean_Compare_And_Swap
      (Element => Standard_Unsigned);
+
+   function CAS is new NBAda.Primitives.Standard_Boolean_Compare_And_Swap
+     (Element => Natural);
+
 
    function Swap (Target : access Standard_Unsigned;
                   Value  : in     Standard_Unsigned) return Standard_Unsigned;
@@ -106,12 +112,18 @@ package body NBAda.Atomic_Single_Writer_Registers is
 
    ----------------------------------------------------------------------------
    procedure Read  (Register  : in out Atomic_1_M_Register;
-                    Reader_No : in     Positive;
+                    Reader    : in     Reader_Id;
                     Value     :    out Element_Type) is
       Old_Sync : Standard_Unsigned;
    begin
+      if Reader.Register /= Register'Unrestricted_Access then
+         Ada.Exceptions.Raise_Exception
+           (Constraint_Error'Identity,
+            "NBAda.Atomic_Single_Writer_Register: Invalid Reader_Id");
+      end if;
+
       Old_Sync := Fetch_And_Or (Register.SYNC'Access,
-                                Reader_Bit (Reader_No));
+                                Reader_Bit (Reader.Id));
 
       Value    := Register.BUF (Decode (Old_Sync, Register.No_Of_Readers));
    end Read;
@@ -170,5 +182,37 @@ package body NBAda.Atomic_Single_Writer_Registers is
    begin
       return 2**(Natural (R) - 1);
    end Reader_Bit;
+
+   ----------------------------------------------------------------------------
+   function  Register_Reader (Register : in Atomic_1_M_Register)
+                             return Reader_Id is
+   begin
+      for I in Register.Reader'Range loop
+         if Register.Reader (I) = 0 and
+           then CAS (Target    => Register.Reader (I)'Unrestricted_Access,
+                     Old_Value => 0,
+                     New_Value => 1)
+         then
+            return (Id       => I,
+                    Register => Register'Unrestricted_Access);
+         end if;
+      end loop;
+      raise Maximum_Number_Of_Readers_Exceeded;
+   end Register_Reader;
+
+   ----------------------------------------------------------------------------
+   procedure Deregister_Reader (Register : in out Atomic_1_M_Register;
+                                Reader   : in     Reader_Id) is
+      procedure MB renames NBAda.Primitives.Membar;
+   begin
+      if Reader.Register = Register'Unrestricted_Access then
+         MB;
+         Register.Reader (Reader.Id) := 0;
+      else
+         Ada.Exceptions.Raise_Exception
+           (Constraint_Error'Identity,
+            "NBAda.Atomic_Single_Writer_Register: Invalid Reader_Id");
+      end if;
+   end Deregister_Reader;
 
 end NBAda.Atomic_Single_Writer_Registers;

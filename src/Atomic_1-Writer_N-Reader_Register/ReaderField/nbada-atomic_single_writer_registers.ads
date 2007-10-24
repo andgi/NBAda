@@ -33,7 +33,7 @@ pragma Style_Checks (Off);
 --                    Symposium on Algorithms, LNCS 3221 pages 736--748, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Aug 28 18:12:00 2007
---  $Id: nbada-atomic_single_writer_registers.ads,v 1.2 2007/08/31 13:49:36 andersg Exp $
+--  $Id: nbada-atomic_single_writer_registers.ads,v 1.3 2007/10/24 14:22:44 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -50,11 +50,20 @@ package NBAda.Atomic_Single_Writer_Registers is
 
    type Atomic_1_M_Register (No_Of_Readers : Positive) is limited private;
 
+   type Reader_Id is private;
+
    procedure Write (Register : in out Atomic_1_M_Register;
                     Value    : in     Element_Type);
-   procedure Read  (Register  : in out Atomic_1_M_Register;
-                    Reader_No : in     Positive;
-                    Value     :    out Element_Type);
+   procedure Read  (Register : in out Atomic_1_M_Register;
+                    Reader   : in     Reader_Id;
+                    Value    :    out Element_Type);
+
+   function  Register_Reader (Register : in Atomic_1_M_Register)
+                             return Reader_Id;
+   procedure Deregister_Reader (Register : in out Atomic_1_M_Register;
+                                Reader   : in     Reader_Id);
+
+   Maximum_Number_Of_Readers_Exceeded : exception;
 
 private
 
@@ -63,7 +72,11 @@ private
    type Element_Array is array (Index range <>) of Element_Type;
    pragma Volatile_Components (Element_Array);
 
-   type    Trace_Array is array (Positive range <>) of Index;
+   type Trace_Array is array (Positive range <>) of Index;
+
+   type Natural_Array is array (Positive range <>) of aliased Natural;
+   pragma Atomic_Components (Natural_Array);
+
 
    type Atomic_1_M_Register (No_Of_Readers : Positive) is
       record
@@ -73,6 +86,16 @@ private
          --  Persistent state for the writer.
          Trace : Trace_Array (1 .. No_Of_Readers) := (others => 0);
          Last  : Index := 0;
+         --  Reader registry.
+         Reader   : Natural_Array (1 .. No_Of_Readers) := (others => 0);
+      end record;
+
+   type Register_Access is access all Atomic_1_M_Register;
+
+   type Reader_Id is
+      record
+         Id       : Natural := 0;
+         Register : Register_Access;
       end record;
 
 end NBAda.Atomic_Single_Writer_Registers;
