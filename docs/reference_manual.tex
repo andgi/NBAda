@@ -8,7 +8,7 @@
 %  Stuhlsatzenhausweg 85
 %  66123 Saarbrücken, Germany
 %
-% $Id: reference_manual.tex,v 1.7 2007/10/26 09:32:48 andersg Exp $
+% $Id: reference_manual.tex,v 1.8 2007/10/26 15:59:46 andersg Exp $
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -500,6 +500,7 @@ bounded lock-free queue algorithm:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Atomic Objects}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Large Register}\label{chpt:MWR}
 
 An atomic register is a multi-word object that can be read and written
@@ -569,7 +570,8 @@ involve elegant and symmetric ideas and have formed the basis for
 further results in the area of non-blocking synchronization.
 }%% end-remove
 
-\subsubsection*{The package Atomic\_Single\_Writer\_Registers}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection*{The package NBAda.Atomic\_Single\_Writer\_Registers}
 
 \nbada\ provides two implementations of linearizable single writer multiple
 reader multi-word registers:
@@ -586,7 +588,6 @@ of them without source code changes.
 \begin{lstlisting}
 generic
    type Element_Type is private;
-
 package NBAda.Atomic_Single_Writer_Registers is
 
    pragma Preelaborate (NBAda.Atomic_Single_Writer_Registers);
@@ -616,7 +617,7 @@ end NBAda.Atomic_Single_Writer_Registers;
 \end{lstlisting}
 \end{AdaCode}
 
-Application constraints:
+\paragraph{Application constraints:}
 \begin{itemize}
 \item Concurrent calls to \code{Write} on the same atomic register are
   forbidden.
@@ -627,6 +628,7 @@ Application constraints:
   seldom as possible.
 \end{itemize}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Linearizable Snapshots}\label{chpt:MWSS}
 
 A snapshot is a composite data structure consisting of a number
@@ -639,7 +641,8 @@ of the composit can be read atomically.
 \end{itemize}
 } %% end-remove
 
-\subsubsection*{The package Atomic\_Multiwriter\_Snapshots}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection*{The package NBAda.Atomic\_Multiwriter\_Snapshots}
 
 The \nbada\ package \code{NBAda.Atomic\_Multiwriter\_Snapshots}
 implements the multiple writer per
@@ -695,30 +698,31 @@ end NBAda.Atomic_Multiwriter_Snapshots;
 \end{lstlisting}
 \end{AdaCode}
 
-Application constraints:
+\paragraph{Application constraints:}
 \begin{itemize}
-\item Any task that calls an operation in must have registered an
+\item Any task that calls an operation in
+  \code{NBAda.Atomic\_Multiwriter\_Snapshots} must have registered an
   identity by calling the operation \code{Register} of the
   appropriate instance of \code{NBAda.Process\_Identification}.
 \item All types used for components must have an \code{Object\_Size}
   equal to \code{System.Word\_Size}.
 \end{itemize}
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Software Load-Linked/Store-Conditional for multi-word Objects}%
 \label{chpt:LFLLSC}
 
 
-
-\subsubsection*{The package Large\_Primitives}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection*{The package NBAda.Large\_Primitives}
 
 The package \code{NBAda.Large\_Primitives} implements the lock-free
 load-linked store-conditional algorithm by Michael \cite{Michael:2004:PLFLL}.
 
-The algorithm relies on lock-free memory reclamation. The
-implementation can use be used with either the
-\code{NBAda.Hazard\_Pointers} or the
-\code{NBAda.Epoch\_Based\_Memory\_Reclamation} algorithms.
+The algorithm relies on lock-free memory reclamation and the
+implementation uses the \code{NBAda.Hazard\_Pointers} memory
+reclamation algorithm. The include flag for \cmd{nbada\_config} is
+\cmd{SW\_LL\_SC}.
 
 \begin{AdaCode}
 \begin{lstlisting}
@@ -775,22 +779,183 @@ end NBAda.Large_Primitives;
 \end{lstlisting}
 \end{AdaCode}
 
+\paragraph{Application constraints:}
+\begin{itemize}
+\item All objects of type \code{Shared\_Element} must be initialized
+  with the operation \code{Initialize} before use.
+\item Any task that calls an operation in
+  \code{NBAda.Large\_Primitives} must have registered an
+  identity by calling the operation \code{Register} of the
+  appropriate instance of \code{NBAda.Process\_Identification}.
+\end{itemize}
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Containers}
 
+\nbada\ includes a number of lock-free concurrent container data structures.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Stacks}\label{chpt:LFSTACKS}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection*{The package NBAda.Lock\_Free\_Stacks}
+
+The package \code{NBAda.Lock\_Free\_Stacks} implements a lock-free
+unbounded stack data structure using an old well-known algorithm
+\cite{IBM:1983,Michael:2004:SMR}.
+It can use either the
+\code{NBAda.Hazard\_Pointers} (\cmd{LF\_STACKS\_HPMR}) or
+\code{NBAda.Epoch\_Based\_Memory\_Reclamation} (\cmd{LF\_STACKS\_EBMR})
+memory reclamation algorithms.
+
+\begin{AdaCode}
+\begin{lstlisting}
+generic
+   type Element_Type is private;
+   --  Element type.
+   with package Process_Ids is
+     new NBAda.Process_Identification (<>);
+   --  Process identification.
+package NBAda.Lock_Free_Stack is
+
+   type Stack_Type is limited private;
+
+   Stack_Empty : exception;
+
+   procedure Push (On      : in out Stack_Type;
+                   Element : in     Element_Type);
+   procedure Pop  (From    : in out Stack_Type;
+                   Element :    out Element_Type);
+   function  Pop  (From    : access Stack_Type)
+                  return Element_Type;
+
+   function  Top  (From    : access Stack_Type)
+                  return Element_Type;
+
+private
+
+      ...  --  Implementation specific
+
+end NBAda.Lock_Free_Stack;
+\end{lstlisting}
+\end{AdaCode}
+
+\paragraph{Application constraints:}
+\begin{itemize}
+\item Any task that calls an operation in \code{NBAda.Lock\_Free\_Stack}
+  must have registered an identity by calling the operation
+  \code{Register} of the appropriate instance of
+  \code{NBAda.Process\_Identification}.
+\end{itemize}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Queues}\label{chpt:LFQUEUES}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection*{The package NBAda.Lock\_Free\_Bounded\_Queues}
+
+\cite{TsigasZhang2001:SPAA}
+The include flag for \cmd{nbada\_config} is
+\cmd{LF\_QUEUES\_BOUNDED}.
+
+\begin{AdaCode}
+\begin{lstlisting}
+generic
+   type Element_Type is private;
+   --  The Element_Type must be atomic and Element_Type'Object_Size must be
+   --  equal to System.Word_Size.
+   Null_0 : Element_Type;
+   Null_1 : Element_Type;
+   --  NOTE: These two values MUST be different and MUST NOT appear as
+   --        data values in the queue.
+package NBAda.Lock_Free_Bounded_Queues is
+
+   pragma Preelaborate (Lock_Free_Bounded_Queues);
+
+   type Queue_Size is mod 2**32;
+
+   type Lock_Free_Queue (Max_Size : Queue_Size) is limited private;
+
+   procedure Enqueue (Queue   : in out Lock_Free_Queue;
+                      Element : in     Element_Type);
+
+   procedure Dequeue (Queue   : in out Lock_Free_Queue;
+                      Element :    out Element_Type);
+
+   function  Dequeue (Queue : access Lock_Free_Queue) return Element_Type;
+
+   function Is_Empty (Queue : access Lock_Free_Queue) return Boolean;
+
+   procedure Make_Empty (Queue : in out Lock_Free_Queue);
+   --  NOTE: Make_Empty SHOULD NOT be used when concurrent access is possible.
+
+   Queue_Full  : exception;
+   Queue_Empty : exception;
+
+private
+
+      ...  --  Implementation specific
+
+end NBAda.Lock_Free_Bounded_Queues;
+\end{lstlisting}
+\end{AdaCode}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection*{The package NBAda.Lock\_Free\_Queues}
+
+\cite{Michael:1996:PODC}
+
+The include flag for \cmd{nbada\_config} is
+\cmd{LF\_QUEUES\_HPMR} or \cmd{LF\_QUEUES\_EBMR}.
+
+
+\begin{AdaCode}
+\begin{lstlisting}
+generic
+   type Element_Type is private;
+   --  Element type.
+   with package Process_Ids is
+     new Process_Identification (<>);
+   --  Process identification.
+package NBAda.Lock_Free_Queues is
+
+   type Queue_Type is limited private;
+
+   Queue_Empty : exception;
+
+   procedure Init    (Queue : in out Queue_Type);
+   function  Dequeue (From : access Queue_Type) return Element_Type;
+   procedure Enqueue (On      : in out Queue_Type;
+                      Element : in     Element_Type);
+
+private
+
+      ...  --  Implementation specific
+
+end NBAda.Lock_Free_Queues;
+\end{lstlisting}
+\end{AdaCode}
+
+\remove{%% Do any of my dictionaries work yet?
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Dictionaries}\label{chpt:LFMAPS}
+
+\begin{AdaCode}
+\begin{lstlisting}
+\end{lstlisting}
+\end{AdaCode}
+} %% end-remove
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Support Packages}\label{chpt:Support-pkgs}
 
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Memory Reclamation Schemes}\label{chpt:Memory-reclamation}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Safe reclamation of statically linked shared blocks}
 
 Dereference of shared reference value, a.k.a link, contained in a
@@ -966,6 +1131,7 @@ end NBAda.Hazard_Pointers;
 
 \cite{Michael:2002:SMR,Michael:2004:SMR}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Safe reclamation of dynamically linked shared blocks}
 
 Dereference of a shared reference value, a.k.a link, contained in a
@@ -982,6 +1148,7 @@ to yield a valid reference value.
 
 \cite{IBM:1983}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsubsection*{The package NBAda.Lock\_Free\_Fixed\_Size\_Storage\_Pools}
 
 \begin{AdaCode}
@@ -1038,7 +1205,8 @@ end NBAda.Lock_Free_Fixed_Size_Storage_Pools;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Hardware Abstraction Interface}\label{chpt:Primitives}
 
-\subsubsection*{The package Primitives}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection*{The package NBAda.Primitives}
 
 \begin{AdaCode}
 \begin{lstlisting}
