@@ -8,7 +8,7 @@
 %  Stuhlsatzenhausweg 85
 %  66123 Saarbrücken, Germany
 %
-% $Id: reference_manual.tex,v 1.6 2007/10/19 10:36:47 andersg Exp $
+% $Id: reference_manual.tex,v 1.7 2007/10/26 09:32:48 andersg Exp $
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -36,9 +36,7 @@
 %\usepackage{epsfig}
 
 %%%%% Typesets operation and variable names in the main text.
-\newcommand{\op}[1]{{\textsf{\textit{#1}}}}
-\newcommand{\var}[1]{{\textsf{#1}}}
-\newcommand{\code}[1]{{\textsf{\tt {#1}}}}
+\newcommand{\code}[1]{{\textsf{{#1}}}}
 \newcommand{\cmd}[1]{{\tt {#1}}}
 
 %%%%% Typesets keywords in code figures.
@@ -129,12 +127,195 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Introduction}\label{chpt:Introduction}
 
-\nbada\ is a collection of non-blocking algorithms and data structures
+\nbada\ is a collection of non-blocking algorithms and concurrent
+data structures
 in a common infrastructure aiming to be accessible for use by
 non-expert programmers as well as providing support for implementation
 of further non-blocking algorithms. \nbada\ is implemented in \ada\ 95 and
 is distributed as free software under the terms of the GNU Public License
 (c.f. Appendix~\ref{chpt:License}).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% From my thesis. Reduce the blabla.
+\section{Concurrent data access in shared memory systems}%
+\label{background:sec:shared-memory_coordination}
+
+In a shared memory system the processes\footnote{We will use the term
+  process and thread interchangeably in the context of general shared
+  memory synchronization. If we talk about threads and processes in the
+  operating system sense it will be made clear from context.}
+have access to a set of shared memory locations which they may use to
+communicate.  A process can \emph{read} data from and
+\emph{write} data to each shared memory location.  The number of
+processes can be much larger than the number processors due to
+multiprogramming, which may interleave the execution of several
+processes on the same processor. The processes are often considered to
+be asynchronous, that is, their rate of execution might vary
+arbitrarily, because of the interleaving. This has certain
+implications for the possibilities for the synchronization and
+coordination of processes which we will discuss below.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Linearizability}
+
+We want the semantics of all operations on a shared data
+object to be the same as for the same operation on the 
+corresponding sequential object.
+%
+The consistency model that captures this
+is called \emph{linearizability} and was introduced by Herlihy and Wing
+in~\cite{HerlihyWing:1990:LCC}. Linearizability requires that
+for each operation, in a concurrent execution of operations on the
+shared data object, there is an atomic time instant that lies within
+its duration where the operation takes effect, in a way such that the
+outcome of the operation agrees with the object's sequential
+specification.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Lock-based synchronization}%
+\label{background:subsec:lock-based}
+
+The traditional way to synchronize processes/threads accessing a
+shared data object in a concurrent program is
+to use \emph{mutual exclusion}. Mutual exclusion is normally implemented
+using a lock, which is a
+shared variable together with routines to atomically \emph{acquire} and
+\emph{release} the lock. The atomicity of \emph{acquire} and \emph{release}
+guarantees that only one process can acquire and hold the lock at a time.
+The most common approach when synchronizing using locks is
+to use the lock to implement \emph{critical sections}, that is, some pieces
+of code that can only be run by one process at the time.
+For a shared data object, it is common that the operations it supports
+are implemented as mutually exclusive critical sections.
+
+The use of locks and the sequential nature of critical sections cause
+a number of drawbacks, namely:
+\begin{itemize}
+\item {\bf Deadlock prone.} With locks it is not hard to create circular lock
+  dependencies that cause two (or more processes)
+  to get blocked by both trying to acquire a lock that is held by the other.
+  Furthermore, a process that crashes while holding some lock(s) is
+  also likely to block the progress of other processes.
+  
+\item {\bf Blocking.} The process that has acquired the lock will delay
+  all other processes that also need that lock until it has finished
+  executing inside the critical section.  To make matters worse the process
+  inside the critical section may itself be delayed by being preempted by the
+  scheduler, suffer a page-fault, try to acquire another lock or wait for IO
+  inside the critical section. 
+  
+\item {\bf Priority inversion.} This is a pathological case that can occur
+  when using a strict priority based scheduler, where a
+  medium priority process can delay a high priority process, potentially
+  indefinitely on a single processor system, by preempting a low priority
+  process that has acquired a lock needed by the high priority process.
+  This problem can be avoided by employing
+  \emph{priority inheritance protocols} as proposed by
+  Sha et al.~\cite{ShRaLe:1990:PIP}.
+\end{itemize}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Non-blocking synchronization}
+
+Non-blocking synchronization techniques avoid the use of locks by
+using cunning algorithms, which often but not always use hardware
+synchronization primitives, to create shared data objects that can be
+accessed simultaneously by several processes.  By avoiding locks
+non-blocking synchronization does not exhibit the problems of
+deadlocks, blocking and priority inversion, which lock-based
+synchronization suffers from. Non-blocking shared data objects also have a
+higher degree of fault-tolerance than lock-based ones since they can tolerate
+any number of processes experiencing stop-failures. 
+
+There are two kinds of non-blocking synchronization,
+\emph{lock-free} synchronization and the stronger \emph{wait-free}
+synchronization. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Lock-free synchronization}
+
+A \emph{lock-free} algorithm guarantees that regardless of the contention
+caused by concurrent operations and the interleaving of their steps, at
+each point in time there is at least one operation which is able to make
+progress. However, as there is no fairness guarantee, some
+operation could be starved and take unbounded time to finish.
+
+The lack of fairness guarantee significantly simplifies the construction of
+lock-free algorithms compared to wait-free ones and leads to algorithms that
+are fast
+when there are no conflicts but cause slow down for all except one process
+involved in a conflict. Hence, lock-free synchronization is also known as
+\emph{optimistic synchronization}~\cite{Rinard99}.
+
+In~\cite{Herlihy93} Herlihy described a general method for
+transforming any sequential data object implementation to a lock-free shared
+data object implementation.
+In short, the methodology is like this: The state of the shared data object is
+represented by a pointer to the current version; an operation on the shared
+data object first makes a new private copy of the current version, applies
+the sequential version of the desired operation on the private copy and thus
+creates a new prospective state of the shared object. 
+Then it tries to install this prospective state as the new version of the
+shared object using an atomic synchronization primitive that will only
+succeed if the current version of the shared object is still the same as the
+one the new state was computed from. If the operation fails to install its
+new state, some other operation(s) have managed to install their new versions
+and this operation has to retry from the beginning.
+
+This general methodology is often not very efficient because (i) the
+entire object is copied for each update (this can be optimized though)
+and (ii) the resulting lock-free shared object is not
+\emph{disjoint-access parallel}, that is, all
+concurrent operations on it cause conflicts even when the operations
+only access disjoint parts of the shared object.
+
+For the above reasons, a significant research effort is being spent on the
+task of designing and developing efficient lock-free implementations of
+various data structures.
+
+The use of lock-free instead of lock-based synchronization can give
+significant performance gains in parallel applications, as shown by
+Tsigas and Zhang in~\cite{TsiZ01,TsiZ02}, as well as in operating systems,
+for example as suggested by Greenwald and Cheriton in~\cite{GreenwaldChe96}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Wait-free synchronization}
+
+A \emph{wait-free} algorithm is both lock-free and \emph{fair}, it
+guarantees that every operation finishes in a bounded number of its
+own steps, regardless of the actions of other operations.
+%
+This is a very strong property, as it decouples the processes using
+the same shared data object from each other. This makes wait-free shared data
+objects attractive to use, for example, in hard \emph{real-time systems}
+where the worst-case execution time has to be known for every operation and
+where lock-based critical sections limit the schedulability of the system and
+complicate the schedulability analysis.
+A drawback, however, is that algorithms that are wait-free, are 
+often also quite complex, in particular for non-trivial shared objects.
+
+A common approach in implementing wait-free algorithms is the use of
+\emph{helping schemes}~\cite{Herlihy91}.  In a helping
+scheme each operation first announces information about what it wants
+to do with the shared object in some global data structure, then it
+checks in the announce-structure to see if there are other operations
+that it needs to help before proceeding with its own.
+
+Barnes presented a method similar to helping
+in~\cite{Barnes:1993:AMFI}. In his method each operation on the shared
+data object is divided into a sequence of \emph{virtually atomic
+suboperations}, where each suboperation is constructed so that
+once it has begun, it is guaranteed to be performed fully, either by the
+initiating process or by being helped by another process.
+
+In~\cite{Herlihy91} Herlihy presented a universal method for constructing
+a wait-free algorithm for any shared data object. However, as for the general
+methodology for construction of lock-free algorithms, the universal
+construction for wait-free algorithms is not practical in all cases and
+therefore significant research efforts are being spent on
+developing efficient wait-free algorithms. 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -314,14 +495,92 @@ bounded lock-free queue algorithm:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Data structures}\label{chpt:Datastructures}
 
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Atomic Objects}
 
 \subsection{Large Register}\label{chpt:MWR}
 
-\cite{Pet83,LaGiHaPaTs:ESA04}
+An atomic register is a multi-word object that can be read and written
+with non-blocking atomic operations.
+
+
+\remove{ %% This is from my thesis. It needs to be filtered.
+A fundamental problem for concurrent shared memory systems that has
+received a significant amount of research effort is the
+\emph{readers/writers problem}.
+%%
+In this problem a number of concurrent processes are interested in
+reading from and/or writing to a shared data object also called a
+\emph{register}. All read or write operations should take effect
+atomically and they return or update the entire state of the shared
+data object. For small shared data objects that fit in a single memory
+word (of the word size supported by the multiprocessor system at hand)
+the hardware read/write instructions and, if needed, the
+memory barrier instructions described in
+Section~\ref{background:sec:memory_consistency} above provide the properties
+required. If, on the other hand, the shared data object is larger than
+a single word (of the word size supported by the multiprocessor system
+at hand) a software algorithm is needed to solve the readers/writers
+problem.
+
+The classical solution is to use mutual exclusion to enforce that
+either (i)~no read or write operations overlap each other; or (ii)~no
+write operations overlap each other or any read operation. These
+methods, normally implemented using a \emph{mutual exclusion lock} or
+a \emph{readers-writers lock}, respectively, both suffer from the
+drawbacks of mutual exclusion which are further discussed in
+Section~\ref{background:subsec:lock-based}.
+
+In \cite{Lam77} Lamport introduced a solution to the readers/writers
+problem with one writer which did not use mutual exclusion.  Lamport's
+algorithm allows the writer unimpeded access to the register
+regardless of what the readers do, while the readers will never
+interfere which each other but can be forced to retry if the writer
+interferes with them.  This can force a slow reader to retry
+indefinitely.  Lamport's algorithm marked the start of long running
+research efforts to construct solutions to the readers/writers problem
+where neither readers nor writer could be delayed indefinitely by
+interference from other readers or writers.
+
+This has made this problem, also known as the problem of multi-word wait-free
+read/write registers, one of the well-studied problems in the
+area of non-blocking synchronization, with numerous results for the
+construction of e.g.:\\
+%%
+(i)~single-writer single-reader registers
+\cite{Lam86,Simpson90,Chen97};\\
+(ii)~single-writer $n$-reader registers
+\cite{Pet83,BurP87,KirKV87,New87,Kopetz93,SinAG94,HalV95,LaGiHaPaTs:ESA04};\\
+(iii)~$2$-writer $n$-reader registers \cite{Blo88}; and\\
+(iv)~$m$-writer $n$-reader registers
+\cite{VitA86,PetB87,IsrS92,LiV92,LiTV96,HalV96}.
+
+The main goal of most of the algorithms in these results is to construct
+wait-free multi-word read/write registers from single-word read/write
+registers and not from other synchronization primitives which may be
+provided by the hardware in a system.  This has been very significant,
+providing fundamental results in the area of wait-free
+synchronization, in particular considering the nowadays well-known
+and well-studied hierarchy of shared data objects and their
+synchronization power \cite{Herlihy91}. Many of these solutions also
+involve elegant and symmetric ideas and have formed the basis for
+further results in the area of non-blocking synchronization.
+}%% end-remove
 
 \subsubsection*{The package Atomic\_Single\_Writer\_Registers}
+
+\nbada\ provides two implementations of linearizable single writer multiple
+reader multi-word registers:
+\begin{itemize}
+\item Peterson's register algorithm \cite{Pet83}; and
+\item the ReaderField algorithm by Larsson et al \cite{LaGiHaPaTs:ESA04}.
+\end{itemize}
+
+The atomic register implementations in \nbada\ have the same public
+package specification, so an application can be compiled against any
+of them without source code changes.
 
 \begin{AdaCode}
 \begin{lstlisting}
@@ -334,11 +593,20 @@ package NBAda.Atomic_Single_Writer_Registers is
 
    type Atomic_1_M_Register (No_Of_Readers : Positive) is limited private;
 
+   type Reader_Id is private;
+
    procedure Write (Register : in out Atomic_1_M_Register;
                     Value    : in     Element_Type);
-   procedure Read  (Register  : in out Atomic_1_M_Register;
-                    Reader_No : in     Positive;
-                    Value     :    out Element_Type);
+   procedure Read  (Register : in out Atomic_1_M_Register;
+                    Reader   : in     Reader_Id;
+                    Value    :    out Element_Type);
+
+   function  Register_Reader (Register : in Atomic_1_M_Register)
+                             return Reader_Id;
+   procedure Deregister_Reader (Register : in out Atomic_1_M_Register;
+                                Reader   : in     Reader_Id);
+
+   Maximum_Number_Of_Readers_Exceeded : exception;
 
 private
 
@@ -348,11 +616,36 @@ end NBAda.Atomic_Single_Writer_Registers;
 \end{lstlisting}
 \end{AdaCode}
 
-\subsection{Linearizable Snapshot}\label{chpt:MWSS}
+Application constraints:
+\begin{itemize}
+\item Concurrent calls to \code{Write} on the same atomic register are
+  forbidden.
+\item Concurrent calls to \code{Read} on the same atomic register 
+  with the same \code{Reader\_Id} argument are forbidden.
+\item \code{Reader\_Id} values should not be passed between tasks.
+\item \code{Register\_Reader}/\code{Deregister\_Reader} should be used as
+  seldom as possible.
+\end{itemize}
 
-\cite{Jayanti:2005:MWS}
+\subsection{Linearizable Snapshots}\label{chpt:MWSS}
+
+A snapshot is a composite data structure consisting of a number
+of fields. Each field can be written separately and the entire state
+of the composit can be read atomically.
+
+\remove{
+\begin{itemize}
+\item 
+\end{itemize}
+} %% end-remove
 
 \subsubsection*{The package Atomic\_Multiwriter\_Snapshots}
+
+The \nbada\ package \code{NBAda.Atomic\_Multiwriter\_Snapshots}
+implements the multiple writer per
+component multiple scanner lock-free linearizable snapshot
+algorithm by Jayanti \cite{Jayanti:2005:MWS}. 
+
 
 \begin{AdaCode}
 \begin{lstlisting}
@@ -373,7 +666,7 @@ package NBAda.Atomic_Multiwriter_Snapshots is
    Maximum_Number_Of_Components_Exceeded : exception;
 
    generic
-      --  Use pragma Atomic and pragma Volatile for Target.
+      --  Use pragma Atomic and pragma Volatile for Element.
       --  Element'Object_Size MUST be System.Word_Size.
       type Element is private;
    package Element_Components is
@@ -402,12 +695,30 @@ end NBAda.Atomic_Multiwriter_Snapshots;
 \end{lstlisting}
 \end{AdaCode}
 
-\subsection{Software Load-Linked/Store-Conditional for Objects}%
+Application constraints:
+\begin{itemize}
+\item Any task that calls an operation in must have registered an
+  identity by calling the operation \code{Register} of the
+  appropriate instance of \code{NBAda.Process\_Identification}.
+\item All types used for components must have an \code{Object\_Size}
+  equal to \code{System.Word\_Size}.
+\end{itemize}
+
+
+\subsection{Software Load-Linked/Store-Conditional for multi-word Objects}%
 \label{chpt:LFLLSC}
 
-\cite{Michael:2004:PLFLL}
+
 
 \subsubsection*{The package Large\_Primitives}
+
+The package \code{NBAda.Large\_Primitives} implements the lock-free
+load-linked store-conditional algorithm by Michael \cite{Michael:2004:PLFLL}.
+
+The algorithm relies on lock-free memory reclamation. The
+implementation can use be used with either the
+\code{NBAda.Hazard\_Pointers} or the
+\code{NBAda.Epoch\_Based\_Memory\_Reclamation} algorithms.
 
 \begin{AdaCode}
 \begin{lstlisting}
