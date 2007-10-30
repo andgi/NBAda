@@ -34,7 +34,7 @@ pragma Style_Checks (Off);
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 14:07:58 2004
---  $Id: nbada-lock_free_memory_reclamation.adb,v 1.31 2007/09/12 13:52:50 andersg Exp $
+--  $Id: nbada-lock_free_memory_reclamation.adb,v 1.32 2007/10/30 15:13:20 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -45,6 +45,7 @@ with NBAda.Internals.Hash_Tables;
 --  with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
+with Ada.Tags;
 
 with Ada.Text_IO;
 
@@ -185,6 +186,19 @@ package body NBAda.Lock_Free_Memory_Reclamation is
       Ref_Mask   : constant Private_Reference_Impl := -(2 ** Mark_Bits);
 
       ----------------------------------------------------------------------
+      function Image (R : Private_Reference) return String is
+         type Node_Access is access all Managed_Node_Base'Class;
+      begin
+         if Deref (R) /= null then
+            return
+              Ada.Tags.External_Tag (Node_Access (Deref (R)).all'Tag) & "@" &
+              Private_Reference_Impl'Image (R.Ref);
+         else
+            return "@" & Private_Reference_Impl'Image (R.Ref);
+         end if;
+      end Image;
+
+      ----------------------------------------------------------------------
       function  Dereference (Link : access Shared_Reference)
                             return Private_Reference is
          ID       : constant Processes := Process_Ids.Process_ID;
@@ -235,7 +249,10 @@ package body NBAda.Lock_Free_Memory_Reclamation is
          Primitives.Membar;
          --  Complete all preceding memory operations before releasing
          --  the hazard pointer.
-         PS.Hazard_Pointer (HP_Index (Node.HP)) := null;
+         if (Deref (Node) /= null) then
+            --  To Release a Null_Reference is allowed.
+            PS.Hazard_Pointer (HP_Index (Node.HP)) := null;
+         end if;
       end Release;
 
       ----------------------------------------------------------------------
@@ -710,7 +727,7 @@ package body NBAda.Lock_Free_Memory_Reclamation is
          Index := PL.DL_Nexts (Index);
       end loop;
       Primitives.Membar;
-      --  Make sure the memory operations of the algorithm phases are
+      --  Make sure the memory operations of the algorithm's phases are
       --  separated.
 
       Clear (P_Set (ID).all);

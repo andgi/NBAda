@@ -34,7 +34,7 @@ pragma Style_Checks (Off);
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 13:54:45 2004
---  $Id: nbada-lock_free_memory_reclamation.ads,v 1.20 2007/09/04 12:03:59 andersg Exp $
+--  $Id: nbada-lock_free_memory_reclamation.ads,v 1.21 2007/10/30 15:13:21 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -136,6 +136,7 @@ package NBAda.Lock_Free_Memory_Reclamation is
       --  Note: There SHOULD NOT be any shared variables of type
       --        Private_Reference.
       Null_Reference : constant Private_Reference;
+      function Image (R : Private_Reference) return String;
 
       ----------------------------------------------------------------------
       --  Operations.
