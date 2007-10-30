@@ -25,7 +25,7 @@
 --                    by H. Sundell and P. Tsigas.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 15 18:59:45 2006
---  $Id: nbada-lock_free_deques.adb,v 1.11 2007/09/03 17:11:53 andersg Exp $
+--  $Id: nbada-lock_free_deques.adb,v 1.12 2007/10/30 13:53:08 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -606,6 +606,7 @@ package body NBAda.Lock_Free_Deques is
 
             elsif Is_Marked (Prev_Next) then
                --  Prev is marked deleted. Move Prev to Prev.Previous.
+               Release (Prev_Next);
 
                if not Last_Link then
                   Help_Delete (Prev);
@@ -740,11 +741,10 @@ package body NBAda.Lock_Free_Deques is
 
                   elsif Is_Marked (Prev_Next) then
                      --  Prev has been marked deleted.
+                     Release (Prev_Next);
 
                      if not Last_Link then
---                        if Recurse then
-                           Help_Delete (Prev, Recurse => False);
---                        end if;
+                        Help_Delete (Prev, Recurse => False);
                         Last_Link := True;
                      end if;
 
