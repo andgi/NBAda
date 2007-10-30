@@ -24,7 +24,7 @@
 --  Description     : Test program for the lock-free deque.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 16 16:06:25 2006
--- $Id: deque_test.adb,v 1.10 2007/09/03 17:11:53 andersg Exp $
+-- $Id: deque_test.adb,v 1.11 2007/10/30 15:11:24 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -267,7 +267,7 @@ procedure Deque_Test is
 
             exception
                when Deques.Deque_Empty =>
-                  Ada.Text_IO.Put (".");
+--                  Ada.Text_IO.Put (".");
                   declare
                      use type Primitives.Unsigned_32;
                   begin
@@ -355,7 +355,7 @@ procedure Deque_Test is
 
             exception
                when Deques.Deque_Empty =>
-                  Ada.Text_IO.Put (".");
+--                  Ada.Text_IO.Put (".");
                   declare
                      use type Primitives.Unsigned_32;
                   begin

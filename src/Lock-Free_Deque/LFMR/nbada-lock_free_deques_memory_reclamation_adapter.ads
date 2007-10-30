@@ -27,7 +27,7 @@ pragma Style_Checks (Off);
 --                    by H. Sundell and P. Tsigas.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Sep  6 12:05:42 2007
---  $Id: nbada-lock_free_deques_memory_reclamation_adapter.ads,v 1.1 2007/09/06 10:12:39 andersg Exp $
+--  $Id: nbada-lock_free_deques_memory_reclamation_adapter.ads,v 1.2 2007/10/30 15:11:24 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -45,7 +45,7 @@ generic
 package NBAda.Lock_Free_Deques_Memory_Reclamation_Adapter is
 
    package Memory_Reclamation is new Lock_Free_Memory_Reclamation
-     (Max_Number_Of_Dereferences   => 8,
+     (Max_Number_Of_Dereferences   => 10,
       --  Remember to account for the dereferences in the
       --  callbacks Clean_Up and Dispose (which are invoked by Delete).
       --  Here: PushRight <= ?

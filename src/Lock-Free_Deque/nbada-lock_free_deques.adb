@@ -25,7 +25,7 @@
 --                    by H. Sundell and P. Tsigas.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 15 18:59:45 2006
---  $Id: nbada-lock_free_deques.adb,v 1.12 2007/10/30 13:53:08 andersg Exp $
+--  $Id: nbada-lock_free_deques.adb,v 1.13 2007/10/30 15:11:24 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -49,7 +49,7 @@ package body NBAda.Lock_Free_Deques is
        (Block_Size => Deque_Node'Max_Size_In_Storage_Elements);
 
    type New_Deque_Node_Access is access Deque_Node;
-   --  for New_Deque_Node_Access'Storage_Pool use Node_Pool;
+   for New_Deque_Node_Access'Storage_Pool use Node_Pool;
 
    function Create_Deque_Node is new LFRC_Ops.Create (New_Deque_Node_Access);
 
@@ -72,8 +72,8 @@ package body NBAda.Lock_Free_Deques is
    --  Note: Uses at most 2 + Help_Delete additional dereferences.
    --        (With recursive helping disabled).
 
-   procedure Help_Delete (Node    : in Deque_Node_Access;
-                          Recurse : in Boolean := True);
+   procedure Help_Delete (Node          : in Deque_Node_Access;
+                          Recurse_Limit : in Natural := 2);
    --  Fully mark Node as logically deleted and unlinks Node from the active
    --  forward list structure.
    --  Note: The reference to Node is not released by Help_Delete.
@@ -670,8 +670,8 @@ package body NBAda.Lock_Free_Deques is
    end Help_Insert;
 
    ----------------------------------------------------------------------
-   procedure Help_Delete (Node    : in Deque_Node_Access;
-                          Recurse : in Boolean := True) is
+   procedure Help_Delete (Node          : in Deque_Node_Access;
+                          Recurse_Limit : in Natural := 2) is
       use LFRC_Ops;
    begin
       --  Set logically deleted mark on Node.Previous.
@@ -744,7 +744,10 @@ package body NBAda.Lock_Free_Deques is
                      Release (Prev_Next);
 
                      if not Last_Link then
-                        Help_Delete (Prev, Recurse => False);
+                        if Recurse_Limit > 0 then
+                           Help_Delete (Prev,
+                                        Recurse_Limit => Recurse_Limit - 1);
+                        end if;
                         Last_Link := True;
                      end if;
 
