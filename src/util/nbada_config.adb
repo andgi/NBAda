@@ -23,7 +23,7 @@
 --  Description     : NBAda build config.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Aug 30 11:18:46 2007
--- $Id: nbada_config.adb,v 1.13 2007/10/19 09:29:07 andersg Exp $
+-- $Id: nbada_config.adb,v 1.14 2007/10/30 15:37:06 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Command_Line;
@@ -62,8 +62,9 @@ procedure NBAda_Config is
       LF_QUEUES_BOUNDED,
       LF_QUEUES_EBMR,
       LF_QUEUES_HPMR,
+      LF_DEQUES_LFMR,
+      LF_DEQUES_LFRC
       --    Under development.
-      LF_DEQUES
       );
    type Architecture is (IA32, SPARCV8PLUS, SPARCV9, MIPSN32);
    type Target_Array is array (Target) of Boolean;
@@ -73,7 +74,7 @@ procedure NBAda_Config is
 
    --  NBAda source code base directory.
    Install_Base : constant String :=
-     "/home/andersg/projects/Ada/Non-Blocking/NBAda/src";
+     "/KM/usr1/andersg/projects/Ada/Non-Blocking/NBAda/src";
    --  Default architecture.
    Default_Architecture : constant Architecture := IA32;
 
@@ -125,7 +126,10 @@ procedure NBAda_Config is
       LF_QUEUES_HPMR =>
         "+" ("-I" & Install_Base & "/Lock-Free_Queue " &
              "-I" & Install_Base & "/Lock-Free_Queue/HPMR"),
-      LF_DEQUES =>
+      LF_DEQUES_LFMR =>
+        "+" ("-I" & Install_Base & "/Lock-Free_Deque " &
+             "-I" & Install_Base & "/Lock-Free_Deque/LFMR"),
+      LF_DEQUES_LFRC =>
         "+" ("-I" & Install_Base & "/Lock-Free_Deque " &
              "-I" & Install_Base & "/Lock-Free_Deque/LFRC")
       );
@@ -167,7 +171,10 @@ procedure NBAda_Config is
       LF_QUEUES_HPMR  => (PRIMITIVES      => True,
                           LF_POOLS        => True,
                           HPMR            => True, others => False),
-      LF_DEQUES       => (PRIMITIVES => True,
+      LF_DEQUES_LFMR  => (PRIMITIVES => True,
+                          LF_POOLS   => True,
+                          LFMR       => True, others => False),
+      LF_DEQUES_LFRC  => (PRIMITIVES => True,
                           LF_POOLS   => True,
                           PTB        => True,
                           LFRC       => True, others => False)
