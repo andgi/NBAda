@@ -28,15 +28,14 @@ pragma Style_Checks (OFF);
 --                    ",
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jun  6 15:26:34 2007
---  $Id: nbada-lock_free_priority_queues.ads,v 1.4 2007/09/03 15:42:57 andersg Exp $
+--  $Id: nbada-lock_free_priority_queues.ads,v 1.5 2007/10/31 10:47:56 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (ALL_CHECKS);
 
 pragma License (GPL);
 
+with NBAda.Lock_Free_Priority_Queues_Memory_Reclamation_Adapter;
 with NBAda.Process_Identification;
-
-with NBAda.Lock_Free_Reference_Counting;
 
 generic
 
@@ -76,24 +75,10 @@ private
 
    Max_Levels : constant := 3;
 
-   package LFMR is new Lock_Free_Reference_Counting
-     (Max_Number_Of_Guards => 128);
---     package LFRC is new Lock_Free_Memory_Reclamation
---       (Max_Number_Of_Dereferences   => 8,
---        --  Remember to account for the dereferences in the
---        --  callbacks Clean_Up and Dispose (which are invoked by Delete).
---        --  Here: Insert    <= ?
---        --        Delete    <= ?
---        --        Lookup    <= ?
---        --        Dispose   <= ?
---        --        Clean_up  <= ?
---        --  Delete is called from Delete on a dereferenced node so the
---        --  maximum number of simultaneous dereferences is ?.
---        Max_Number_Of_Links_Per_Node => Max_Levels + 1,
---        Clean_Up_Threshold           => 256,
---        --  Clean up and scan often.
---        Process_Ids                  => Process_Ids);
-
+   package MR_Adapter is
+      new Lock_Free_Priority_Queues_Memory_Reclamation_Adapter (Process_Ids,
+                                                                Max_Levels);
+   package LFMR renames MR_Adapter.Memory_Reclamation;
 
    type List_Node_Reference is new LFMR.Shared_Reference_Base;
    --  List_Node_Reference is an atomic type since Shared_Reference_Base is.
