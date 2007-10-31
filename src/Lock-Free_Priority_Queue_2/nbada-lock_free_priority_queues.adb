@@ -26,7 +26,7 @@
 --                    ",
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jun  6 15:51:34 2007
---  $Id: nbada-lock_free_priority_queues.adb,v 1.3 2007/09/03 15:42:57 andersg Exp $
+--  $Id: nbada-lock_free_priority_queues.adb,v 1.4 2007/10/31 17:21:54 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -38,6 +38,8 @@ with Ada.Unchecked_Conversion;
 with Ada.Unchecked_Deallocation;
 
 with Ada.Text_IO;
+
+with Memory_Reclamation_Debug;
 
 package body NBAda.Lock_Free_Priority_Queues is
 
@@ -98,6 +100,25 @@ package body NBAda.Lock_Free_Priority_Queues is
 
    function Random_Level return List_Level;
 
+   --  Debugging stuff.
+
+   package MR_Debug is new Memory_Reclamation_Debug
+     (Private_Reference          => List_Node_Access,
+      Max_Number_Of_Dereferences => 10,
+      Process_Ids                => Process_Ids,
+      Same_Node                  => Same_Node,
+      Image                      => LFMR_Ops.Image);
+   use MR_Debug;
+
+   function Dereference (Link  : access List_Node_Reference;
+                         Where : in String)
+                        return List_Node_Access;
+   --  Debug wrapper for Dereference.
+   procedure Release (Node  : List_Node_Access;
+                      Where : String);
+   --  Debug wrapper for Release.
+
+
    ----------------------------------------------------------------------------
    --  Public operations.
    ----------------------------------------------------------------------------
@@ -108,6 +129,9 @@ package body NBAda.Lock_Free_Priority_Queues is
       Head : constant List_Node_Access := Create_List_Node;
       Tail : constant List_Node_Access := Create_List_Node;
    begin
+      Add_Reference (Head, "Initialize: Head");
+      Add_Reference (Tail, "Initialize: Tail");
+
       "+" (Head).Max_Level := Max_Levels;
       "+" (Tail).Max_Level := Max_Levels;
       for I in  "+" (Head).Next'Range loop
@@ -115,8 +139,9 @@ package body NBAda.Lock_Free_Priority_Queues is
       end loop;
       Store (Queue.Head'Access, Head);
       Store (Queue.Tail'Access, Tail);
-      Release (Head);
-      Release (Tail);
+      Release (Head, "Initialize: Head R1");
+      Release (Tail, "Initialize: Tail R1");
+      Verify_Quiescent ("Initialize");
    end Initialize;
 
    ----------------------------------------------------------------------------
@@ -128,22 +153,28 @@ package body NBAda.Lock_Free_Priority_Queues is
       Saved_Node : array (List_Level range 1 .. List_Level'Last) of
         aliased List_Node_Access;
    begin
+      Add_Reference (New_Node, "Insert: New Node");
+
       "+" (New_Node).Max_Level := Level;
       "+" (New_Node).Value     := Element;
 
       declare
          Before, After : aliased List_Node_Access;
       begin
-         Before := Dereference (Into.Head'Access);
-         for I in reverse List_Level'(1) .. List_Level'Last - 1 loop
+         Before := Dereference (Into.Head'Access, "Insert: Before 1");
+         for I in reverse List_Level'(2) .. List_Level'Last - 1 loop
             Scan_For_Key (Previous => Before'Access,
                           Next     => After,
                           Level    => I,
                           Key      => Element,
                           Queue    => Into);
-            Release (After);
+            Release (After, "Insert: After R1");
             if I <= "+" (New_Node).Max_Level then
                Saved_Node (I) := Copy (Before);
+               Add_Reference (Saved_Node (I),
+                              "Insert: Saved_Node(" &
+                              List_Level'Image (I) &
+                              ")");
             end if;
          end loop;
 
@@ -158,24 +189,29 @@ package body NBAda.Lock_Free_Priority_Queues is
             declare
                After_Value : constant Element_Type := "+" (After).Value;
             begin
-               if not Boolean ("+" (After).Deleted) and then
+               if
+                 not Boolean ("+" (After).Deleted) and then
                  After_Value = Element
                then
                   for I in 1 .. "+" (New_Node).Max_Level loop
-                     Release (Saved_Node (I));
+                     Release (Saved_Node (I),
+                              "Insert: Saved_Node(" &
+                              List_Level'Image (I) &
+                              ") R1");
                   end loop;
-                  Release (Before);
-                  Release (After);
-                  Release (New_Node);
+                  Release (Before, "Insert: Before R2");
+                  Release (After, "Insert: After R2");
+                  Release (New_Node, "Insert: New_Node R2");
 
                   --  What else can be done? This should never happen in
                   --  a priority queue!!! Break ties!
+                  Verify_Quiescent ("Insert -> Already_Present");
                   raise Already_Present;
 
                else
 
                   Store ("+" (New_Node).Next (1)'Access, After);
-                  Release (After);
+                  Release (After, "Insert: After R3");
 
                   if
                     Compare_And_Swap
@@ -183,7 +219,7 @@ package body NBAda.Lock_Free_Priority_Queues is
                      Old_Value => After,
                      New_Value => New_Node)
                   then
-                     Release (Before);
+                     Release (Before, "Insert: Before R3");
                      exit Insert;
 
                   else
@@ -195,6 +231,8 @@ package body NBAda.Lock_Free_Priority_Queues is
             end;
          end loop Insert;
       end;
+
+      --  FIXME: Which local references should exist at this point?
 
       for I in 2 .. Level loop
          "+" (New_Node).Valid_Level := I;
@@ -210,7 +248,7 @@ package body NBAda.Lock_Free_Priority_Queues is
                              Key      => Element,
                              Queue    => Into);
                Store ("+" (New_Node).Next (I)'Access, After);
-               Release (After);
+               Release (After, "Insert: After R4");
 
                if Boolean ("+" (New_Node).Deleted) or else
                  Compare_And_Swap
@@ -218,7 +256,7 @@ package body NBAda.Lock_Free_Priority_Queues is
                   Old_Value => After,
                   New_Value => New_Node)
                then
-                  Release (Before);
+                  Release (Before, "Insert: Before R4");
                   exit Insert_At_Level_I;
 
                else
@@ -234,7 +272,8 @@ package body NBAda.Lock_Free_Priority_Queues is
       if "+" (New_Node).Deleted then
          Help_Delete (New_Node, 1, Into);
       end if;
-      Release (New_Node);
+      Release (New_Node, "Insert: New_Node R5");
+      Verify_Quiescent ("Insert -> Done");
    end Insert;
 
    ----------------------------------------------------------------------------
@@ -256,7 +295,7 @@ package body NBAda.Lock_Free_Priority_Queues is
                         return Element_Type is
       use LFMR_Ops;
       Previous : aliased List_Node_Access :=
-        Dereference (From.Mutable.Self.Head'Access);
+        Dereference (From.Mutable.Self.Head'Access, "Delete_Min: Previous 1");
       Node : aliased List_Node_Access;
       Value : Element_Type;
    begin
@@ -264,8 +303,9 @@ package body NBAda.Lock_Free_Priority_Queues is
       Mark_Deleted : loop
          Node := Read_Next (Previous'Access, 1, From.all);
          if Same_Node (Node, From.Tail) then
-            Release (Previous);
-            Release (Node);
+            Release (Previous, "Delete_Min: Previous R1");
+            Release (Node, "Delete_Min: Node R1");
+            Verify_Quiescent ("Delete_Min -> Empty");
             raise Queue_Empty;
          end if;
 
@@ -283,19 +323,19 @@ package body NBAda.Lock_Free_Priority_Queues is
                else
                   --  Retry. Starting from the top of Mark_Deleted
                   --  is a bit unnecessary.
-                  Release (Node);
+                  Release (Node, "Delete_Min: Node R2");
                end if;
             else
                if "+" (Node).Deleted then
                   Help_Delete (Node, 1, From.all);
                end if;
 
-               Release (Previous);
+               Release (Previous, "Delete_Min: Previous R2");
                Previous := Node;
                Node     := Null_Reference;
             end if;
          else
-            Release (Node);
+            Release (Node, "Delete_Min: Node R3");
          end if;
       end loop Mark_Deleted;
 
@@ -318,9 +358,11 @@ package body NBAda.Lock_Free_Priority_Queues is
       for I in reverse 1 .. "+" (Node).Max_Level loop
          Remove_Node (Node, Previous'Access, I, From.all);
       end loop;
-      Release (Previous);
+      Release (Previous, "Delete_Min: Previous R4");
       Delete (Node);
+      Remove_Reference (Node,  "Delete_Min: Delete Node");
 
+      Verify_Quiescent ("Delete_Min -> Value");
       return Value;
    end Delete_Min;
 
@@ -386,21 +428,26 @@ package body NBAda.Lock_Free_Priority_Queues is
                       return List_Node_Access is
       use LFMR_Ops;
    begin
+      Enter;
       if "+" (Node.all).Deleted then
          Help_Delete (Node.all, Level, Queue);
       end if;
       loop
          declare
             Node_Next : constant List_Node_Access :=
-              Dereference ("+" (Node.all).Next (Level)'Access);
+              Dereference ("+" (Node.all).Next (Level)'Access,
+                           "Read_Next: Node_Next");
          begin
             if Is_Marked (Node_Next) then
                Help_Delete (Node.all, Level, Queue);
             else
+               Exit_Quiescent ("Read_Next",
+                               Except => (Node.all, Node_Next));
                return Node_Next;
             end if;
          end;
       end loop;
+
    end Read_Next;
 
    ----------------------------------------------------------------------------
@@ -426,14 +473,16 @@ package body NBAda.Lock_Free_Priority_Queues is
 
       declare
          Previous : aliased List_Node_Access :=
-           Dereference ("+" (Node).Previous'Access);
+           Dereference ("+" (Node).Previous'Access,
+                        "Help_Delete: Previous 1");
       begin
          if
            Same_Node (Previous, Null_Reference) or
            else Level > "+" (Previous).Valid_Level
          then
-            Release (Previous);
-            Previous := Dereference (Queue.Mutable.Self.Head'Access);
+            Release (Previous, "Help_Delete: Previous R1");
+            Previous := Dereference (Queue.Mutable.Self.Head'Access,
+                                     "Help_Delete: Previous 2");
             for I in reverse List_Level'Last .. Level loop
                declare
                   Tmp : List_Node_Access;
@@ -443,12 +492,12 @@ package body NBAda.Lock_Free_Priority_Queues is
                                 Level    => I,
                                 Key      => "+" (Node).Value,
                                 Queue    => Queue);
-                  Release (Tmp);
+                  Release (Tmp, "Help_Delete: Tmp R1");
                end;
             end loop;
          end if;
          Remove_Node (Node, Previous'Access, Level, Queue);
-         Release (Node);
+         Release (Node, "Help_Delete: Node R1");
          Node := Previous;
       end;
    end Help_Delete;
@@ -461,6 +510,7 @@ package body NBAda.Lock_Free_Priority_Queues is
                            Queue    : in     Priority_Queue_Type) is
       use LFMR_Ops;
    begin
+      Enter;
       loop
          Next := Read_Next (Previous, Level, Queue);
 
@@ -469,12 +519,14 @@ package body NBAda.Lock_Free_Priority_Queues is
          end if;
 
          if "+" (Next).Value < Key then
-            Release (Previous.all);
+            Release (Previous.all, "Scan_For_Key: Previous R1");
             Previous.all := Next;
          else
             exit;
          end if;
       end loop;
+      Exit_Quiescent ("Scan_For_Key",
+                      Except => (Previous.all, Next));
    end Scan_For_Key;
 
    ----------------------------------------------------------------------------
@@ -497,13 +549,14 @@ package body NBAda.Lock_Free_Priority_Queues is
                           Key      => "+" (Node).Value,
                           Queue    => Queue);
             if not Same_Node (After, Node) then
-               Release (After);
+               Release (After, "Remove_Node: After R1");
                return;
             else
-               Release (After);
+               Release (After, "Remove_Node: After R1");
                declare
                   Node_Next : constant List_Node_Access :=
-                    Dereference ("+" (Node).Next (Level)'Access);
+                    Dereference ("+" (Node).Next (Level)'Access,
+                                 "Remove_Node: Node_Next 1");
                begin
                   if Compare_And_Swap
                     (Link      => "+" (Previous.all).Next (Level)'Access,
@@ -512,10 +565,10 @@ package body NBAda.Lock_Free_Priority_Queues is
                     or else Is_Marked
                     (Unsafe_Read ("+" (Previous.all).Next (Level)'Access))
                   then
-                     Release (Node_Next);
+                     Release (Node_Next, "Remove_Node: Node_Next R1");
                      return;
                   end if;
-                  Release (Node_Next);
+                  Release (Node_Next, "Remove_Node: Node_Next R2");
                end;
             end if;
          end;
@@ -632,5 +685,41 @@ package body NBAda.Lock_Free_Priority_Queues is
    begin
       return Unmark (Left) = Right;
    end Same_Node;
+
+   ----------------------------------------------------------------------------
+   function Dereference (Link  : access List_Node_Reference;
+                         Where : in String)
+                        return List_Node_Access is
+      use LFMR_Ops;
+   begin
+      declare
+         Tmp : constant List_Node_Access := LFMR_Ops.Dereference (Link);
+      begin
+         if "+" (Tmp) /= null then
+            --  Don't track null references.
+            Add_Reference (Tmp, Where);
+         end if;
+         return Tmp;
+      end;
+
+   exception
+      when Constraint_Error =>
+         Debug_IO.Put_Line ("Dereference at " & Where &
+                            " raised Constraint_Error.");
+         Dump_Local_References (Where);
+         raise;
+   end Dereference;
+
+   ----------------------------------------------------------------------------
+   procedure Release (Node  : List_Node_Access;
+                      Where : String) is
+      use LFMR_Ops;
+   begin
+      if "+" (Node) /= null then
+         Remove_Reference (Node, Where);
+      end if;
+      LFMR_Ops.Release (Node);
+   end Release;
+
 
 end NBAda.Lock_Free_Priority_Queues;

@@ -24,7 +24,7 @@
 --  Description     : Test of non-blocking priority queue.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 20 16:39:08 2003
---  $Id: priority_queue_test.adb,v 1.2 2007/09/03 15:42:57 andersg Exp $
+--  $Id: priority_queue_test.adb,v 1.3 2007/10/31 17:21:54 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -50,7 +50,7 @@ procedure Priority_Queue_Test is
    --  Test application.
    ----------------------------------------------------------------------------
 
-   No_Of_Elements : constant := 20;
+   No_Of_Elements : constant := 100;
 
    Output_File : Ada.Text_IO.File_Type renames
      Ada.Text_IO.Standard_Output;
@@ -120,7 +120,7 @@ procedure Priority_Queue_Test is
       declare
          ID : constant PID.Process_ID_Type := PID.Process_ID;
       begin
-         for I in reverse 0 .. No_Of_Elements loop
+         for I in reverse 1 .. No_Of_Elements loop
             Insert (My_Q,  Value_Type'(Creator => ID, Index => I));
             No_Inserts := Primitives.Unsigned_32'Succ (No_Inserts);
          end loop;
@@ -160,18 +160,65 @@ procedure Priority_Queue_Test is
                                " : " &
                                Ada.Exceptions.Exception_Message (E));
          Ada.Text_IO.New_Line (Output_File);
+         declare
+            use type Primitives.Unsigned_32;
+         begin
+            Primitives.Fetch_And_Add_32 (No_Producers_Running'Access, -1);
+         end;
    end Producer;
 
    ----------------------------------------------------------------------------
    task body Consumer is
-      Min : Value_Type;
+      Min        : Value_Type;
+      No_Deletes : Primitives.Unsigned_32 := 0;
+      Done       : Boolean := False;
    begin
       PID.Register;
+      Primitives.Fetch_And_Add_32 (No_Consumers_Running'Access, 1);
+
+      declare
+         use type Primitives.Unsigned_32;
+      begin
+         while Start = 0 loop
+            delay 0.0;
+         end loop;
+      end;
+
       loop
-         Delete_Min (My_Q, Min);
-         Ada.Text_IO.Put_Line ("Consumer: Delete_Min: " &
-                               Image (Min));
+         declare
+            use type Primitives.Unsigned_32;
+         begin
+            Delete_Min (My_Q, Min);
+            No_Deletes := Primitives.Unsigned_32'Succ (No_Deletes);
+            Ada.Text_IO.Put_Line ("Consumer: Delete_Min: " &
+                                  Image (Min));
+
+            Done := False;
+
+         exception
+            when My_Priority_Queue.Priority_Queues.Queue_Empty =>
+               Ada.Text_IO.Put (".");
+
+               exit when Done and No_Producers_Running = 0;
+
+               delay 0.0;
+
+               Done := True;
+         end;
       end loop;
+
+      declare
+         use type Primitives.Unsigned_32;
+         ID : constant PID.Process_ID_Type := PID.Process_ID;
+      begin
+         Primitives.Fetch_And_Add_32 (Delete_Min_Count'Access, No_Deletes);
+         Primitives.Fetch_And_Add_32 (No_Consumers_Running'Access, -1);
+
+         Ada.Text_IO.Put_Line (Output_File,
+                               "Consumer (" &
+                               PID.Process_ID_Type'Image (ID) &
+                               "): exited.");
+      end;
 
    exception
       when E : others =>
@@ -191,48 +238,57 @@ begin
    Verify (My_Q, Print => True);
    delay 1.0;
    Ada.Text_IO.Put_Line ("Testing with producer/consumer tasks...");
-   for X in 1 .. 1 loop
-      declare
-         P1, P2, P3, P4
-           : Producer;
-         C1, C2, C3
-           : Consumer;
-      begin
+
+   declare
+      P1, P2, P3, P4
+        : Producer;
+--      C1, C2--, C3
+--        : Consumer;
+   begin
+      Start := 1;
+   end;
+   Ada.Text_IO.Put_Line ("Verifying priority queue...");
+   Verify (My_Q, Print => False);
+
+   delay 5.0;
+   Ada.Text_IO.Put_Line ("Emptying queue.");
+
+   declare
+      Last : Value_Type := (1, Integer'First);
+      Min  : Value_Type;
+   begin
+      loop
+         Delete_Min (My_Q, Min);
+         Primitives.Fetch_And_Add_32 (Delete_Min_Count'Access, 1);
+
+         Ada.Text_IO.Put_Line ("Heap_Test: Delete_Min: " &
+                               Image (Min));
+
+         if Min < Last then
+            Ada.Text_IO.Put_Line ("Heap_Test: Heap property failure! ");
+            Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error,
+                                  "Heap_Test: Heap property failure! ");
+            Ada.Text_IO.Put_Line ("Heap_Test: Last " &
+                                  Image (Last) &
+                                  " got " &
+                                  Image (Min) &
+                                  ".");
+            return;
+         end if;
+         Last := Min;
+
+      end loop;
+
+   exception
+      when Queue_Empty =>
          null;
-      end;
-      Ada.Text_IO.Put_Line ("Verifying priority queue...");
-      Verify (My_Q, Print => False);
+   end;
 
-      --  Make the queue empty.
-      declare
-         Last : Value_Type := (1, Integer'First);
-         Min  : Value_Type;
-      begin
-         loop
-            Delete_Min (My_Q, Min);
-            Ada.Text_IO.Put_Line ("Heap_Test: Delete_Min: " &
-                                  Image (Min));
+   Ada.Text_IO.Put_Line ("Final insert count: " &
+                         Primitives.Unsigned_32'Image (Insert_Count));
+   Ada.Text_IO.Put_Line ("Final delete_min count: " &
+                         Primitives.Unsigned_32'Image (Delete_Min_Count));
 
-            if Min < Last then
-               Ada.Text_IO.Put_Line ("Heap_Test: Heap property failure! ");
-               Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error,
-                                     "Heap_Test: Heap property failure! ");
-               Ada.Text_IO.Put_Line ("Heap_Test: Last " &
-                                     Image (Last) &
-                                     " got " &
-                                     Image (Min) &
-                                     ".");
-               return;
-            end if;
-            Last := Min;
-
-         end loop;
-
-      exception
-         when Queue_Empty =>
-            null;
-      end;
-   end loop;
 
    Ada.Text_IO.Put_Line ("Verifying priority queue...");
    Verify (My_Q, Print => True);
