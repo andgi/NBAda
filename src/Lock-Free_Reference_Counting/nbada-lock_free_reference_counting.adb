@@ -29,7 +29,7 @@ pragma Style_Checks (Off);
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:55:18 2006
---  $Id: nbada-lock_free_reference_counting.adb,v 1.9 2007/09/03 15:23:08 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.adb,v 1.10 2007/11/05 19:11:50 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -40,6 +40,7 @@ with NBAda.Pass_The_Buck;
 with Ada.Unchecked_Conversion;
 
 with Ada.Exceptions;
+with Ada.Tags;
 with Ada.Text_IO;
 
 package body NBAda.Lock_Free_Reference_Counting is
@@ -110,6 +111,19 @@ package body NBAda.Lock_Free_Reference_Counting is
 
       Mark_Mask  : constant Private_Reference := 2 ** Mark_Bits - 1;
       Ref_Mask   : constant Private_Reference := -(2 ** Mark_Bits);
+
+      ----------------------------------------------------------------------
+      function Image (R : Private_Reference) return String is
+         type Node_Access is access all Managed_Node_Base'Class;
+      begin
+         if Deref (R) /= null then
+            return
+              Ada.Tags.External_Tag (Node_Access (Deref (R)).all'Tag) & "@" &
+              Private_Reference'Image (R);
+         else
+            return "@" & Private_Reference'Image (R);
+         end if;
+      end Image;
 
       ----------------------------------------------------------------------
       function  Dereference (Link : access Shared_Reference)

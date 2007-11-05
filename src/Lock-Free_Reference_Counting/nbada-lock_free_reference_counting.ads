@@ -28,7 +28,7 @@ pragma Style_Checks (Off);
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:42:38 2006
---  $Id: nbada-lock_free_reference_counting.ads,v 1.10 2007/09/03 15:23:08 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.ads,v 1.11 2007/11/05 19:11:50 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -107,6 +107,7 @@ package NBAda.Lock_Free_Reference_Counting is
       --        Private_Reference.
 
       Null_Reference : constant Private_Reference;
+      function Image (R : Private_Reference) return String;
 
       ----------------------------------------------------------------------
       --  Operations.
