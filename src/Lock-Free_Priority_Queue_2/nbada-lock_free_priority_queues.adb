@@ -26,7 +26,7 @@
 --                    ",
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jun  6 15:51:34 2007
---  $Id: nbada-lock_free_priority_queues.adb,v 1.4 2007/10/31 17:21:54 andersg Exp $
+--  $Id: nbada-lock_free_priority_queues.adb,v 1.5 2007/11/06 13:52:38 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -440,6 +440,8 @@ package body NBAda.Lock_Free_Priority_Queues is
          begin
             if Is_Marked (Node_Next) then
                Help_Delete (Node.all, Level, Queue);
+               Release (Node_Next,
+                        "Read_Next: Node_Next R");
             else
                Exit_Quiescent ("Read_Next",
                                Except => (Node.all, Node_Next));
@@ -516,6 +518,11 @@ package body NBAda.Lock_Free_Priority_Queues is
 
          if Same_Node (Next, Queue.Tail) then
             exit;
+         end if;
+
+         if Same_Node (Next, Null_Reference) then
+            --  This should NEVER EVER occur!!!
+            raise Constraint_Error;
          end if;
 
          if "+" (Next).Value < Key then
