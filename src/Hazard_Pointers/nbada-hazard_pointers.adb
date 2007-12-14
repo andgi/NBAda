@@ -27,7 +27,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:35:09 2004
---  $Id: nbada-hazard_pointers.adb,v 1.18 2007/09/13 14:37:45 andersg Exp $
+--  $Id: nbada-hazard_pointers.adb,v 1.19 2007/12/14 15:48:24 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -36,6 +36,7 @@ with NBAda.Internals.Hash_Tables;
 
 with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
+with Ada.Tags;
 with Ada.Text_IO;
 
 package body NBAda.Hazard_Pointers is
@@ -296,6 +297,19 @@ package body NBAda.Hazard_Pointers is
       procedure Void_Compare_And_Swap_Impl is new
         Primitives.Standard_Void_Compare_And_Swap
         (Shared_Reference_Base_Impl);
+
+      ----------------------------------------------------------------------
+      function Image (R : Private_Reference) return String is
+         type Node_Access is access all Managed_Node_Base'Class;
+      begin
+         if Deref (R) /= null then
+            return
+              Ada.Tags.External_Tag (Node_Access (Deref (R)).all'Tag) & "@" &
+              Private_Reference_Impl'Image (R.Ref);
+         else
+            return "@" & Private_Reference_Impl'Image (R.Ref);
+         end if;
+      end Image;
 
       ----------------------------------------------------------------------
       function  Dereference (Link : access Shared_Reference)

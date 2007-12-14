@@ -27,7 +27,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:10:15 2004
---  $Id: nbada-hazard_pointers.ads,v 1.18 2007/09/13 14:37:45 andersg Exp $
+--  $Id: nbada-hazard_pointers.ads,v 1.19 2007/12/14 15:48:24 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -157,6 +157,7 @@ package NBAda.Hazard_Pointers is
       --        Private_Reference.
       Null_Reference : constant Private_Reference;
       --  Note: A marked null reference is not equal to Null_Reference.
+      function Image (R : Private_Reference) return String;
 
       ----------------------------------------------------------------------
       --  Operations.
