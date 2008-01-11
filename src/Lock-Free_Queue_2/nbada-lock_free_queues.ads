@@ -27,7 +27,7 @@
 --                    LNCS 4878, pp. 401-414, 2007.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Jan 10 17:02:28 2008
---  $Id: nbada-lock_free_queues.ads,v 1.1 2008/01/10 19:38:44 andersg Exp $
+--  $Id: nbada-lock_free_queues.ads,v 1.2 2008/01/11 15:44:44 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -57,6 +57,11 @@ package NBAda.Lock_Free_Queues is
    function  Dequeue (From : access Queue_Type) return Element_Type;
    procedure Enqueue (On      : in out Queue_Type;
                       Element : in     Element_Type);
+
+
+   procedure Verify (Queue : in out Queue_Type;
+                     Print : in     Boolean := False);
+   --  Should only be called when the deque is idle.
 
 private
 

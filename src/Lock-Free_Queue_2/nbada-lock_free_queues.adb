@@ -27,7 +27,7 @@
 --                    LNCS 4878, pp. 401-414, 2007.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Jan 10 17:16:33 2008
---  $Id: nbada-lock_free_queues.adb,v 1.1 2008/01/10 19:38:44 andersg Exp $
+--  $Id: nbada-lock_free_queues.adb,v 1.2 2008/01/11 15:44:08 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -36,12 +36,24 @@ with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
 
 with NBAda.Lock_Free_Growing_Storage_Pools;
+with NBAda.Primitives;
+
+with Ada.Text_IO;
 
 package body NBAda.Lock_Free_Queues is
 
    -------------------------------------------------------------------------
+   --  NOTE: The original Baskets Queue algorithm used tags and double
+   --  width CAS to avoid ABA problems w.r.t. the nodes. The
+   --  implementation here uses a lock-free memory reclamation scheme
+   --  for the nodes instead. This leads to some changes in the algorithm.
+   --
+   --------------------------------------------------------------------------
+
+
+   ----------------------------------------------------------------------------
    --  Storage pool for the nodes.
-   -------------------------------------------------------------------------
+   ----------------------------------------------------------------------------
 
    Node_Pool : Lock_Free_Growing_Storage_Pools.Lock_Free_Storage_Pool
      (Block_Size => Queue_Node'Max_Size_In_Storage_Elements);
@@ -61,6 +73,7 @@ package body NBAda.Lock_Free_Queues is
       use MR_Ops;
       Node :  constant Private_Reference := New_Node;
    begin
+      Store ("+" (Node).Next'Access, Mark (Null_Reference));
       Store (Queue.Head'Access, Node);
       Store (Queue.Tail'Access, Node);
       Release (Node);
@@ -81,7 +94,7 @@ package body NBAda.Lock_Free_Queues is
          begin
             if Head = From.Head then
                if Head = Tail then
-                  if Next = Null_Reference then
+                  if "+" (Next) = null then
                      Release (Next);
                      Release (Tail);
                      Release (Head);
@@ -93,7 +106,7 @@ package body NBAda.Lock_Free_Queues is
                         Next_Next : constant Private_Reference :=
                           Dereference ("+" (Next).Next'Access);
                      begin
-                        if Next_Next /= Null_Reference then
+                        if "+" (Next_Next) /= null then
                            Release (Next);
                            Next := Next_Next;
                         else
@@ -115,8 +128,10 @@ package body NBAda.Lock_Free_Queues is
                   declare
                      Node : Private_Reference := Copy (Head);
                   begin
+                     --  Search for the first unmarked node.
                      while
-                       Is_Marked (Next) and Node /= Tail and Head = From.Head
+                       "+" (Next) /= null and Is_Marked (Next) and
+                       Head = From.Head
                      loop
                         Release (Node);
                         Node := Next;
@@ -124,12 +139,13 @@ package body NBAda.Lock_Free_Queues is
                      end loop;
 
                      if Head = From.Head then
-                        if Node = Tail then
+                        if Is_Marked (Next) then
                            --  Update From.Head.
                            Compare_And_Swap (Link      => From.Head'Access,
                                              Old_Value => Head,
-                                             New_Value => Node);
+                                             New_Value => Unmark (Node));
                         else
+                           --  Node is an active node.
                            declare
                               Result : constant Element_Type :=
                                 "+" (Node).Element;
@@ -146,7 +162,7 @@ package body NBAda.Lock_Free_Queues is
                                  Compare_And_Swap
                                    (Link      => From.Head'Access,
                                     Old_Value => Head,
-                                    New_Value => Node);
+                                    New_Value => Unmark (Node));
                                  Release (Head);
                                  Delete  (Node);
                                  return Result;
@@ -181,43 +197,55 @@ package body NBAda.Lock_Free_Queues is
               Dereference ("+" (Tail).Next'Access);
          begin
             if Tail = On.Tail then
-               if Next = Null_Reference then
+               if "+" (Next) = null then
                   --  Attempt standard enqueue.
-                  if Compare_And_Swap
-                    (Link      => "+" (Tail).Next'Access,
-                     Old_Value => Null_Reference,
-                     New_Value => Node)
-                  then
-                     Compare_And_Swap (Link      => On.Tail'Access,
-                                       Old_Value => Tail,
-                                       New_Value => Node);
-                     Release (Next);
-                     Release (Tail);
-                     Release (Node);
-                     return;
-                  else
-                     --  Foiled by concurrent operation. Attempt to go
-                     --  into the basket.
-                     while not Is_Marked ("+" (Tail).Next) loop
-                        --  Back-off.
+                  --  Preserve any deletion mark since the front dummy
+                  --  node should always be marked.
+                  declare
+                     New_Value : Private_Reference;
+                  begin
+                     if Is_Marked (Next) then
+                        New_Value := Mark (Node);
+                     else
+                        New_Value := Node;
+                     end if;
 
-                        Store ("+" (Node).Next'Access, Next);
-                        if Compare_And_Swap
-                          (Link      => "+" (Tail).Next'Access,
-                           Old_Value => Next,
-                           New_Value => Node)
-                        then
-                           Release (Next);
-                           Release (Tail);
-                           Release (Node);
-                           return;
-                        end if;
-
+                     if Compare_And_Swap
+                       (Link      => "+" (Tail).Next'Access,
+                        Old_Value => Next,
+                        New_Value => New_Value)
+                     then
+                        Compare_And_Swap (Link      => On.Tail'Access,
+                                          Old_Value => Tail,
+                                          New_Value => Node);
                         Release (Next);
-                        Next := Dereference ("+" (Tail).Next'Access);
-                     end loop;
-                     --  The basket got dequeued. Retry from start.
-                  end if;
+                        Release (Tail);
+                        Release (Node);
+                        return;
+                     else
+                        --  Foiled by concurrent operation. Attempt to go
+                        --  into the basket.
+                        while not Is_Marked ("+" (Tail).Next) loop
+                           --  Back-off.
+
+                           Store ("+" (Node).Next'Access, Next);
+                           if Compare_And_Swap
+                             (Link      => "+" (Tail).Next'Access,
+                              Old_Value => Next,
+                              New_Value => Node)
+                           then
+                              Release (Next);
+                              Release (Tail);
+                              Release (Node);
+                              return;
+                           end if;
+
+                           Release (Next);
+                           Next := Dereference ("+" (Tail).Next'Access);
+                        end loop;
+                        --  The basket got dequeued. Retry from start.
+                     end if;
+                  end;
                else
                   --  On.Tail is lagging. Help updating it.
                   while  Tail = On.Tail loop
@@ -225,7 +253,7 @@ package body NBAda.Lock_Free_Queues is
                         Next_Next : constant Private_Reference :=
                           Dereference ("+" (Next).Next'Access);
                      begin
-                        if Next_Next /= Null_Reference then
+                        if "+" (Next_Next) /= null then
                            Release (Next);
                            Next := Next_Next;
                         else
@@ -238,7 +266,7 @@ package body NBAda.Lock_Free_Queues is
                   if  Tail = On.Tail then
                      Compare_And_Swap (Link      => On.Tail'Access,
                                        Old_Value => Tail,
-                                       New_Value => Next);
+                                       New_Value => Unmark (Next));
                   end if;
                end if;
             end if;
@@ -248,6 +276,68 @@ package body NBAda.Lock_Free_Queues is
          end;
       end loop;
    end Enqueue;
+
+   ----------------------------------------------------------------------------
+   procedure Verify (Queue : in out Queue_Type;
+                     Print : in     Boolean := False) is
+      use MR_Ops;
+
+      function Image (Link : Queue_Node_Reference) return String;
+      function Image (Node : Private_Reference) return String;
+
+      -----------------------------------------------------------------
+      function Image (Link : Queue_Node_Reference) return String is
+         function To_Unsigned is
+            new Ada.Unchecked_Conversion (Queue_Node_Reference,
+                                          NBAda.Primitives.Standard_Unsigned);
+         use NBAda.Primitives;
+      begin
+         return Standard_Unsigned'Image (To_Unsigned (Link));
+      end Image;
+
+      -----------------------------------------------------------------
+      function Image (Node : Private_Reference) return String is
+         function To_Unsigned is
+            new Ada.Unchecked_Conversion (MR_Ops.Node_Access,
+                                          NBAda.Primitives.Standard_Unsigned);
+         use NBAda.Primitives;
+      begin
+         declare
+            Text : constant String :=
+              Standard_Unsigned'Image (To_Unsigned ("+" (Node))) &
+              "@(" &
+              "Next = " &
+              Image ("+" (Node).Next) &
+              ")";
+         begin
+            return
+              Text;
+         end;
+      end Image;
+
+
+      Node : Private_Reference := Dereference (Queue.Head'Access);
+   begin
+      if Print then
+         Ada.Text_IO.Put_Line ("Head = " & Image (Queue.Head));
+         Ada.Text_IO.Put_Line ("Tail = " & Image (Queue.Tail));
+      end if;
+      loop
+         if Print then
+            Ada.Text_IO.Put_Line ("  " & Image (Node));
+         end if;
+         declare
+            Next : constant Private_Reference :=
+              Dereference ("+" (Node).Next'Access);
+         begin
+            exit when "+" (Next) = null;
+
+            Release (Node);
+            Node := Next;
+         end;
+      end loop;
+      Release (Node);
+   end Verify;
 
    ----------------------------------------------------------------------------
    --  Private operations.
@@ -276,8 +366,26 @@ package body NBAda.Lock_Free_Queues is
 
    ----------------------------------------------------------------------------
    procedure Clean_Up (Node : access Queue_Node) is
+      use MR_Ops;
+      Next, Next_Next : Private_Reference;
    begin
-      null;
+      loop
+         Next := Dereference (Node.Next'Access);
+         if "+" (Next) /= null and then Is_Deleted (+Next) then
+            Next_Next := Dereference ("+"(Next).Next'Access);
+            if Compare_And_Swap (Link      => Node.Next'Access,
+                                 Old_Value => Next,
+                                 New_Value => Mark (Next_Next))
+            then
+               null;
+            end if;
+            Release (Next_Next);
+            Release (Next);
+         else
+            Release (Next);
+            exit;
+         end if;
+      end loop;
    end Clean_Up;
 
    ----------------------------------------------------------------------------
