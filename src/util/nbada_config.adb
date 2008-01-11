@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --  NBAda - A library of non-blocking algorithms and data structures.
 --
---  Copyright (C) 2007  Anders Gidenstam
+--  Copyright (C) 2007 - 2008  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 --  Description     : NBAda build config.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Aug 30 11:18:46 2007
--- $Id: nbada_config.adb,v 1.14 2007/10/30 15:37:06 andersg Exp $
+-- $Id: nbada_config.adb,v 1.15 2008/01/11 15:53:36 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Command_Line;
@@ -62,6 +62,8 @@ procedure NBAda_Config is
       LF_QUEUES_BOUNDED,
       LF_QUEUES_EBMR,
       LF_QUEUES_HPMR,
+      LF_QUEUES_LFMR,
+      LF_QUEUES_LFRC,
       LF_DEQUES_LFMR,
       LF_DEQUES_LFRC
       --    Under development.
@@ -74,7 +76,7 @@ procedure NBAda_Config is
 
    --  NBAda source code base directory.
    Install_Base : constant String :=
-     "/KM/usr1/andersg/projects/Ada/Non-Blocking/NBAda/src";
+     "/home/andersg/projects/Ada/Non-Blocking/NBAda/src";
    --  Default architecture.
    Default_Architecture : constant Architecture := IA32;
 
@@ -126,6 +128,12 @@ procedure NBAda_Config is
       LF_QUEUES_HPMR =>
         "+" ("-I" & Install_Base & "/Lock-Free_Queue " &
              "-I" & Install_Base & "/Lock-Free_Queue/HPMR"),
+      LF_QUEUES_LFMR =>
+        "+" ("-I" & Install_Base & "/Lock-Free_Queue_2 " &
+             "-I" & Install_Base & "/Lock-Free_Queue_2/LFMR"),
+      LF_QUEUES_LFRC =>
+        "+" ("-I" & Install_Base & "/Lock-Free_Queue_2 " &
+             "-I" & Install_Base & "/Lock-Free_Queue_2/LFRC"),
       LF_DEQUES_LFMR =>
         "+" ("-I" & Install_Base & "/Lock-Free_Deque " &
              "-I" & Install_Base & "/Lock-Free_Deque/LFMR"),
@@ -171,6 +179,12 @@ procedure NBAda_Config is
       LF_QUEUES_HPMR  => (PRIMITIVES      => True,
                           LF_POOLS        => True,
                           HPMR            => True, others => False),
+      LF_QUEUES_LFMR  => (PRIMITIVES      => True,
+                          LF_POOLS        => True,
+                          LFMR            => True, others => False),
+      LF_QUEUES_LFRC  => (PRIMITIVES      => True,
+                          LF_POOLS        => True,
+                          LFRC            => True, others => False),
       LF_DEQUES_LFMR  => (PRIMITIVES => True,
                           LF_POOLS   => True,
                           LFMR       => True, others => False),
