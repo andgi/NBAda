@@ -1,7 +1,7 @@
 #!/bin/bash
-# $Id: benchmark.sh,v 1.3 2007/09/12 18:32:03 andersg Exp $
+# $Id: benchmark.sh,v 1.4 2008/01/11 18:48:56 andersg Exp $
 # Benchmark batch job
-# Copyright (C) 2007  Anders Gidenstam  
+# Copyright (C) 2007 - 2008  Anders Gidenstam  
 #
 
 # job directory
@@ -12,7 +12,7 @@ BIN=./
 cd $DIR
 
 # Lists of programs and worker threads
-PROGS="queue_test.ebmr queue_test.hpmr queue_test.lfrc queue_test.lfmr queue_test.bounded"
+PROGS="queue_test.ebmr queue_test.hpmr queue_test.lfrc queue_test.lfmr queue_test.lfmr2 queue_test.bounded"
 THREADS="1 2 4 8 16"
 
 # The number of repetitions of each experiment.
