@@ -27,10 +27,12 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 16 11:46:57 2008
---  $Id: nbada-atomic_move.adb,v 1.1 2008/01/17 18:54:29 andersg Exp $
+--  $Id: nbada-atomic_move.adb,v 1.2 2008/01/18 19:23:22 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
+
+with Ada.Unchecked_Conversion;
 
 package body NBAda.Atomic_Move is
 
@@ -56,6 +58,10 @@ package body NBAda.Atomic_Move is
    ----------------------------------------------------------------------------
    function Dereference (Location : access Shared_Location)
                         return Private_Reference is
+      type Location_Access is access all Shared_Location;
+      function To_Shared_Location_Access is
+         new Ada.Unchecked_Conversion (Location_Access,
+                                       Shared_Location_Access);
       Result : Private_Reference;
    begin
       loop
@@ -65,7 +71,8 @@ package body NBAda.Atomic_Move is
             Primitives.Membar;
 
             Result.Ref      := Ref;
-            Result.Location := Shared_Location_Access (Location);
+            Result.Location :=
+              To_Shared_Location_Access (Location_Access (Location));
 
             if Ref.Node = null then
                return Result;
@@ -100,7 +107,10 @@ package body NBAda.Atomic_Move is
    procedure Move (To      : access Shared_Location;
                    Element : in out Private_Reference;
                    Result  :    out Move_Status) is
-      Dummy  : aliased Shared_Location;
+      type Location_Access is access all Shared_Location;
+      function To_Shared_Location_Access is
+         new Ada.Unchecked_Conversion (Location_Access,
+                                       Shared_Location_Access);
       Status : Move_Info;
    begin
       --  Step 1. Initiate move operation.
@@ -118,7 +128,8 @@ package body NBAda.Atomic_Move is
                Element.Ref.Version := Old_From.Version;
                Status := (Current => Old_From.Version,
                           Old_Pos => Element.Location,
-                          New_pos => Shared_Location_Access (To));
+                          New_pos =>
+                            To_Shared_Location_Access (Location_Access (To)));
                if Store_Conditional (Element.Ref.Node.Status'Access,
                                      Status) then
                   Help_Move
@@ -161,7 +172,7 @@ package body NBAda.Atomic_Move is
       Tmp.Location         := Tmp_Location (ID)'Access;
       Tmp_Location (ID)    := (Tmp.Ref.Node, 0);
       Initialize (Tmp.Ref.Node.Status, (0,
-                                        New_Pos => Null,
+                                        New_Pos => null,
                                         Old_Pos => Tmp.Location));
       return Tmp;
    end Create;
