@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 16 11:46:57 2008
---  $Id: nbada-atomic_move.adb,v 1.2 2008/01/18 19:23:22 andersg Exp $
+--  $Id: nbada-atomic_move.adb,v 1.3 2008/01/21 18:21:31 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -45,6 +45,8 @@ package body NBAda.Atomic_Move is
                         From    : in     Shared_Location_Access;
                         To      : in     Shared_Location_Access;
                         Result  :    out Move_Status);
+
+   function Image (Ref : Node_Ref) return String;
 
    subtype Processes is Process_Ids.Process_ID_Type;
 
@@ -113,6 +115,11 @@ package body NBAda.Atomic_Move is
                                        Shared_Location_Access);
       Status : Move_Info;
    begin
+      if To = Element.Location then
+         Result := Moved_Ok;
+         return;
+      end if;
+
       --  Step 1. Initiate move operation.
       loop
          declare
@@ -205,21 +212,26 @@ package body NBAda.Atomic_Move is
 
    ----------------------------------------------------------------------------
    function Image (Ref : Private_Reference) return String is
+      function To_Unsigned is
+         new Ada.Unchecked_Conversion (Shared_Location_Access,
+                                       Primitives.Standard_Unsigned);
    begin
-      if Ref.Ref.Node = null then
-         return "(null)";
-      else
-         return "(X)";
-      end if;
+      return Image (Ref.Ref) & "@" &
+        Primitives.Standard_Unsigned'Image (To_Unsigned (Ref.Location));
    end Image;
 
    ----------------------------------------------------------------------------
    function Image (Location : Shared_Location) return String is
+      function To_Unsigned is
+         new Ada.Unchecked_Conversion (Node_Access,
+                                       Primitives.Standard_Unsigned);
    begin
       if Location.Node = null then
          return "(null, " & Version_ID'Image (Location.Version) & ")";
       else
-         return "(X, " & Version_ID'Image (Location.Version) & ")";
+         return "(" &
+           Primitives.Standard_Unsigned'Image (To_Unsigned (Location.Node)) &
+           ", " & Version_ID'Image (Location.Version) & ")";
       end if;
    end Image;
 
@@ -330,5 +342,15 @@ package body NBAda.Atomic_Move is
       end;
 
    end Help_Move;
+
+   ----------------------------------------------------------------------------
+   function Image (Ref : Node_Ref) return String is
+   begin
+      if Ref.Node = null then
+         return "(null, " & Version_ID'Image (Ref.Version) & ")";
+      else
+         return "(X, " & Version_ID'Image (Ref.Version) & ")";
+      end if;
+   end Image;
 
 end NBAda.Atomic_Move;

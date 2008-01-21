@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Jan 15 19:05:03 2008
---  $Id: nbada-lock_free_flat_sets.adb,v 1.1 2008/01/18 19:23:22 andersg Exp $
+--  $Id: nbada-lock_free_flat_sets.adb,v 1.2 2008/01/21 18:21:31 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -65,27 +65,32 @@ package body NBAda.Lock_Free_Flat_Sets is
       loop
          declare
             Status : constant Set_State := From.State;
-            I      : Set_Index := Status.Last;
+            I      : Flat_Set_Size := Flat_Set_Size (Status.Last);
          begin
             if Status.Empty then
                raise Flat_Set_Empty;
             end if;
-            for J in 0 .. From.Max_Size loop
+            for J in 0 .. From.Size loop
                declare
                   use AM;
                   Node  : constant Private_Reference :=
-                    AM.Dereference (From.Set (Flat_Set_Size (I))'Access);
+                    AM.Dereference (From.Set (I)'Access);
                begin
                   if Node /= Null_Reference then
-                     Compare_And_Swap (Target    => From.State'Access,
-                                       Old_Value => Status,
-                                       New_Value =>
-                                         (False, I, Status.Version + 1));
+                     Compare_And_Swap
+                       (Target    => From.State'Access,
+                        Old_Value => Status,
+                        New_Value =>
+                          (False, Set_Index (I), Status.Version + 1));
                      Element := Element_Reference (Node);
                      return;
                   end if;
                end;
-               I := I - 1;
+               if I = 0 then
+                  I := From.Size;
+               else
+                  I := I - 1;
+               end if;
             end loop;
             if
               Compare_And_Swap (Target    => From.State'Access,
@@ -105,11 +110,10 @@ package body NBAda.Lock_Free_Flat_Sets is
    begin
       loop
          declare
-            Status : Set_State := Into.State;
-            I : Set_Index := Status.Last;
+            Status : Set_State     := Into.State;
+            I      : Flat_Set_Size := Flat_Set_Size (Status.Last);
          begin
-            Ada.Text_IO.Put_Line ("A");
-            Scan : for J in 0 .. Into.Max_Size loop
+            Scan : for J in 0 .. Into.Size loop
                declare
                   use AM;
                   Dest   : AM.Private_Reference;
@@ -117,28 +121,33 @@ package body NBAda.Lock_Free_Flat_Sets is
                begin
                   Move_Into : loop
                      Dest :=
-                       AM.Dereference (Into.Set (Flat_Set_Size (I))'Access);
+                       AM.Dereference (Into.Set (I)'Access);
                      exit Move_Into when Dest /= Null_Reference;
 
                      --  Preemptive reset of empty flag.
                      --  This could be undone by other operations.
                      --  Is it even needed?
                      if Status.Empty then
-                        Compare_And_Swap (Target    => Into.State'Access,
-                                          Old_Value => Status,
-                                          New_Value =>
-                                            (False, I, Status.Version + 1));
+--                        Compare_And_Swap
+--                          (Target    => Into.State'Access,
+--                           Old_Value => Status,
+--                           New_Value =>
+--                             (False, Set_Index (I), Status.Version + 1));
+                        Into.State :=
+                          (False, Set_Index (I), Status.Version + 1);
                      end if;
                      Move (Element => Element,
-                           To      => Into.Set (Flat_Set_Size (I))'Access,
+                           To      => Into.Set (I)'Access,
                            Result  => Result);
                      case Result is
                         when Moved_Ok =>
-                           Compare_And_Swap
-                             (Target    => Into.State'Access,
-                              Old_Value => Status,
-                              New_Value =>
-                                (False, I, Status.Version + 1));
+--                           Compare_And_Swap
+--                             (Target    => Into.State'Access,
+--                              Old_Value => Status,
+--                              New_Value =>
+--                                (False, Set_Index (I), Status.Version + 1));
+                           Into.State :=
+                             (False, Set_Index (I), Status.Version + 1);
                            return;
 
                         when Moved_Away =>
@@ -150,11 +159,26 @@ package body NBAda.Lock_Free_Flat_Sets is
                   end loop Move_Into;
                end;
                Status := Into.State;
-               I := I + 1;
+               if I = Into.Size then
+                  I := 0;
+               else
+                  I := I + 1;
+               end if;
             end loop Scan;
          end;
          --  The set might be full.
       end loop;
    end Insert;
+
+   ----------------------------------------------------------------------------
+   procedure Dump (Set : in Flat_Set_Type) is
+      use AM;
+   begin
+      Ada.Text_IO.Put_Line ("[");
+      for I in Set.Set'Range loop
+         Ada.Text_IO.Put_Line ("  " & Image (Set.Set (I)));
+      end loop;
+      Ada.Text_IO.Put_Line ("]");
+   end Dump;
 
 end NBAda.Lock_Free_Flat_Sets;

@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Jan 15 17:41:28 2008
---  $Id: nbada-lock_free_flat_sets.ads,v 1.1 2008/01/18 19:23:22 andersg Exp $
+--  $Id: nbada-lock_free_flat_sets.ads,v 1.2 2008/01/21 18:21:31 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -51,7 +51,7 @@ package NBAda.Lock_Free_Flat_Sets is
    Max_Set_Size : constant := 2**15;
 
    type Flat_Set_Size is new Natural range 0 .. Max_Set_Size - 1;
-   type Flat_Set_Type (Max_Size : Flat_Set_Size) is limited private;
+   type Flat_Set_Type (Size : Flat_Set_Size) is limited private;
 
    type Element_Reference is private;
 
@@ -67,6 +67,9 @@ package NBAda.Lock_Free_Flat_Sets is
                       Element : in out Element_Reference);
 
    Flat_Set_Empty : exception;
+
+   --  Only for debugging. Not concurrency safe.
+   procedure Dump (Set : in Flat_Set_Type);
 
 private
 
@@ -92,10 +95,10 @@ private
    for Set_State'Size use 32;
    pragma Atomic (Set_State);
 
-   type Flat_Set_Type (Max_Size : Flat_Set_Size) is limited record
+   type Flat_Set_Type (Size : Flat_Set_Size) is limited record
       State : aliased Set_State;
       pragma Atomic (State);
-      Set   : Shared_Location_Array (0 .. Max_Size);
+      Set   : Shared_Location_Array (0 .. Size);
    end record;
 
    type Element_Reference is new AM.Private_Reference;
