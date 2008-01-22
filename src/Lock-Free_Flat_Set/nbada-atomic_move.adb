@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 16 11:46:57 2008
---  $Id: nbada-atomic_move.adb,v 1.4 2008/01/22 15:09:30 andersg Exp $
+--  $Id: nbada-atomic_move.adb,v 1.5 2008/01/22 18:53:17 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -282,8 +282,10 @@ package body NBAda.Atomic_Move is
          use Move_Info_LL_SC;
          Old_To : constant Node_Ref := Node_Ref (To.all);
          Node   : constant Node_Access := To_Node_Access (Element.Ref.Node);
-         Status : Move_Info := Load_Linked (Node.Status);
+         Status : Move_Info;
       begin
+         Primitives.Membar;
+         Status := Load_Linked (Node.Status);
          if
            Status /= (Current => Element.Ref.Version,
                       Old_Pos => Element.Location,

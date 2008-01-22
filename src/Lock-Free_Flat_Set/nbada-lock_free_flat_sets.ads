@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Jan 15 17:41:28 2008
---  $Id: nbada-lock_free_flat_sets.ads,v 1.2 2008/01/21 18:21:31 andersg Exp $
+--  $Id: nbada-lock_free_flat_sets.ads,v 1.3 2008/01/22 18:53:17 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -67,9 +67,11 @@ package NBAda.Lock_Free_Flat_Sets is
                       Element : in out Element_Reference);
 
    Flat_Set_Empty : exception;
+   Flat_Set_Full  : exception;
 
    --  Only for debugging. Not concurrency safe.
    procedure Dump (Set : in Flat_Set_Type);
+   function Number_Of_Elements (Set : access Flat_Set_Type) return Natural;
 
 private
 

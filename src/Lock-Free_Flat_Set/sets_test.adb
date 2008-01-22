@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 18 15:14:04 2008
---  $Id: sets_test.adb,v 1.1 2008/01/21 18:21:31 andersg Exp $
+--  $Id: sets_test.adb,v 1.2 2008/01/22 18:53:17 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -66,19 +66,20 @@ procedure Sets_Test is
 
    No_Of_Sets      : constant := 4;
    Set_Size       :  constant := 8;
-   No_Of_Moves     : constant := 1_000;
+   No_Of_Moves     : constant := 80_000;
    No_Of_Movers    : Natural  := 4;
-   No_Of_Elements  : Natural  := 7;
+   No_Of_Elements  : Natural  := 1;
 
    type Move_Status is (Get_Ok, Get_Empty, Insert);
    Move_Count : array (Move_Status) of aliased Primitives.Unsigned_32 :=
      (others => 0);
 
    type Index is mod No_Of_Sets;
-   type Set_Array is array (Index) of FLS.Flat_Set_Type (Set_Size);
+   type Set_Array is array (Index) of aliased FLS.Flat_Set_Type (Set_Size);
 
    ----------------------------------------------------------------------
    function Pinned_Task return System.Task_Info.Task_Info_Type;
+   procedure Check;
    procedure Print_Usage;
 
    task type Mover is
@@ -143,8 +144,13 @@ procedure Sets_Test is
                   Get_Any (Set (Target),
                            Elem);
                   Count (Get_Ok) := Count (Get_Ok) + 1;
-                  Insert (Element => Elem,
-                          Into    => Set (My_Set));
+                  if Target /= My_Set then
+                     Insert (Element => Elem,
+                             Into    => Set (My_Set));
+                  else
+                     Insert (Element => Elem,
+                             Into    => Set (My_Set + 1));
+                  end if;
                   Count (Insert) := Count (Insert) + 1;
                   exit;
 
@@ -188,6 +194,27 @@ procedure Sets_Test is
          Ada.Text_IO.New_Line;
 
    end Mover;
+
+   ----------------------------------------------------------------------
+   procedure Check is
+      Count : Natural := 0;
+   begin
+      for I in Set'Range loop
+         Count := Count +  Number_Of_Elements (Set (I)'Access);
+      end loop;
+
+      if Count /= No_Of_Elements then
+         Ada.Text_IO.Put_Line ("***** Wrong number of elements! " &
+                               " Found " &
+                               Natural'Image (Count) &
+                               " instead of " &
+                               Natural'Image (No_Of_Elements) & "." &
+                               " *****");
+--           for I in Set'Range loop
+--              Dump (Set (I));
+--           end loop;
+      end if;
+   end Check;
 
    ----------------------------------------------------------------------
    procedure Print_Usage is
@@ -236,9 +263,7 @@ begin
       end;
    end loop;
 
-   for I in Set'Range loop
-      Dump (Set (I));
-   end loop;
+   Check;
 
    Ada.Text_IO.Put_Line ("Testing with " &
                          Integer'Image (No_Of_Movers) & " mover tasks.");
@@ -274,8 +299,6 @@ begin
                             Primitives.Unsigned_32'Image (Sum));
    end;
 
-   for I in Set'Range loop
-      Dump (Set (I));
-   end loop;
+   Check;
 
 end Sets_Test;

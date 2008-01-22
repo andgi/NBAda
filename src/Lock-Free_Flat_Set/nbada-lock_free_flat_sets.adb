@@ -27,12 +27,13 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Jan 15 19:05:03 2008
---  $Id: nbada-lock_free_flat_sets.adb,v 1.2 2008/01/21 18:21:31 andersg Exp $
+--  $Id: nbada-lock_free_flat_sets.adb,v 1.3 2008/01/22 18:53:17 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
 with Ada.Text_IO;
+with Ada.Unchecked_Conversion;
 
 package body NBAda.Lock_Free_Flat_Sets is
 
@@ -107,18 +108,29 @@ package body NBAda.Lock_Free_Flat_Sets is
    ----------------------------------------------------------------------------
    procedure Insert  (Into    : in out Flat_Set_Type;
                       Element : in out Element_Reference) is
+      use type Primitives.Standard_Unsigned;
+      function To_Unsigned is
+         new Ada.Unchecked_Conversion (AM.Shared_Location,
+                                       Primitives.Standard_Unsigned);
+      Last_Checksum : Primitives.Standard_Unsigned := 0;
+      Checks        : constant := 5;
+      Check         : Natural := 1;
+      Checksum      : Primitives.Standard_Unsigned;
    begin
       loop
          declare
             Status : Set_State     := Into.State;
             I      : Flat_Set_Size := Flat_Set_Size (Status.Last);
          begin
+            Primitives.Membar;
+            Checksum := 0;
             Scan : for J in 0 .. Into.Size loop
                declare
                   use AM;
                   Dest   : AM.Private_Reference;
                   Result : AM.Move_Status;
                begin
+                  Checksum := Checksum + To_Unsigned (Into.Set (I));
                   Move_Into : loop
                      Dest :=
                        AM.Dereference (Into.Set (I)'Access);
@@ -133,8 +145,10 @@ package body NBAda.Lock_Free_Flat_Sets is
 --                           Old_Value => Status,
 --                           New_Value =>
 --                             (False, Set_Index (I), Status.Version + 1));
+                        Primitives.Membar;
                         Into.State :=
-                          (False, Set_Index (I), Status.Version + 1);
+                          (False, Set_Index (I), Status.Version + 7);
+                        Primitives.Membar;
                      end if;
                      Move (Element => Element,
                            To      => Into.Set (I)'Access,
@@ -146,8 +160,10 @@ package body NBAda.Lock_Free_Flat_Sets is
 --                              Old_Value => Status,
 --                              New_Value =>
 --                                (False, Set_Index (I), Status.Version + 1));
+                           Primitives.Membar;
                            Into.State :=
                              (False, Set_Index (I), Status.Version + 1);
+                           Primitives.Membar;
                            return;
 
                         when Moved_Away =>
@@ -159,6 +175,7 @@ package body NBAda.Lock_Free_Flat_Sets is
                   end loop Move_Into;
                end;
                Status := Into.State;
+               Primitives.Membar;
                if I = Into.Size then
                   I := 0;
                else
@@ -167,6 +184,14 @@ package body NBAda.Lock_Free_Flat_Sets is
             end loop Scan;
          end;
          --  The set might be full.
+         if Checksum = Last_Checksum and Check >= Checks then
+            raise Flat_Set_Full;
+         elsif Checksum = Last_Checksum then
+            Check := Check + 1;
+         else
+            Last_Checksum := Checksum;
+            Check := 1;
+         end if;
       end loop;
    end Insert;
 
@@ -180,5 +205,19 @@ package body NBAda.Lock_Free_Flat_Sets is
       end loop;
       Ada.Text_IO.Put_Line ("]");
    end Dump;
+
+   function Number_Of_Elements (Set : access Flat_Set_Type) return Natural is
+      use AM;
+      Count : Natural := 0;
+   begin
+      for I in Set.Set'Range loop
+         if
+           not (AM.Dereference (Set.Set (I)'Access) = Null_Reference)
+         then
+            Count := Count + 1;
+         end if;
+      end loop;
+      return Count;
+   end Number_Of_Elements;
 
 end NBAda.Lock_Free_Flat_Sets;
