@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 16 17:14:04 2008
---  $Id: move_test.adb,v 1.1 2008/01/17 18:54:29 andersg Exp $
+--  $Id: move_test.adb,v 1.2 2008/01/22 15:09:43 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -240,6 +240,7 @@ begin
       declare
          E : Private_Reference := Create ((PID.Process_ID, I));
       begin
+         Ada.Text_IO.Put_Line ("E => " & Image (E));
          Move (Element => E,
                To      => Location (Index (I - 1))'Access,
                Result  => Res);
