@@ -27,19 +27,20 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 16 11:46:57 2008
---  $Id: nbada-atomic_move.adb,v 1.3 2008/01/21 18:21:31 andersg Exp $
+--  $Id: nbada-atomic_move.adb,v 1.4 2008/01/22 15:09:30 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
 with Ada.Unchecked_Conversion;
+with Ada.Exceptions;
 
 package body NBAda.Atomic_Move is
 
    procedure Compare_And_Swap is
-      new Primitives.Compare_And_Swap_64 (Shared_Location);
+      new Primitives.Standard_Compare_And_Swap (Shared_Location);
    procedure Void_Compare_And_Swap is
-      new Primitives.Void_Compare_And_Swap_64 (Shared_Location);
+      new Primitives.Standard_Void_Compare_And_Swap (Shared_Location);
 
    procedure Help_Move (Element : in out Private_Reference;
                         From    : in     Shared_Location_Access;
@@ -47,6 +48,9 @@ package body NBAda.Atomic_Move is
                         Result  :    out Move_Status);
 
    function Image (Ref : Node_Ref) return String;
+
+   function To_Node_Access (X : Node_Access_Impl) return Node_Access;
+   function To_Node_Access_Impl (X : Node_Access) return Node_Access_Impl;
 
    subtype Processes is Process_Ids.Process_ID_Type;
 
@@ -68,7 +72,8 @@ package body NBAda.Atomic_Move is
    begin
       loop
          declare
-            Ref : constant Node_Ref := Node_Ref (Location.all);
+            Ref  : constant Node_Ref := Node_Ref (Location.all);
+            Node : constant Node_Access := To_Node_Access (Ref.Node);
          begin
             Primitives.Membar;
 
@@ -76,13 +81,13 @@ package body NBAda.Atomic_Move is
             Result.Location :=
               To_Shared_Location_Access (Location_Access (Location));
 
-            if Ref.Node = null then
+            if Node = null then
                return Result;
             end if;
 
             declare
                use Move_Info_LL_SC;
-               Status : constant Move_Info := Load_Linked (Ref.Node.Status);
+               Status : constant Move_Info := Load_Linked (Node.Status);
             begin
                if
                  Status.New_Pos = null and then
@@ -125,8 +130,10 @@ package body NBAda.Atomic_Move is
          declare
             use Move_Info_LL_SC;
             Old_From : constant Node_Ref := Node_Ref (Element.Location.all);
+            Node     : constant Node_Access :=
+              To_Node_Access (Element.Ref.Node);
          begin
-            Status := Load_Linked (Element.Ref.Node.Status);
+            Status := Load_Linked (Node.Status);
             if Old_From.Node /= Element.Ref.Node then
                Result := Moved_Away;
                return;
@@ -137,8 +144,7 @@ package body NBAda.Atomic_Move is
                           Old_Pos => Element.Location,
                           New_pos =>
                             To_Shared_Location_Access (Location_Access (To)));
-               if Store_Conditional (Element.Ref.Node.Status'Access,
-                                     Status) then
+               if Store_Conditional (Node.Status'Access, Status) then
                   Help_Move
                     (Element => Element,
                      From    => Status.Old_Pos,
@@ -171,16 +177,18 @@ package body NBAda.Atomic_Move is
    ----------------------------------------------------------------------------
    function Create (Element : Element_Type) return Private_Reference is
       use Move_Info_LL_SC;
-      ID  : constant Processes := Process_Ids.Process_ID;
-      Tmp : Private_Reference;
+      ID       : constant Processes := Process_Ids.Process_ID;
+      Tmp      : Private_Reference;
+      New_Node : constant Node_Access := new Node;
    begin
-      Tmp.Ref.Node         := new Node;
-      Tmp.Ref.Node.Element := Element;
-      Tmp.Location         := Tmp_Location (ID)'Access;
-      Tmp_Location (ID)    := (Tmp.Ref.Node, 0);
-      Initialize (Tmp.Ref.Node.Status, (0,
-                                        New_Pos => null,
-                                        Old_Pos => Tmp.Location));
+      Tmp.Ref.Node      := To_Node_Access_Impl (New_Node);
+      New_Node.Element  := Element;
+      Tmp.Location      := Tmp_Location (ID)'Access;
+      Tmp_Location (ID) := (Tmp.Ref.Node, 0);
+      Initialize (New_Node.Status,
+                  (0,
+                   New_Pos => null,
+                   Old_Pos => Tmp.Location));
       return Tmp;
    end Create;
 
@@ -222,23 +230,21 @@ package body NBAda.Atomic_Move is
 
    ----------------------------------------------------------------------------
    function Image (Location : Shared_Location) return String is
-      function To_Unsigned is
-         new Ada.Unchecked_Conversion (Node_Access,
-                                       Primitives.Standard_Unsigned);
    begin
-      if Location.Node = null then
+      if Location.Node = 0 then
          return "(null, " & Version_ID'Image (Location.Version) & ")";
       else
          return "(" &
-           Primitives.Standard_Unsigned'Image (To_Unsigned (Location.Node)) &
+           Node_Access_Impl'Image (Location.Node * Node'Alignment) &
            ", " & Version_ID'Image (Location.Version) & ")";
       end if;
    end Image;
 
    ----------------------------------------------------------------------------
    function "+" (Ref : Private_Reference) return Element_Access is
+      Node : constant Node_Access := To_Node_Access (Ref.Ref.Node);
    begin
-      return Ref.Ref.Node.Element'Access;
+      return Node.Element'Access;
    end "+";
 
 
@@ -255,7 +261,8 @@ package body NBAda.Atomic_Move is
 
       procedure Give_Up is
          use Move_Info_LL_SC;
-         Status : Move_Info := Load_Linked (Element.Ref.Node.Status);
+         Node : constant Node_Access := To_Node_Access (Element.Ref.Node);
+         Status : Move_Info := Load_Linked (Node.Status);
       begin
          if
            Status = (Current => Element.Ref.Version,
@@ -264,7 +271,7 @@ package body NBAda.Atomic_Move is
          then
             Status.Current := 0;
             Status.New_Pos := null;
-            Store_Conditional (Element.Ref.Node.Status'Access,
+            Store_Conditional (Node.Status'Access,
                                Status);
          end if;
       end Give_Up;
@@ -274,7 +281,8 @@ package body NBAda.Atomic_Move is
       declare
          use Move_Info_LL_SC;
          Old_To : constant Node_Ref := Node_Ref (To.all);
-         Status : Move_Info := Load_Linked (Element.Ref.Node.Status);
+         Node   : constant Node_Access := To_Node_Access (Element.Ref.Node);
+         Status : Move_Info := Load_Linked (Node.Status);
       begin
          if
            Status /= (Current => Element.Ref.Version,
@@ -286,7 +294,7 @@ package body NBAda.Atomic_Move is
             return;
          end if;
 
-         if Old_To.Node /= null then
+         if Old_To.Node /= 0 then
             if Old_To.Node /= Element.Ref.Node then
                Give_Up;
                Result := Not_Moved;
@@ -300,9 +308,9 @@ package body NBAda.Atomic_Move is
                                   Old_To.Version + 1);
             begin
                Compare_And_Swap (Target    => To,
-                                 Old_Value => (null, Old_To.Version),
+                                 Old_Value => (0, Old_To.Version),
                                  New_Value => Shared_Location (Res));
-               if Res /=  (null, Old_To.Version) then
+               if Res /=  (0, Old_To.Version) then
                   --  To was occupied.
                   if Res.Node /= Element.Ref.Node then
                      Give_Up;
@@ -319,12 +327,13 @@ package body NBAda.Atomic_Move is
       --  Step 3. Clear From.
       Void_Compare_And_Swap (Target    => From,
                              Old_Value => Shared_Location (Element.Ref),
-                             New_Value => (null, Element.Ref.Version + 1));
+                             New_Value => (0, Element.Ref.Version + 1));
 
       --  Step 4. Remove the operation information from Node.
       declare
          use Move_Info_LL_SC;
-         Status : Move_Info := Load_Linked (Element.Ref.Node.Status);
+         Node   : constant Node_Access := To_Node_Access (Element.Ref.Node);
+         Status : Move_Info := Load_Linked (Node.Status);
       begin
          if
            Status = (Current => Element.Ref.Version,
@@ -334,7 +343,7 @@ package body NBAda.Atomic_Move is
             Status.Current := 0;
             Status.Old_Pos := To;
             Status.New_Pos := null;
-            Store_Conditional (Element.Ref.Node.Status'Access,
+            Store_Conditional (Node.Status'Access,
                                Status);
          end if;
 
@@ -346,11 +355,41 @@ package body NBAda.Atomic_Move is
    ----------------------------------------------------------------------------
    function Image (Ref : Node_Ref) return String is
    begin
-      if Ref.Node = null then
+      if Ref.Node = 0 then
          return "(null, " & Version_ID'Image (Ref.Version) & ")";
       else
-         return "(X, " & Version_ID'Image (Ref.Version) & ")";
+         return
+           "("  & Node_Access_Impl'Image (Ref.Node * Node'Alignment) &
+           ", " & Version_ID'Image (Ref.Version) & ")";
       end if;
    end Image;
+
+   ----------------------------------------------------------------------------
+   function To_Node_Access (X : Node_Access_Impl) return Node_Access is
+      use type Primitives.Standard_Unsigned;
+      function To_Access is
+         new Ada.Unchecked_Conversion (Primitives.Standard_Unsigned,
+                                       Node_Access);
+      X_Unsigned : constant Primitives.Standard_Unsigned :=
+        Primitives.Standard_Unsigned (X);
+   begin
+      return To_Access (X_Unsigned * Node'Alignment);
+   end To_Node_Access;
+
+   ----------------------------------------------------------------------------
+   function To_Node_Access_Impl (X : Node_Access) return Node_Access_Impl is
+      use type Primitives.Standard_Unsigned;
+      function To_Unsigned is
+         new Ada.Unchecked_Conversion (Node_Access,
+                                       Primitives.Standard_Unsigned);
+      X_Unsigned : constant Primitives.Standard_Unsigned :=
+        To_Unsigned (X);
+   begin
+      if X_Unsigned mod Node'Alignment /= 0 then
+         raise Constraint_Error;
+      else
+         return Node_Access_Impl (X_Unsigned / Node'Alignment);
+      end if;
+   end To_Node_Access_Impl;
 
 end NBAda.Atomic_Move;

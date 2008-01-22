@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 16 11:12:21 2008
---  $Id: nbada-atomic_move.ads,v 1.1 2008/01/17 18:54:29 andersg Exp $
+--  $Id: nbada-atomic_move.ads,v 1.2 2008/01/22 15:09:30 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -77,22 +77,30 @@ package NBAda.Atomic_Move is
 
 private
 
-   type Version_ID   is new Primitives.Unsigned_32;
+   No_Of_Version_Bits : constant := 6;
+
+   type Version_ID is mod 2 ** No_Of_Version_Bits;
+   type Node_Access_Impl is
+     mod 2 ** (Primitives.Standard_Unsigned'Size - No_Of_Version_Bits);
 
    type Node;
    type Node_Access is access all Node;
 
    type Node_Ref is
       record
-         Node    : Node_Access;
+         Node    : Node_Access_Impl := 0;
          Version : Version_ID := 0;
       end record;
-   for Node_Ref'Size use 64;
+   for Node_Ref use record
+      Node    at 0 range
+        Version_ID'Size .. Primitives.Standard_Unsigned'Size - 1;
+      Version at 0 range 0 .. Version_ID'Size - 1;
+   end record;
+   for Node_Ref'Size use Primitives.Standard_Unsigned'Size;
 
    type Shared_Location is new Node_Ref;
-   for Shared_Location'Size use 64;
-   for Shared_Location'Alignment use 8;
-   pragma Volatile (Shared_Location);
+   for Shared_Location'Size use Primitives.Standard_Unsigned'Size;
+   pragma Atomic (Shared_Location);
 
    type Shared_Location_Access is access all Shared_Location;
 
@@ -114,6 +122,7 @@ private
          Status  : aliased Move_Info_LL_SC.Shared_Element;
          Element : aliased Element_Type;
       end record;
+   for Node'Alignment use 2 ** No_Of_Version_Bits;
 
    type Private_Reference is
       record
@@ -121,6 +130,6 @@ private
          Location : Shared_Location_Access;
       end record;
 
-   Null_Reference : constant Private_Reference := ((null, 0), null);
+   Null_Reference : constant Private_Reference := ((0, 0), null);
 
 end NBAda.Atomic_Move;
