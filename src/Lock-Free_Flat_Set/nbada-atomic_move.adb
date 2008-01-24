@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 16 11:46:57 2008
---  $Id: nbada-atomic_move.adb,v 1.5 2008/01/22 18:53:17 andersg Exp $
+--  $Id: nbada-atomic_move.adb,v 1.6 2008/01/24 12:52:04 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -46,6 +46,8 @@ package body NBAda.Atomic_Move is
                         From    : in     Shared_Location_Access;
                         To      : in     Shared_Location_Access;
                         Result  :    out Move_Status);
+   --  NOTE: It is assumed that a Load_Linked was performed on
+   --  Element.Ref.Node.Status prior to the call to Help_Move.
 
    function Image (Ref : Node_Ref) return String;
 
@@ -99,6 +101,8 @@ package body NBAda.Atomic_Move is
                   declare
                      Tmp : Move_Status;
                   begin
+                     --  The linked load of Node.Status above should
+                     --  remain valid until the end of Help_Move.
                      Help_Move (Element => Result,
                                 From    => Status.Old_Pos,
                                 To      => Status.New_Pos,
@@ -118,7 +122,6 @@ package body NBAda.Atomic_Move is
       function To_Shared_Location_Access is
          new Ada.Unchecked_Conversion (Location_Access,
                                        Shared_Location_Access);
-      Status : Move_Info;
    begin
       if To = Element.Location then
          Result := Moved_Ok;
@@ -132,8 +135,13 @@ package body NBAda.Atomic_Move is
             Old_From : constant Node_Ref := Node_Ref (Element.Location.all);
             Node     : constant Node_Access :=
               To_Node_Access (Element.Ref.Node);
+            Status   : Move_Info;
          begin
+            Primitives.Membar;
+            --  Load Node.Status. This linked load should remain valid until
+            --  the end of the move.
             Status := Load_Linked (Node.Status);
+
             if Old_From.Node /= Element.Ref.Node then
                Result := Moved_Away;
                return;
@@ -145,11 +153,22 @@ package body NBAda.Atomic_Move is
                           New_pos =>
                             To_Shared_Location_Access (Location_Access (To)));
                if Store_Conditional (Node.Status'Access, Status) then
-                  Help_Move
-                    (Element => Element,
-                     From    => Status.Old_Pos,
-                     To      => Status.New_Pos,
-                     Result  => Result);
+                  declare
+                     New_Status : constant Move_Info :=
+                       Load_Linked (Node.Status);
+                  begin
+                     --  NOTE: Help_Move requires a linked load of the
+                     --        current value of Node.Status.
+                     if New_Status = Status then
+                        Help_Move
+                          (Element => Element,
+                           From    => Status.Old_Pos,
+                           To      => Status.New_Pos,
+                           Result  => Result);
+                     else
+                        Result := Helped;
+                     end if;
+                  end;
                   return;
                end if;
             else
@@ -256,26 +275,6 @@ package body NBAda.Atomic_Move is
                         From    : in     Shared_Location_Access;
                         To      : in     Shared_Location_Access;
                         Result  :    out Move_Status) is
-
-      procedure Give_Up;
-
-      procedure Give_Up is
-         use Move_Info_LL_SC;
-         Node : constant Node_Access := To_Node_Access (Element.Ref.Node);
-         Status : Move_Info := Load_Linked (Node.Status);
-      begin
-         if
-           Status = (Current => Element.Ref.Version,
-                     Old_Pos => Element.Location,
-                     New_pos => To)
-         then
-            Status.Current := 0;
-            Status.New_Pos := null;
-            Store_Conditional (Node.Status'Access,
-                               Status);
-         end if;
-      end Give_Up;
-
    begin
       --  Step 2. Update To.
       declare
@@ -285,12 +284,7 @@ package body NBAda.Atomic_Move is
          Status : Move_Info;
       begin
          Primitives.Membar;
-         Status := Load_Linked (Node.Status);
-         if
-           Status /= (Current => Element.Ref.Version,
-                      Old_Pos => Element.Location,
-                      New_pos => To)
-         then
+         if not Verify_Link (Node.Status'Access) then
             --  Note: We really don't know how the operation ended.
             Result := Helped;
             return;
@@ -298,7 +292,10 @@ package body NBAda.Atomic_Move is
 
          if Old_To.Node /= 0 then
             if Old_To.Node /= Element.Ref.Node then
-               Give_Up;
+               Store_Conditional (Node.Status'Access,
+                                  (Current => 0,
+                                   Old_Pos => Element.Location,
+                                   New_Pos => null));
                Result := Not_Moved;
                --  NOTE: The Not_Move result isn't 100% certain.
                return;
@@ -315,8 +312,12 @@ package body NBAda.Atomic_Move is
                if Res /=  (0, Old_To.Version) then
                   --  To was occupied.
                   if Res.Node /= Element.Ref.Node then
-                     Give_Up;
+                     Store_Conditional (Node.Status'Access,
+                                        (Current => 0,
+                                         Old_Pos => Element.Location,
+                                         New_Pos => null));
                      Result := Not_Moved;
+                     --  NOTE: The Not_Move result isn't 100% certain.
                      return;
                   end if;
                   --  Step 2 was done be someone else. Carry on.
@@ -335,19 +336,11 @@ package body NBAda.Atomic_Move is
       declare
          use Move_Info_LL_SC;
          Node   : constant Node_Access := To_Node_Access (Element.Ref.Node);
-         Status : Move_Info := Load_Linked (Node.Status);
       begin
-         if
-           Status = (Current => Element.Ref.Version,
-                     Old_Pos => Element.Location,
-                     New_pos => To)
-         then
-            Status.Current := 0;
-            Status.Old_Pos := To;
-            Status.New_Pos := null;
-            Store_Conditional (Node.Status'Access,
-                               Status);
-         end if;
+         Store_Conditional (Node.Status'Access,
+                            (Current => 0,
+                             Old_Pos => To,
+                             New_Pos => null));
 
          Result := Moved_Ok;
       end;
