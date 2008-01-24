@@ -27,14 +27,13 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Jan 15 17:41:28 2008
---  $Id: nbada-lock_free_flat_sets.ads,v 1.3 2008/01/22 18:53:17 andersg Exp $
+--  $Id: nbada-lock_free_flat_sets.ads,v 1.4 2008/01/24 18:24:47 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
 with NBAda.Process_Identification;
 with NBAda.Atomic_Move;
-with NBAda.Large_Primitives;
 with NBAda.Primitives;
 
 generic

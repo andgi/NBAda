@@ -27,27 +27,50 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 16 11:46:57 2008
---  $Id: nbada-atomic_move.adb,v 1.6 2008/01/24 12:52:04 andersg Exp $
+--  $Id: nbada-atomic_move.adb,v 1.7 2008/01/24 18:24:47 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
 with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
+with Ada.Unchecked_Deallocation;
+
+with Ada.Text_IO;
+
+with NBAda.Lock_Free_Growing_Storage_Pools;
 
 package body NBAda.Atomic_Move is
 
+   -------------------------------------------------------------------------
+   --  Storage pool for the Move_Info nodes.
+   -------------------------------------------------------------------------
+
+   Move_Info_Pool : Lock_Free_Growing_Storage_Pools.Lock_Free_Storage_Pool
+     (Block_Size => Move_Info_Record'Max_Size_In_Storage_Elements);
+
+   type New_Move_Info_Access is access Move_Info_Record;
+   for New_Move_Info_Access'Storage_Pool use Move_Info_Pool;
+
+   function New_Move_Info is new Move_Info_MR_Ops.Create
+     (User_Node_Access => New_Move_Info_Access);
+
+   ----------------------------------------------------------------------------
    procedure Compare_And_Swap is
       new Primitives.Standard_Compare_And_Swap (Shared_Location);
    procedure Void_Compare_And_Swap is
       new Primitives.Standard_Void_Compare_And_Swap (Shared_Location);
 
-   procedure Help_Move (Element : in out Private_Reference;
-                        From    : in     Shared_Location_Access;
-                        To      : in     Shared_Location_Access;
-                        Result  :    out Move_Status);
-   --  NOTE: It is assumed that a Load_Linked was performed on
-   --  Element.Ref.Node.Status prior to the call to Help_Move.
+   function Compare_And_Swap is
+      new Primitives.Boolean_Compare_And_Swap_32 (Move_Status);
+   procedure Compare_And_Swap is
+      new Primitives.Void_Compare_And_Swap_32 (Move_Status);
+
+   procedure Help_Move (Element   : in out Private_Reference;
+                        Operation : in     Move_Info;
+                        Result    :    out Move_Status);
+   --  NOTE: Operation must be a valid private reference and
+   --        will have to be released after Help_Move returns.
 
    function Image (Ref : Node_Ref) return String;
 
@@ -88,27 +111,28 @@ package body NBAda.Atomic_Move is
             end if;
 
             declare
-               use Move_Info_LL_SC;
-               Status : constant Move_Info := Load_Linked (Node.Status);
+               use Move_Info_MR_Ops;
+               Status : constant Move_Info := Dereference (Node.Status'Access);
             begin
                if
-                 Status.New_Pos = null and then
+                 "+" (Status).New_Pos = null and then
                  Node_Ref (Location.all) = Ref then
+                  Release (Status);
                   return Result;
                end if;
 
-               if Status.New_Pos /= null then
+               if "+" (Status).New_Pos /= null then
                   declare
                      Tmp : Move_Status;
                   begin
                      --  The linked load of Node.Status above should
                      --  remain valid until the end of Help_Move.
-                     Help_Move (Element => Result,
-                                From    => Status.Old_Pos,
-                                To      => Status.New_Pos,
-                                Result  => Tmp);
+                     Help_Move (Element   => Result,
+                                Operation => Status,
+                                Result    => Tmp);
                   end;
                end if;
+               Release (Status);
             end;
          end;
       end loop;
@@ -131,46 +155,49 @@ package body NBAda.Atomic_Move is
       --  Step 1. Initiate move operation.
       loop
          declare
-            use Move_Info_LL_SC;
-            Old_From : constant Node_Ref := Node_Ref (Element.Location.all);
-            Node     : constant Node_Access :=
+            use Move_Info_MR_Ops;
+            Old_From  : constant Node_Ref := Node_Ref (Element.Location.all);
+            Node      : constant Node_Access :=
               To_Node_Access (Element.Ref.Node);
-            Status   : Move_Info;
+            Operation : Move_Info;
          begin
             Primitives.Membar;
-            --  Load Node.Status. This linked load should remain valid until
+            --  Dereference Node.Status. This node should remain valid until
             --  the end of the move.
-            Status := Load_Linked (Node.Status);
+            Operation := Dereference (Node.Status'Access);
 
             if Old_From.Node /= Element.Ref.Node then
                Result := Moved_Away;
+               Release (Operation);
                return;
-            elsif Status.New_Pos = null then
+            elsif "+" (Operation).New_Pos = null then
                --  No current operation.
                Element.Ref.Version := Old_From.Version;
-               Status := (Current => Old_From.Version,
-                          Old_Pos => Element.Location,
-                          New_pos =>
-                            To_Shared_Location_Access (Location_Access (To)));
-               if Store_Conditional (Node.Status'Access, Status) then
-                  declare
-                     New_Status : constant Move_Info :=
-                       Load_Linked (Node.Status);
-                  begin
+               declare
+                  New_Op : constant Move_Info := New_Move_Info;
+               begin
+                  "+" (New_Op).Current := Old_From.Version;
+                  "+" (New_Op).Old_Pos := Element.Location;
+                  "+" (New_Op).New_Pos :=
+                  To_Shared_Location_Access (Location_Access (To));
+
+                  if
+                    Boolean_Compare_And_Swap (Link      => Node.Status'Access,
+                                              Old_Value => Operation,
+                                              New_Value => New_Op)
+                  then
+                     Release (Operation);
                      --  NOTE: Help_Move requires a linked load of the
                      --        current value of Node.Status.
-                     if New_Status = Status then
-                        Help_Move
-                          (Element => Element,
-                           From    => Status.Old_Pos,
-                           To      => Status.New_Pos,
-                           Result  => Result);
-                     else
-                        Result := Helped;
-                     end if;
-                  end;
-                  return;
-               end if;
+                     Help_Move (Element   => Element,
+                                Operation => New_Op,
+                                Result    => Result);
+                     Release (New_Op);
+                     return;
+                  else
+                     Release (New_Op);
+                  end if;
+               end;
             else
                --  Help current operation.
                --  NOTE: For efficiency one might consider just returning
@@ -179,35 +206,36 @@ package body NBAda.Atomic_Move is
                declare
                   Tmp  : Move_Status;
                   Elem : Private_Reference :=
-                    (Ref      => (Element.Ref.Node, Status.Current),
-                     Location => Status.Old_Pos);
+                    (Ref      => (Element.Ref.Node, "+" (Operation).Current),
+                     Location => "+" (Operation).Old_Pos);
                begin
-                  Help_Move
-                    (Element => Elem,
-                     From    => Status.Old_Pos,
-                     To      => Status.New_Pos,
-                     Result  => Tmp);
+                  Help_Move (Element   => Elem,
+                             Operation => Operation,
+                             Result    => Tmp);
                end;
             end if;
+            Release (Operation);
          end;
       end loop;
    end Move;
 
    ----------------------------------------------------------------------------
    function Create (Element : Element_Type) return Private_Reference is
-      use Move_Info_LL_SC;
+      use Move_Info_MR_Ops;
       ID       : constant Processes := Process_Ids.Process_ID;
       Tmp      : Private_Reference;
       New_Node : constant Node_Access := new Node;
+      New_MI   : constant Move_Info   := New_Move_Info;
    begin
       Tmp.Ref.Node      := To_Node_Access_Impl (New_Node);
       New_Node.Element  := Element;
       Tmp.Location      := Tmp_Location (ID)'Access;
       Tmp_Location (ID) := (Tmp.Ref.Node, 0);
-      Initialize (New_Node.Status,
-                  (0,
-                   New_Pos => null,
-                   Old_Pos => Tmp.Location));
+      "+" (New_MI).Current := 0;
+      "+" (New_MI).New_Pos := null;
+      "+" (New_MI).Old_Pos := Tmp.Location;
+      Store (New_Node.Status'Access, New_MI);
+      Release (New_MI);
       return Tmp;
    end Create;
 
@@ -271,33 +299,60 @@ package body NBAda.Atomic_Move is
    --  Private operations.
    ----------------------------------------------------------------------------
 
-   procedure Help_Move (Element : in out Private_Reference;
-                        From    : in     Shared_Location_Access;
-                        To      : in     Shared_Location_Access;
-                        Result  :    out Move_Status) is
+   procedure Help_Move (Element   : in out Private_Reference;
+                        Operation : in     Move_Info;
+                        Result    :    out Move_Status) is
+
+      procedure Give_Up (Node      : in     Node_Access;
+                         Operation : in     Move_Info;
+                         Result    :    out Move_Status);
+      procedure Give_Up (Node      : in     Node_Access;
+                         Operation : in     Move_Info;
+                         Result    :    out Move_Status) is
+         use Move_Info_MR_Ops;
+      begin
+         Primitives.Membar;
+         if Operation = Node.Status then
+            declare
+               New_Status : constant Move_Info := New_Move_Info;
+            begin
+               Compare_And_Swap (Target    => "+" (Operation).Status'Access,
+                                 Old_Value => Start,
+                                 New_Value => Not_Moved);
+               "+" (New_Status).Current := 0;
+               "+" (New_Status).Old_Pos := Element.Location;
+               "+" (New_Status).New_Pos := null;
+               Void_Compare_And_Swap (Link      => Node.Status'Access,
+                                      Old_Value => Operation,
+                                      New_Value => New_Status);
+               Release (New_Status);
+            end;
+         end if;
+         Result := "+" (Operation).Status;
+      end Give_Up;
+
+      To   : constant Shared_Location_Access :=
+        Move_Info_MR_Ops."+" (Operation).New_Pos;
+      From : constant Shared_Location_Access :=
+        Move_Info_MR_Ops."+" (Operation).Old_Pos;
    begin
       --  Step 2. Update To.
       declare
-         use Move_Info_LL_SC;
+         use Move_Info_MR_Ops;
          Old_To : constant Node_Ref := Node_Ref (To.all);
          Node   : constant Node_Access := To_Node_Access (Element.Ref.Node);
          Status : Move_Info;
       begin
          Primitives.Membar;
-         if not Verify_Link (Node.Status'Access) then
-            --  Note: We really don't know how the operation ended.
-            Result := Helped;
+         if Operation /= Node.Status then
+            Primitives.Membar;
+            Result := "+" (Operation).Status;
             return;
          end if;
 
          if Old_To.Node /= 0 then
             if Old_To.Node /= Element.Ref.Node then
-               Store_Conditional (Node.Status'Access,
-                                  (Current => 0,
-                                   Old_Pos => Element.Location,
-                                   New_Pos => null));
-               Result := Not_Moved;
-               --  NOTE: The Not_Move result isn't 100% certain.
+               Give_Up (Node, Operation, Result);
                return;
             end if;
             --  Step 2 was done be someone else. Carry on.
@@ -312,12 +367,7 @@ package body NBAda.Atomic_Move is
                if Res /=  (0, Old_To.Version) then
                   --  To was occupied.
                   if Res.Node /= Element.Ref.Node then
-                     Store_Conditional (Node.Status'Access,
-                                        (Current => 0,
-                                         Old_Pos => Element.Location,
-                                         New_Pos => null));
-                     Result := Not_Moved;
-                     --  NOTE: The Not_Move result isn't 100% certain.
+                     Give_Up (Node, Operation, Result);
                      return;
                   end if;
                   --  Step 2 was done be someone else. Carry on.
@@ -327,22 +377,55 @@ package body NBAda.Atomic_Move is
          end if;
       end;
 
+      --  Step 2.5. Since To has been written the result is Moved_Ok.
+      declare
+         use Move_Info_MR_Ops;
+      begin
+         if
+           not  Compare_And_Swap (Target    => "+" (Operation).Status'Access,
+                                  Old_Value => Start,
+                                  New_Value => Moved_Ok)
+         then
+            if "+" (Operation).Status /= Moved_Ok then
+               --  This should never ever happen.
+               Ada.Text_IO.Put_Line
+                 (Move_Status'Image ("+" (Operation).Status));
+               raise Constraint_Error;
+            end if;
+         end if;
+      end;
+
       --  Step 3. Clear From.
-      Void_Compare_And_Swap (Target    => From,
-                             Old_Value => Shared_Location (Element.Ref),
-                             New_Value => (0, Element.Ref.Version + 1));
+      declare
+         use Move_Info_MR_Ops;
+         Node : constant Node_Access := To_Node_Access (Element.Ref.Node);
+      begin
+         if Operation = Node.Status then
+            Void_Compare_And_Swap (Target    => From,
+                                   Old_Value => Shared_Location (Element.Ref),
+                                   New_Value => (0, Element.Ref.Version + 1));
+         else
+            Primitives.Membar;
+            Result := "+" (Operation).Status;
+            return;
+         end if;
+      end;
 
       --  Step 4. Remove the operation information from Node.
       declare
-         use Move_Info_LL_SC;
-         Node   : constant Node_Access := To_Node_Access (Element.Ref.Node);
+         use Move_Info_MR_Ops;
+         Node       : constant Node_Access
+           := To_Node_Access (Element.Ref.Node);
+         New_Op : constant Move_Info := New_Move_Info;
       begin
-         Store_Conditional (Node.Status'Access,
-                            (Current => 0,
-                             Old_Pos => To,
-                             New_Pos => null));
-
-         Result := Moved_Ok;
+         "+" (New_Op).Current := 0;
+         "+" (New_Op).Old_Pos := To;
+         "+" (New_Op).New_Pos := null;
+         Void_Compare_And_Swap (Link      => Node.Status'Access,
+                                Old_Value => Operation,
+                                New_Value => New_Op);
+         Release (New_Op);
+         Result := "+" (Operation).Status;
       end;
 
    end Help_Move;
@@ -386,5 +469,22 @@ package body NBAda.Atomic_Move is
          return Node_Access_Impl (X_Unsigned / Node'Alignment);
       end if;
    end To_Node_Access_Impl;
+
+   ----------------------------------------------------------------------------
+   procedure Free (Object : access Move_Info_Record) is
+      procedure Reclaim is new
+        Ada.Unchecked_Deallocation (Move_Info_Record,
+                                    New_Move_Info_Access);
+      function To_New_Move_Info_Access is new
+        Ada.Unchecked_Conversion (Move_Info_MR_Ops.Node_Access,
+                                  New_Move_Info_Access);
+      X : New_Move_Info_Access :=
+        To_New_Move_Info_Access (Move_Info_MR_Ops.Node_Access (Object));
+      --  This is dangerous in the general case but here we know
+      --  for sure that we have allocated all the nodes of the
+      --  Queue_Node type from the New_Queue_Node_Access pool.
+   begin
+      Reclaim (X);
+   end Free;
 
 end NBAda.Atomic_Move;

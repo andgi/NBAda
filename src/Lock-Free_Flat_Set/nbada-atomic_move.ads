@@ -27,13 +27,13 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 16 11:12:21 2008
---  $Id: nbada-atomic_move.ads,v 1.3 2008/01/22 18:53:17 andersg Exp $
+--  $Id: nbada-atomic_move.ads,v 1.4 2008/01/24 18:24:47 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
 with NBAda.Process_Identification;
-with NBAda.Large_Primitives;
+with NBAda.Hazard_Pointers;
 with NBAda.Primitives;
 
 generic
@@ -55,7 +55,9 @@ package NBAda.Atomic_Move is
    function Dereference (Location : access Shared_Location)
                         return Private_Reference;
 
-   type Move_Status is (Moved_Ok, Not_Moved, Moved_Away, Helped);
+   type Move_Status is (Moved_Ok, Not_Moved, Moved_Away, Start);
+   for Move_Status'Size use 32;
+
    procedure Move (To      : access Shared_Location;
                    Element : in out Private_Reference;
                    Result  :    out Move_Status);
@@ -104,22 +106,30 @@ private
 
    type Shared_Location_Access is access all Shared_Location;
 
-   type Move_Info is
+   package Move_Info_MR is
+      new Hazard_Pointers (Max_Number_Of_Dereferences => 2,
+                           Process_Ids                => Process_Ids);
+
+   type Move_Info_Record is new Move_Info_MR.Managed_Node_Base with
       record
          Current : Version_ID := 0;
          New_Pos : Shared_Location_Access;
          Old_Pos : Shared_Location_Access;
+         Status  : aliased Move_Status := Start;
+         pragma Atomic (Status);
       end record;
+   procedure Free (Object : access Move_Info_Record);
 
-   package Software_LL_SC is
-      new Large_Primitives (Max_Number_Of_Links => 2,
-                            Process_Ids         => Process_Ids);
-   package Move_Info_LL_SC is
-      new Software_LL_SC.Load_Linked_Store_Conditional (Move_Info);
+   type Shared_Move_Info is new Move_Info_MR.Shared_Reference_Base;
+
+   package Move_Info_MR_Ops is new Move_Info_MR.Reference_Operations
+     (Managed_Node     => Move_Info_Record,
+      Shared_Reference => Shared_Move_Info);
+   subtype Move_Info is Move_Info_MR_Ops.Private_Reference;
 
    type Node is limited
       record
-         Status  : aliased Move_Info_LL_SC.Shared_Element;
+         Status  : aliased Shared_Move_Info;
          Element : aliased Element_Type;
       end record;
    for Node'Alignment use 2 ** No_Of_Version_Bits;
