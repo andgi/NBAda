@@ -23,7 +23,7 @@
 --  Description     : NBAda build config.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Aug 30 11:18:46 2007
--- $Id: nbada_config.adb,v 1.15 2008/01/11 15:53:36 andersg Exp $
+-- $Id: nbada_config.adb,v 1.16 2008/02/07 16:10:49 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Command_Line;
@@ -184,6 +184,7 @@ procedure NBAda_Config is
                           LFMR            => True, others => False),
       LF_QUEUES_LFRC  => (PRIMITIVES      => True,
                           LF_POOLS        => True,
+                          PTB             => True,
                           LFRC            => True, others => False),
       LF_DEQUES_LFMR  => (PRIMITIVES => True,
                           LF_POOLS   => True,
