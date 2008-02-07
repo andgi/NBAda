@@ -29,7 +29,7 @@ pragma Style_Checks (Off);
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:55:18 2006
---  $Id: nbada-lock_free_reference_counting.adb,v 1.10 2007/11/05 19:11:50 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.adb,v 1.11 2008/02/07 16:12:11 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -83,6 +83,13 @@ package body NBAda.Lock_Free_Reference_Counting is
    ----------------------------------------------------------------------------
    --  Operations.
    ----------------------------------------------------------------------------
+
+   -----------------------------------------------------------------------
+   function Is_Deleted (Node : access Managed_Node_Base)
+                       return Boolean is
+   begin
+      return False;
+   end Is_Deleted;
 
    ----------------------------------------------------------------------------
    package body Operations is

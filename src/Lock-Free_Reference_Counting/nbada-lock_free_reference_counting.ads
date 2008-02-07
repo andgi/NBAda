@@ -28,7 +28,7 @@ pragma Style_Checks (Off);
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:42:38 2006
---  $Id: nbada-lock_free_reference_counting.ads,v 1.11 2007/11/05 19:11:50 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.ads,v 1.12 2008/02/07 16:12:11 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -85,6 +85,11 @@ package NBAda.Lock_Free_Reference_Counting is
                            return Reference_Set is abstract;
    --  All_References is used to remove all references from a node when
    --  it is being reclaimed.
+
+   function Is_Deleted (Node : access Managed_Node_Base)
+                       return Boolean;
+   --  For API compatability with NBAda.Lock_Free_Memory_Reclamation.
+   --  Always return False.
 
    ----------------------------------------------------------------------------
    generic
@@ -144,7 +149,7 @@ package NBAda.Lock_Free_Reference_Counting is
 
       procedure Delete  (Node : in Private_Reference)
         renames Release;
-      --  For API compatability with Lock_Free_Memory_Reclamation.
+      --  For API compatability with NBAda.Lock_Free_Memory_Reclamation.
       --  In the future LFRC could use the knowledge that a node is
       --  logically deleted to improve garbage management.
 
