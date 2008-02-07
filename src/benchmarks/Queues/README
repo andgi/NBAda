@@ -1,0 +1,62 @@
+
+NBAda - Non-blocking Algorithms and Data Structures
+===================================================
+
+Copyright (C) 2002 - 2008  Anders Gidenstam  anders(at)gidenstam.org
+
+  This program is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 2 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program; if not, write to the Free Software
+  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+
+Compilation
+===========
+
+This benchmark can be built with several of the queue data structures
+in NBAda.
+
+Lock-Free_Bounded_Queue
+
+% gnatmake queue_test.adb  -ILock-Free_Bounded_Queue `nbada_config LF_QUEUES_BOUNDED LF_POOLS`
+
+
+Lock-Free_Queue + EBMR / HPMR
+
+% gnatmake queue_test.adb  -ILock-Free_Queue `nbada_config LF_QUEUES_EBMR`
+% gnatmake queue_test.adb  -ILock-Free_Queue `nbada_config LF_QUEUES_HPMR`
+
+
+Lock-Free_Queue_2 + LFMR / LFRC
+
+% gnatmake queue_test.adb  -ILock-Free_Queue `nbada_config LF_QUEUES_LFMR`
+% gnatmake queue_test.adb  -ILock-Free_Queue `nbada_config LF_QUEUES_LFRC`
+
+
+LFMR example queue
+
+% gnatmake queue_test.adb  -ILFMR `nbada_config LF_QUEUES_LFMR`
+
+
+LFRC example queue
+
+% gnatmake queue_test.adb  -ILFRC `nbada_config LF_QUEUES_LFRC`
+
+
+Lock-Free_Deque Left + LFMR / LFRC
+% gnatmake queue_test.adb  -ILock-Free_Deque_Left `nbada_config LF_QUEUES_LFRM`
+% gnatmake queue_test.adb  -ILock-Free_Deque_Left `nbada_config LF_QUEUES_LFRC`
+
+
+Lock-Free_Deque Right + LFMR / LFRC
+% gnatmake queue_test.adb  -ILock-Free_Deque_Right `nbada_config LF_QUEUES_LFRM`
+% gnatmake queue_test.adb  -ILock-Free_Deque_Right `nbada_config LF_QUEUES_LFRC`
