@@ -26,7 +26,7 @@
 --                     Implementations Using 64-Bit CAS".
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 24 10:25:44 2005
---  $Id: nbada-large_primitives.adb,v 1.17 2007/08/30 16:42:12 andersg Exp $
+--  $Id: nbada-large_primitives.adb,v 1.18 2008/02/07 11:32:07 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -182,6 +182,7 @@ package body NBAda.Large_Primitives is
                      New_Value => Node_Access (Val))
                   then
                      Delete (Old);
+
                      return True;
                   else
                      Keep_Block (ID, Val);
@@ -231,9 +232,10 @@ package body NBAda.Large_Primitives is
                   Tmp : constant Managed_Node_Access :=
                     Managed_Node_Access
                     (Dereference (Target.Reference'Access));
+                  Valid : constant Boolean := Tmp = Exp (ID, I).Target;
                begin
                   Release (Tmp);
-                  return Tmp = Exp (ID, I).Target;
+                  return Valid;
                end;
             end if;
          end loop;
