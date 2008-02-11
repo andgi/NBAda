@@ -2,7 +2,7 @@
 --  Lock-Free Deques - An Ada implementation of the lock-free deque algorithm
 --                     by H. Sundell and P. Tsigas.
 --
---  Copyright (C) 2006 - 2007  Anders Gidenstam
+--  Copyright (C) 2006 - 2008  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 --  Description     : Instantiation of the lock-free deque.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Mar  2 16:41:48 2006
---  $Id: my_deque.ads,v 1.3 2007/09/03 17:11:53 andersg Exp $
+--  $Id: my_deque.ads,v 1.4 2008/02/11 16:59:45 andersg Exp $
 -------------------------------------------------------------------------------
 
 with NBAda.Process_Identification;
@@ -41,7 +41,7 @@ package My_Deque is
          Index   : Integer;
       end record;
 
-   package Deques is new NBAda.Lock_Free_Deques (Value_Type  => Value_Type,
-                                                 Process_Ids => PID);
+   package Deques is new NBAda.Lock_Free_Deques (Element_Type  => Value_Type,
+                                                 Process_Ids   => PID);
 
 end My_Deque;

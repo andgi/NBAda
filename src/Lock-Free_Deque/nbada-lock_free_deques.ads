@@ -2,7 +2,7 @@
 --  Lock-Free Deques - An Ada implementation of the lock-free deque algorithm
 --                     by H. Sundell and P. Tsigas.
 --
---  Copyright (C) 2006 - 2007  Anders Gidenstam
+--  Copyright (C) 2006 - 2008  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 --                    by H. Sundell and P. Tsigas.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 15 18:46:02 2006
---  $Id: nbada-lock_free_deques.ads,v 1.8 2007/09/06 10:12:39 andersg Exp $
+--  $Id: nbada-lock_free_deques.ads,v 1.9 2008/02/11 16:59:45 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -35,8 +35,8 @@ with NBAda.Process_Identification;
 
 generic
 
-   type Value_Type is private;
-   --  Value type.
+   type Element_Type is private;
+   --  Element type.
 
    with package Process_Ids is
      new NBAda.Process_Identification (<>);
@@ -52,13 +52,13 @@ package NBAda.Lock_Free_Deques is
 
    procedure Init    (Deque : in out Deque_Type);
 
-   function  Pop_Right  (Deque : access Deque_Type) return Value_Type;
-   procedure Push_Right (Deque : in out Deque_Type;
-                         Value : in     Value_Type);
+   function  Pop_Right  (Deque   : access Deque_Type) return Element_Type;
+   procedure Push_Right (Deque   : in out Deque_Type;
+                         Element : in     Element_Type);
 
-   function  Pop_Left  (Deque : access Deque_Type) return Value_Type;
-   procedure Push_Left (Deque : in out Deque_Type;
-                        Value : in     Value_Type);
+   function  Pop_Left  (Deque   : access Deque_Type) return Element_Type;
+   procedure Push_Left (Deque   : in out Deque_Type;
+                        Element : in     Element_Type);
 
    package MR_Adapter is
       new Lock_Free_Deques_Memory_Reclamation_Adapter (Process_Ids);
@@ -81,7 +81,7 @@ private
          pragma Atomic (Previous);
          --  Next can be marked with a deletion mark. This must never be
          --  done before Next has been marked.
-         Value    : Value_Type;
+         Value    : Element_Type;
       end record;
 
    procedure Dispose  (Node       : access Deque_Node;

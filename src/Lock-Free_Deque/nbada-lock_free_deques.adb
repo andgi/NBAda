@@ -2,7 +2,7 @@
 --  Lock-Free Deques - An Ada implementation of the lock-free deque algorithm
 --                     by H. Sundell and P. Tsigas.
 --
---  Copyright (C) 2006 - 2007  Anders Gidenstam
+--  Copyright (C) 2006 - 2008  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 --                    by H. Sundell and P. Tsigas.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 15 18:59:45 2006
---  $Id: nbada-lock_free_deques.adb,v 1.13 2007/10/30 15:11:24 andersg Exp $
+--  $Id: nbada-lock_free_deques.adb,v 1.14 2008/02/11 16:59:45 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -111,7 +111,7 @@ package body NBAda.Lock_Free_Deques is
    end Init;
 
    ----------------------------------------------------------------------
-   function  Pop_Right  (Deque : access Deque_Type) return Value_Type is
+   function  Pop_Right  (Deque : access Deque_Type) return Element_Type is
       use LFRC_Ops;
       Next : constant Deque_Node_Access := Dereference (Deque.Tail'Access);
       Node : Deque_Node_Access;
@@ -150,13 +150,13 @@ package body NBAda.Lock_Free_Deques is
             end;
 
             declare
-               Value : constant Value_Type := "+"(Node).Value;
+               Element : constant Element_Type := "+"(Node).Value;
             begin
                Clean_Up ("+" (Node));
 
                Release (Next);
                Delete (Node);
-               return Value;
+               return Element;
             end;
          end if;
 
@@ -169,12 +169,12 @@ package body NBAda.Lock_Free_Deques is
 
    ----------------------------------------------------------------------
    procedure Push_Right (Deque : in out Deque_Type;
-                         Value : in     Value_Type) is
+                         Element : in     Element_Type) is
       use LFRC_Ops;
       Next, Prev : Deque_Node_Access;
       Node       : constant Deque_Node_Access := Create_Deque_Node;
    begin
-      "+"(Node).Value := Value;
+      "+"(Node).Value := Element;
       Next := Dereference (Deque.Tail'Access);
       Prev := Dereference ("+"(Next).Previous'Access);
 
@@ -211,7 +211,7 @@ package body NBAda.Lock_Free_Deques is
    end Push_Right;
 
    ----------------------------------------------------------------------
-   function  Pop_Left  (Deque : access Deque_Type) return Value_Type is
+   function  Pop_Left  (Deque : access Deque_Type) return Element_Type is
       use LFRC_Ops;
       Prev  : Deque_Node_Access;
    begin
@@ -220,7 +220,7 @@ package body NBAda.Lock_Free_Deques is
          declare
             Node  : constant Deque_Node_Access :=
               Dereference ("+"(Prev).Next'Access);
-            Value : Value_Type;
+            Element : Element_Type;
          begin
             if Same_Node (Node, Deque.Tail) then
                Release (Node);
@@ -255,10 +255,10 @@ package body NBAda.Lock_Free_Deques is
                      Release (Next);
                   end;
 
-                  Value := "+"(Node).Value;
+                  Element := "+"(Node).Value;
                   Clean_Up ("+" (Node));
                   Delete (Node);
-                  return Value;
+                  return Element;
                else
                   Release (Node);
 
@@ -273,13 +273,13 @@ package body NBAda.Lock_Free_Deques is
 
    ----------------------------------------------------------------------
    procedure Push_Left (Deque : in out Deque_Type;
-                        Value : in     Value_Type) is
+                        Element : in     Element_Type) is
       use LFRC_Ops;
       Node : constant Deque_Node_Access := Create_Deque_Node;
       Prev : constant Deque_Node_Access := Dereference (Deque.Head'Access);
       Next : Deque_Node_Access;
    begin
-      "+"(Node).Value := Value;
+      "+"(Node).Value := Element;
       Next := Dereference ("+"(Prev).Next'Access);
 
       loop
