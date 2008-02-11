@@ -1,14 +1,14 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Non-blocking Ada Reference Manual
 %
-% Copyright (C) 2007 Anders Gidenstam (andersg@mpi-inf.mpg.de)
+% Copyright (C) 2007 - 2008  Anders Gidenstam (andersg@mpi-inf.mpg.de)
 %
 %  Algorithms and Complexity Group
 %  Max-Planck-Institut für Informatik
 %  Stuhlsatzenhausweg 85
 %  66123 Saarbrücken, Germany
 %
-% $Id: reference_manual.tex,v 1.8 2007/10/26 15:59:46 andersg Exp $
+% $Id: reference_manual.tex,v 1.9 2008/02/11 18:59:25 andersg Exp $
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -109,7 +109,7 @@
     Stuhlsatzenhausweg 85\\
     66123 Saarbr\"ucken, Germany\\
     \vspace{12mm}
-    Saarbr\"ucken, Germany, 2007
+    Saarbr\"ucken, Germany, 2008
   }
 
 
@@ -407,7 +407,7 @@ The \cmd{nbada\_config.adb} can be compiled, e.g. with the command
       & \ref{chpt:LFQUEUES}\\
       \cmd{LF\_QUEUES\_HPMR}     & Lock-free dynamic queue.
       & \ref{chpt:LFQUEUES}\\
-      \cmd{LF\_DEQUES}           & Lock-free deque.
+      \cmd{LF\_DEQUES}           & Lock-free deque (a.k.a double ended queue).
       & \ref{chpt:LFDEQUES}\\
       \hline
     \end{tabular}
@@ -813,7 +813,7 @@ memory reclamation algorithms.
 \begin{lstlisting}
 generic
    type Element_Type is private;
-   --  Element type.
+
    with package Process_Ids is
      new NBAda.Process_Identification (<>);
    --  Process identification.
@@ -905,17 +905,19 @@ end NBAda.Lock_Free_Bounded_Queues;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsubsection*{The package NBAda.Lock\_Free\_Queues}
 
-\cite{Michael:1996:PODC}
+\nbada\ contains two lock-free implementations of dynamic queues, one based on
+the algorithm by Michael \cite{Michael:1996:PODC} and one on the algorithm by
+Hoffman et. al. \cite{HoffmanShSh:2007:TBQ}.
 
-The include flag for \cmd{nbada\_config} is
-\cmd{LF\_QUEUES\_HPMR} or \cmd{LF\_QUEUES\_EBMR}.
-
+The include flag for \cmd{nbada\_config} is for Michael's queue algorithm
+\cmd{LF\_QUEUES\_HPMR} or \cmd{LF\_QUEUES\_EBMR} and for Hoffman et al's queue
+algorithm \cmd{LF\_QUEUES\_LFMR} or \cmd{LF\_QUEUES\_LFRC}.
 
 \begin{AdaCode}
 \begin{lstlisting}
 generic
    type Element_Type is private;
-   --  Element type.
+
    with package Process_Ids is
      new Process_Identification (<>);
    --  Process identification.
@@ -948,6 +950,52 @@ end NBAda.Lock_Free_Queues;
 \end{AdaCode}
 } %% end-remove
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Deques}\label{chpt:LFDEQUES}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection*{The package NBAda.Lock\_Free\_Deques}
+
+The package \code{NBAda.Lock\_Free\_Deques} implements a lock-free
+unbounded double ended queue data structure based on the algorithm by
+Sundell and Tsigas \cite{SunT04c}.
+
+The include flag for \cmd{nbada\_config} is 
+\cmd{LF\_DEQUES\_LFMR} or \cmd{LF\_DEQUES\_LFRC}.
+
+\begin{AdaCode}
+\begin{lstlisting}
+generic
+   type Element_Type is private;
+
+   with package Process_Ids is
+     new Process_Identification (<>);
+   --  Process identification.
+package NBAda.Lock_Free_Deques is
+
+   type Deque_Type is limited private;
+
+   Deque_Empty : exception;
+
+   procedure Init    (Deque : in out Deque_Type);
+
+   function  Pop_Right  (Deque   : access Deque_Type) return Element_Type;
+   procedure Push_Right (Deque   : in out Deque_Type;
+                         Element : in     Element_Type);
+
+   function  Pop_Left  (Deque   : access Deque_Type) return Element_Type;
+   procedure Push_Left (Deque   : in out Deque_Type;
+                        Element : in     Element_Type);
+
+private
+
+      ...  --  Implementation specific
+
+end NBAda.Lock_Free_Deques;
+\end{lstlisting}
+\end{AdaCode}
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Support Packages}\label{chpt:Support-pkgs}
 
@@ -963,6 +1011,10 @@ dereferenced \emph{statically linked} shared block is not guaranteed
 to yield a valid reference value, the obtained value can point to
 a block that has already been reclaimed.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection*{The package NBAda.Hazard\_Pointers}
+
+\cite{Michael:2002:SMR,Michael:2004:SMR}
 
 \begin{AdaCode}
 \begin{lstlisting}
@@ -1126,10 +1178,11 @@ end NBAda.Hazard_Pointers;
 \end{lstlisting}
 \end{AdaCode}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection*{The package NBAda.Epoch\_Based\_Memory\_Reclamation}
 
 \cite{Fraser:2004:PLF,Hart:2005:CPMR}
 
-\cite{Michael:2002:SMR,Michael:2004:SMR}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Safe reclamation of dynamically linked shared blocks}
@@ -1139,17 +1192,22 @@ dereferenced \emph{dynamically linked} shared block is guaranteed
 to yield a valid reference value.
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection*{The package NBAda.Lock\_Free\_Reference\_Counting}
 \cite{Herlihy:2002:ROP,HerlihyLuMaMo:2002:DSLF,HerlihyLuMaMo:2005:NBMM}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection*{The package NBAda.Lock\_Free\_Memory\_Reclamation}
 \cite{GiPaSuTs:2005:LFGC}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Memory Allocation Pools}\label{chpt:Memory-allocation}
 
-\cite{IBM:1983}
+\cite{Dice:2002:MLFM,Michael:2004:SLFDMA,GiPaTs:2005:AMLF,SchneiderAnNi:2006:SLCMMA}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsubsection*{The package NBAda.Lock\_Free\_Fixed\_Size\_Storage\_Pools}
+\cite{IBM:1983}
 
 \begin{AdaCode}
 \begin{lstlisting}
@@ -1200,7 +1258,10 @@ end NBAda.Lock_Free_Fixed_Size_Storage_Pools;
 \end{lstlisting}
 \end{AdaCode}
 
-\cite{Dice:2002:MLFM,Michael:2004:SLFDMA,GiPaTs:2005:AMLF,SchneiderAnNi:2006:SLCMMA}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection*{The package NBAda.Lock\_Free\_Growing\_Storage\_Pools}
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Hardware Abstraction Interface}\label{chpt:Primitives}
@@ -1354,6 +1415,26 @@ end NBAda.Primitives;
 \end{lstlisting}
 \end{AdaCode}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection*{The package NBAda.Process\_Identification}
+
+\begin{AdaCode}
+\begin{lstlisting}
+generic
+   Max_Number_Of_Processes : Natural;
+package NBAda.Process_Identification is
+
+   type Process_ID_Type is new Natural range 1 .. Max_Number_Of_Processes;
+
+   --  Register a process ID for this task.
+   procedure Register;
+
+   --  Returns the process ID of the calling task.
+   function Process_ID return Process_ID_Type;
+
+end NBAda.Process_Identification;
+\end{lstlisting}
+\end{AdaCode}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% References and index.
