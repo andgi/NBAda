@@ -53,10 +53,10 @@ LFRC example queue
 
 
 Lock-Free_Deque Left + LFMR / LFRC
-% gnatmake queue_test.adb  -ILock-Free_Deque_Left `nbada_config LF_QUEUES_LFRM`
-% gnatmake queue_test.adb  -ILock-Free_Deque_Left `nbada_config LF_QUEUES_LFRC`
+% gnatmake queue_test.adb  -ILock-Free_Deque_Left `nbada_config LF_DEQUES_LFMR`
+% gnatmake queue_test.adb  -ILock-Free_Deque_Left `nbada_config LF_DEQUES_LFRC`
 
 
 Lock-Free_Deque Right + LFMR / LFRC
-% gnatmake queue_test.adb  -ILock-Free_Deque_Right `nbada_config LF_QUEUES_LFRM`
-% gnatmake queue_test.adb  -ILock-Free_Deque_Right `nbada_config LF_QUEUES_LFRC`
+% gnatmake queue_test.adb  -ILock-Free_Deque_Right `nbada_config LF_DEQUES_LFMR`
+% gnatmake queue_test.adb  -ILock-Free_Deque_Right `nbada_config LF_DEQUES_LFRC`
