@@ -34,7 +34,7 @@ pragma Style_Checks (Off);
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 14:07:58 2004
---  $Id: nbada-lock_free_memory_reclamation.adb,v 1.32 2007/10/30 15:13:20 andersg Exp $
+--  $Id: nbada-lock_free_memory_reclamation.adb,v 1.33 2008/02/12 18:17:13 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -297,13 +297,16 @@ package body NBAda.Lock_Free_Memory_Reclamation is
          PL.D_Count := PL.D_Count + 1;
 
          loop
-            if PL.D_Count >= Clean_Up_Threshold then
+            if PL.D_Count >= Natural'Min (Clean_Up_Threshold,
+                                          Max_Delete_List_Size) then
                Clean_Up_Local (ID);
             end if;
-            if PL.D_Count >= Scan_Threshold then
+            if PL.D_Count >= Natural'Min (Scan_Threshold,
+                                          Max_Delete_List_Size) then
                Scan (ID);
             end if;
-            if PL.D_Count >= Clean_Up_Threshold then
+            if PL.D_Count >= Natural'Min (Clean_Up_Threshold,
+                                          Max_Delete_List_Size) then
                Clean_Up_All (ID);
             end if;
 
@@ -812,32 +815,34 @@ package body NBAda.Lock_Free_Memory_Reclamation is
 
    ----------------------------------------------------------------------------
    procedure Clean_Up_All (ID : in Processes) is
-      pragma Unreferenced (ID);
       use type Primitives.Unsigned_32;
+      use type Processes;
       Node  : Atomic_Node_Access;
    begin
       for P in Processes loop
-         for Index in Valid_Node_Index loop
-            Node := Persistent_Shared_Variables (P).DL_Nodes (Index);
-            if
-              Node /= null and then
-              not Persistent_Shared_Variables (P).DL_Done (Index)
-            then
-               Fetch_And_Add
-                 (Target    =>
-                    Persistent_Shared_Variables (P).DL_Claims (Index)'Access,
-                  Increment => 1);
+         if P /= ID then
+            for Index in Valid_Node_Index loop
+               Node := Persistent_Shared_Variables (P).DL_Nodes (Index);
                if
-                 Node = Persistent_Shared_Variables (P).DL_Nodes (Index)
+                 Node /= null and then
+                 not Persistent_Shared_Variables (P).DL_Done (Index)
                then
-                  Clean_Up (Managed_Node_Access (Node));
+                  Fetch_And_Add
+                    (Target    => Persistent_Shared_Variables (P).
+                                    DL_Claims (Index)'Access,
+                     Increment => 1);
+                  if
+                    Node = Persistent_Shared_Variables (P).DL_Nodes (Index)
+                  then
+                     Clean_Up (Managed_Node_Access (Node));
+                  end if;
+                  Fetch_And_Add
+                    (Target    => Persistent_Shared_Variables (P).
+                                    DL_Claims (Index)'Access,
+                     Increment => -1);
                end if;
-               Fetch_And_Add
-                 (Target    =>
-                    Persistent_Shared_Variables (P).DL_Claims (Index)'Access,
-                  Increment => -1);
-            end if;
-         end loop;
+            end loop;
+         end if;
       end loop;
    end Clean_Up_All;
 
