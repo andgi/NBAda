@@ -16,9 +16,9 @@ Memory management and reclamation
 Lock-Free_Storage_Pools            Ok. Fairly well tested. Some oddities.     Y
 Epoch-Based_Memory_Reclamation     OK. Fairly well tested.                    Y
 Hazard_Pointers                    OK. Fairly well tested.                    Y
-Pass_The_Buck                      OK, not well tested.                       
-Lock-Free_Reference_Counting       Uncertain, not well tested. Oddities.
-Lock-Free_Memory_Reclamation       Uncertain, not well tested. Oddities.      Y?
+Pass_The_Buck                      OK, not well tested.                       Y
+Lock-Free_Reference_Counting       Uncertain, not well tested. Oddities.      Y
+Lock-Free_Memory_Reclamation       Uncertain, not well tested. Less Oddities. Y
 
 Algorithms and Data-structures
 
@@ -26,11 +26,12 @@ Lock-Free_LL_SC                    OK. Fairly well tested.                    Y
 Lock-Free_Stack                    Maybe OK.                                  Y
 Lock-Free_Bounded_Queue            Maybe OK. Some oddities.                   Y
 Lock-Free_Queue                    OK. Fairly well tested. Oddities w. HPMR.  Y
+Lock-Free_Queue_2                  LFMR: Looks OK.                            Y
 Lock-Free_Deque                    LFRC: Looks ok. LFMR: Looks ok.            Y
 Lock-Free_Sets                     Maybe OK.  Some oddities.
 Lock-Free_Dictionary               Uncertain, not well tested.
 Lock-Free_Dictionary_2             Under construction.               
-Lock-Free_Priority_Queue           Uncertain, not well tested.
+Lock-Free_Priority_Queue           LFMR: Okish. LFRC: Broken                  ?
 Lock-Free_Bounded_Priority_Queue   Not working.
 
 
@@ -40,5 +41,7 @@ Queue benchmark:
   HPMR            Oddities: Safety + #dequeues + #enqueues
   LFRC            OK.
   LFMR            OK.
-  DEQUE_LFRC      OK?
-  DEQUE_LFMR      OK?
+  LF_QUEUE_LFMR   OK.
+  LF_QUEUE_LFRC   OK? Oddities: Liveness?
+  DEQUE_LFRC      OK
+  DEQUE_LFMR      OK? Oddities: Reclamation safety?
