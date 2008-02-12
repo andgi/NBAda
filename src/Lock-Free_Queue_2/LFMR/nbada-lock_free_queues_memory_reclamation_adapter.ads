@@ -29,7 +29,7 @@ pragma Style_Checks (Off);
 --                    LNCS 4878, pp. 401-414, 2007.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Jan 10 19:57:44 2008
---  $Id: nbada-lock_free_queues_memory_reclamation_adapter.ads,v 1.1 2008/01/10 19:38:44 andersg Exp $
+--  $Id: nbada-lock_free_queues_memory_reclamation_adapter.ads,v 1.2 2008/02/12 18:18:23 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma Style_Checks (All_Checks);
@@ -58,7 +58,10 @@ package NBAda.Lock_Free_Queues_Memory_Reclamation_Adapter is
       --  Delete is called from Dequeue on a dereferenced node so the
       --  maximum number of simultaneous dereferences is ?.
       Max_Number_Of_Links_Per_Node => 1,
-      Clean_Up_Threshold           => 256,
+      Clean_Up_Threshold           =>
+        2 * Natural (Process_Ids.Max_Number_Of_Processes),
+--      Scan_Threshold               =>
+--        2 * Natural (Process_Ids.Max_Number_Of_Processes * 10) + 1,
       --  Clean up and scan often.
       Process_Ids                  => Process_Ids);
 
