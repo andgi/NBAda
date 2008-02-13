@@ -18,10 +18,10 @@
 #-  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #-
 #------------------------------------------------------------------------------
-# $Id: Makefile,v 1.1 2008/02/05 18:14:11 andersg Exp $
+# $Id: Makefile,v 1.2 2008/02/13 10:23:57 andersg Exp $
 #------------------------------------------------------------------------------
 
-
+DIST_TAG=RELEASE_0_1_0
 DIST_VERSION=0.1.0
 
 DIST_ADTs = src/Atomic_1-Writer_N-Reader_Register \
@@ -30,6 +30,7 @@ DIST_ADTs = src/Atomic_1-Writer_N-Reader_Register \
 	    src/Lock-Free_Stack \
 	    src/Lock-Free_Bounded_Queue \
 	    src/Lock-Free_Queue \
+	    src/Lock-Free_Queue_2 \
 	    src/Lock-Free_Deque \
 	    src/Lock-Free_Priority_Queue
 
@@ -47,10 +48,27 @@ DIST_BASE = src/common \
 
 DIST_UTIL = src/util
 
+DIST_benchmarks = src/benchmarks
+
 DIST_DOCs = docs/reference_manual.pdf
 
-DIST_COMMON = COPYING $(DIST_BASE) $(DIST_UTIL) $(DIST_MRs) $(DIST_ADTs) \
-              $(DIST_DOCs)
+DIST_COMMON = COPYING README \
+              $(DIST_BASE) $(DIST_UTIL) $(DIST_MRs) $(DIST_ADTs) \
+              $(DIST_benchmarks) $(DIST_DOCs)
+
+# This target makes an archive containing everything tagged for the specified
+# release.
+dist_archive: docs
+	(cd /tmp/; \
+	 rm -rf /tmp/NBAda; \
+	 cvs -d /home/andersg/cvsroot export -d NBAda -r $(DIST_TAG) Ada/Non-Blocking/NBAda;\
+	)
+	cp $(DIST_DOCs) /tmp/NBAda/
+	(cd /tmp/; \
+	 tar zcf NBAda-$(DIST_VERSION).tar.gz \
+           --exclude=CVS --exclude='*~' --exclude='*.o' --exclude='*.ali'\
+           NBAda;\
+	)
 
 dist: docs
 	tar zcf NBAda-$(DIST_VERSION).tar.gz \
