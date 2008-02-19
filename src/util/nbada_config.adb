@@ -23,7 +23,7 @@
 --  Description     : NBAda build config.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Aug 30 11:18:46 2007
--- $Id: nbada_config.adb,v 1.16 2008/02/07 16:10:49 andersg Exp $
+-- $Id: nbada_config.adb,v 1.17 2008/02/19 09:40:02 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Command_Line;
@@ -58,15 +58,16 @@ procedure NBAda_Config is
       SW_LL_SC,
       LF_STACKS_EBMR,
       LF_STACKS_HPMR,
-      LF_SETS,
       LF_QUEUES_BOUNDED,
       LF_QUEUES_EBMR,
       LF_QUEUES_HPMR,
       LF_QUEUES_LFMR,
       LF_QUEUES_LFRC,
       LF_DEQUES_LFMR,
-      LF_DEQUES_LFRC
+      LF_DEQUES_LFRC,
       --    Under development.
+      LF_SETS_EBMR,
+      LF_SETS_HPMR
       );
    type Architecture is (IA32, SPARCV8PLUS, SPARCV9, MIPSN32);
    type Target_Array is array (Target) of Boolean;
@@ -117,7 +118,10 @@ procedure NBAda_Config is
       LF_STACKS_HPMR =>
         "+" ("-I" & Install_Base & "/Lock-Free_Stack " &
              "-I" & Install_Base & "/Lock-Free_Stack/HPMR"),
-      LF_SETS =>
+      LF_SETS_EBMR =>
+        "+" ("-I" & Install_Base & "/Lock-Free_Sets " &
+             "-I" & Install_Base & "/Lock-Free_Sets/EBMR"),
+      LF_SETS_HPMR =>
         "+" ("-I" & Install_Base & "/Lock-Free_Sets " &
              "-I" & Install_Base & "/Lock-Free_Sets/HPMR"),
       LF_QUEUES_BOUNDED =>
@@ -169,7 +173,10 @@ procedure NBAda_Config is
       LF_STACKS_HPMR  => (PRIMITIVES      => True,
                           LF_POOLS        => True,
                           HPMR            => True, others => False),
-      LF_SETS         => (PRIMITIVES      => True,
+      LF_SETS_EBMR    => (PRIMITIVES      => True,
+                          LF_POOLS        => True,
+                          EBMR            => True, others => False),
+      LF_SETS_HPMR    => (PRIMITIVES      => True,
                           LF_POOLS        => True,
                           HPMR            => True, others => False),
       LF_QUEUES_BOUNDED => (PRIMITIVES    => True, others => False),
