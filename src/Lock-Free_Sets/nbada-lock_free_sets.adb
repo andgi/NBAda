@@ -30,7 +30,7 @@ pragma Style_Checks (Off);
 --                    pages 73-82, August 2002.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Mar 10 12:23:47 2006
---  $Id: nbada-lock_free_sets.adb,v 1.5 2007/08/31 16:49:16 andersg Exp $
+--  $Id: nbada-lock_free_sets.adb,v 1.6 2008/02/20 14:07:43 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -127,9 +127,9 @@ package body NBAda.Lock_Free_Sets is
             end if;
             Store ("+"(Node).Next'Access, Unmark (Cur));
             if
-              Boolean_Compare_And_Swap (Link      => "+"(Prev).Next'Access,
-                                        Old_Value => Unmark (Cur),
-                                        New_Value => Node)
+              Compare_And_Swap (Link      => "+"(Prev).Next'Access,
+                                Old_Value => Unmark (Cur),
+                                New_Value => Node)
             then
                declare
                   Step : Natural := 0;
@@ -190,28 +190,15 @@ package body NBAda.Lock_Free_Sets is
             end if;
 
             if
-              Boolean_Compare_And_Swap
-              (Link      => "+"(Cur).Next'Access,
-               Old_Value => Unmark (Next),
-               New_Value => Mark (Next))
+              Compare_And_Swap (Link      => "+"(Cur).Next'Access,
+                                Old_Value => Unmark (Next),
+                                New_Value => Mark (Next))
             then
-               if
-                 Boolean_Compare_And_Swap
-                 (Link      => "+"(Prev).Next'Access,
-                  Old_Value => Unmark (Cur),
-                  New_Value => Unmark (Next))
-               then
-                  Delete (Cur);
-               else
-                  Release (Prev);
-                  Release (Cur);
-                  Release (Next);
-                  Find (From, Key,
-                        Found,
-                        Prev, Cur, Next);
-                  Release (Cur);
-               end if;
-
+               --  Dechain the logically deleted node.
+               Compare_And_Swap (Link      => "+"(Prev).Next'Access,
+                                 Old_Value => Unmark (Cur),
+                                 New_Value => Unmark (Next));
+               Delete (Cur);
                Release (Prev);
                Release (Next);
                return;
@@ -340,14 +327,16 @@ package body NBAda.Lock_Free_Sets is
                      end if;
                   else
                      --  Current.Next is marked, i.e. Current is logically
-                     --  deleted.
+                     --  deleted. Help dechain Current.
+                     --  Note: The node that marked Current as logically
+                     --  deleted is responsible for reclaiming it.
                      if
-                       Boolean_Compare_And_Swap
+                       Compare_And_Swap
                        (Link      => "+"(Previous).Next'Access,
                         Old_Value => Unmark (Current),
                         New_Value => Unmark (Next))
                      then
-                        Delete (Current);
+                        Release (Current);
                         Current := Null_Reference;
                      else
                         --  Retry from the list head.
