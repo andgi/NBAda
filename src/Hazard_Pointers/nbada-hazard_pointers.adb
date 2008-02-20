@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Hazard Pointers - An implementation of Maged Michael's hazard pointers.
---  Copyright (C) 2004 - 2007  Anders Gidenstam
+--  Copyright (C) 2004 - 2008  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:35:09 2004
---  $Id: nbada-hazard_pointers.adb,v 1.19 2007/12/14 15:48:24 andersg Exp $
+--  $Id: nbada-hazard_pointers.adb,v 1.20 2008/02/20 20:56:54 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -304,10 +304,15 @@ package body NBAda.Hazard_Pointers is
       begin
          if Deref (R) /= null then
             return
+              "(" &
               Ada.Tags.External_Tag (Node_Access (Deref (R)).all'Tag) & "@" &
-              Private_Reference_Impl'Image (R.Ref);
+              Private_Reference_Impl'Image (R.Ref) & ", HP[" &
+              Integer'Image (R.HP) & "])";
+
          else
-            return "@" & Private_Reference_Impl'Image (R.Ref);
+            return "(" &
+              "@" & Private_Reference_Impl'Image (R.Ref) & ", HP[" &
+              Integer'Image (R.HP) & "])";
          end if;
       end Image;
 
@@ -353,7 +358,8 @@ package body NBAda.Hazard_Pointers is
                            Ada.Exceptions.Raise_Exception
                              (Constraint_Error'Identity,
                               "hazard_pointers.adb: " &
-                              "Dereference found a nonsense reference value.");
+                              "Dereference found a nonsense reference value." &
+                              Image (Node));
                         else
                            State := Deref (Node).MM_Magic;
                         end if;
@@ -369,7 +375,8 @@ package body NBAda.Hazard_Pointers is
                      Ada.Exceptions.Raise_Exception
                        (Constraint_Error'Identity,
                         "hazard_pointers.adb: " &
-                        "Dereferenced a non-existing node!");
+                        "Dereferenced a non-existing node! " &
+                        Image (Node));
                   end if;
                end;
             else
@@ -398,20 +405,31 @@ package body NBAda.Hazard_Pointers is
          Primitives.Membar;
          --  Complete all preceding memory operations before releasing
          --  the hazard pointer.
-         if Integrity_Checking then
-            if PS.Hazard_Pointer (HP_Index (Node.HP)) =
-              Managed_Node_Access (Deref (Node))
-            then
-               PS.Hazard_Pointer (HP_Index (Node.HP)) := null;
+         if "+" (Node) /= null then
+            if Integrity_Checking then
+               if Node.HP < 1 or Node.HP > Max_Number_Of_Dereferences then
+                  Ada.Exceptions.Raise_Exception
+                    (Constraint_Error'Identity,
+                     "hazard_pointers.adb: " &
+                     "Attempt to release an invalid private reference, " &
+                     Image (Node));
+               end if;
+
+               if PS.Hazard_Pointer (HP_Index (Node.HP)) =
+                 Managed_Node_Access (Deref (Node))
+               then
+                  PS.Hazard_Pointer (HP_Index (Node.HP)) := null;
+               else
+                  Ada.Exceptions.Raise_Exception
+                    (Constraint_Error'Identity,
+                     "hazard_pointers.adb: " &
+                     "Released a private references that had not " &
+                     "been dereferenced! " &
+                     Image (Node));
+               end if;
             else
-               Ada.Exceptions.Raise_Exception
-                 (Constraint_Error'Identity,
-                  "hazard_pointers.adb: " &
-                  "Released a private references that had not " &
-                  "been dereferenced!");
+               PS.Hazard_Pointer (HP_Index (Node.HP)) := null;
             end if;
-         else
-            PS.Hazard_Pointer (HP_Index (Node.HP)) := null;
          end if;
       end Release;
 
@@ -432,10 +450,10 @@ package body NBAda.Hazard_Pointers is
       end Deref;
 
       ----------------------------------------------------------------------
-      function  Boolean_Compare_And_Swap (Link      : access Shared_Reference;
-                                          Old_Value : in Private_Reference;
-                                          New_Value : in Private_Reference)
-                                         return Boolean is
+      function Compare_And_Swap (Link      : access Shared_Reference;
+                                 Old_Value : in Private_Reference;
+                                 New_Value : in Private_Reference)
+                                return Boolean is
       begin
          if Integrity_Checking then
             if New_Value.Ref = 16#ffffffff# then
@@ -450,12 +468,12 @@ package body NBAda.Hazard_Pointers is
               To_Shared_Reference_Base_Access (Link.all'Unchecked_Access),
             Old_Value => Shared_Reference_Base_Impl (Old_Value.Ref),
             New_Value => Shared_Reference_Base_Impl (New_Value.Ref));
-      end Boolean_Compare_And_Swap;
+      end Compare_And_Swap;
 
       ----------------------------------------------------------------------
-      procedure Void_Compare_And_Swap    (Link      : access Shared_Reference;
-                                          Old_Value : in Private_Reference;
-                                          New_Value : in Private_Reference) is
+      procedure Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in Private_Reference;
+                                  New_Value : in Private_Reference) is
       begin
          if Integrity_Checking then
             if New_Value.Ref = 16#ffffffff# then
@@ -470,7 +488,7 @@ package body NBAda.Hazard_Pointers is
               To_Shared_Reference_Base_Access (Link.all'Unchecked_Access),
             Old_Value => Shared_Reference_Base_Impl (Old_Value.Ref),
             New_Value => Shared_Reference_Base_Impl (New_Value.Ref));
-      end Void_Compare_And_Swap;
+      end Compare_And_Swap;
 
       ----------------------------------------------------------------------
       procedure Delete      (Node : in Private_Reference) is
@@ -482,7 +500,8 @@ package body NBAda.Hazard_Pointers is
             Ada.Exceptions.Raise_Exception
               (Constraint_Error'Identity,
                "hazard_pointers.adb: " &
-               "Error: Deleting an already deleted or non-existing node!");
+               "Error: Deleting an already deleted or non-existing node! " &
+               Image (Node));
          end if;
 
          Release (Node);
@@ -507,27 +526,19 @@ package body NBAda.Hazard_Pointers is
          function To_Private_Reference_Access is
             new Ada.Unchecked_Conversion (Shared_Reference_Access,
                                           Private_Reference_Access);
-
-         Old : constant Private_Reference :=
-           (Ref => To_Private_Reference (Link.all), HP => 0);
       begin
          if Integrity_Checking then
             if Node.Ref = 16#ffffffff# then
                Ada.Exceptions.Raise_Exception
               (Constraint_Error'Identity,
                "hazard_pointers.adb: " &
-               "Error: Storing a nonsense reference value!");
+               "Error: Storing a nonsense reference value! " &
+               Image (Node));
             end if;
          end if;
 
          To_Private_Reference_Access (Shared_Reference_Access (Link)).all :=
            Node.Ref;
-
-         --  This will crash and burn since Old.HP = 0.
-         --  Does it even make sense to delete the old value?
-         if "+"(Old) /= null then
-            Delete (Old);
-         end if;
       end Store;
 
       ----------------------------------------------------------------------

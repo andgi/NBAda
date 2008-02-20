@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Hazard Pointers - An implementation of Maged Michael's hazard pointers.
---  Copyright (C) 2004 - 2007  Anders Gidenstam
+--  Copyright (C) 2004 - 2008  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:10:15 2004
---  $Id: nbada-hazard_pointers.ads,v 1.19 2007/12/14 15:48:24 andersg Exp $
+--  $Id: nbada-hazard_pointers.ads,v 1.20 2008/02/20 20:56:54 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -175,14 +175,14 @@ package NBAda.Hazard_Pointers is
       function  Deref   (Node : in Private_Reference)
                         return Node_Access;
 
-      function  Boolean_Compare_And_Swap (Link      : access Shared_Reference;
-                                          Old_Value : in Private_Reference;
-                                          New_Value : in Private_Reference)
-                                         return Boolean;
+      function  Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in Private_Reference;
+                                  New_Value : in Private_Reference)
+                                 return Boolean;
 
-      procedure Void_Compare_And_Swap    (Link      : access Shared_Reference;
-                                          Old_Value : in Private_Reference;
-                                          New_Value : in Private_Reference);
+      procedure Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in Private_Reference;
+                                  New_Value : in Private_Reference);
 
       procedure Delete  (Node : in Private_Reference);
 
