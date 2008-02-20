@@ -30,7 +30,7 @@ pragma Style_Checks (Off);
 --                    pages 73-82, August 2002.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Mar 10 12:23:47 2006
---  $Id: nbada-lock_free_sets.adb,v 1.6 2008/02/20 14:07:43 andersg Exp $
+--  $Id: nbada-lock_free_sets.adb,v 1.7 2008/02/20 20:03:45 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -53,7 +53,7 @@ package body NBAda.Lock_Free_Sets is
      (Block_Size => List_Node'Max_Size_In_Storage_Elements);
 
    type New_List_Node_Access is access List_Node;
---   for New_List_Node_Access'Storage_Pool use Node_Pool;
+   for New_List_Node_Access'Storage_Pool use Node_Pool;
 
    function Create_List_Node is new MRS_Ops.Create (New_List_Node_Access);
 
