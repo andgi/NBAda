@@ -17,28 +17,29 @@ Lock-Free_Storage_Pools            Ok. Fairly well tested. Some oddities.     Y
 Epoch-Based_Memory_Reclamation     OK. Fairly well tested.                    Y
 Hazard_Pointers                    OK. Fairly well tested.                    Y
 Pass_The_Buck                      OK, not well tested.                       Y
-Lock-Free_Reference_Counting       Uncertain, not well tested. Oddities.      Y
-Lock-Free_Memory_Reclamation       Uncertain, not well tested. Less Oddities. Y
+Lock-Free_Reference_Counting       Uncertain, not well tested. Some oddities. Y
+Lock-Free_Memory_Reclamation       Uncertain, not well tested. Few oddities.  Y
 
 Algorithms and Data-structures
 
 Lock-Free_LL_SC                    OK. Fairly well tested.                    Y
 Lock-Free_Stack                    Maybe OK.                                  Y
 Lock-Free_Bounded_Queue            Maybe OK. Some oddities.                   Y
-Lock-Free_Queue                    OK. Fairly well tested. Oddities w. HPMR.  Y
+Lock-Free_Queue                    HPMR: Oddities. EBMR: OK.                  Y
 Lock-Free_Queue_2                  LFMR: Looks OK.                            Y
-Lock-Free_Deque                    LFRC: Looks ok. LFMR: Looks ok.            Y
-Lock-Free_Sets                     Maybe OK.  Some oddities.
-Lock-Free_Dictionary               Uncertain, not well tested.
+Lock-Free_Deque                    LFRC: Looks OK. LFMR: Looks OK.            Y
+Lock-Free_Sets                     HPMR: A few oddities. EBMR: Looks OK.      Y
+Lock-Free_Dictionary               HPMR: Looks OK. EBMR: Looks OK.            Y
 Lock-Free_Dictionary_2             Under construction.               
-Lock-Free_Priority_Queue           LFMR: Okish. LFRC: Broken                  ?
+Lock-Free_Priority_Queue           HPMR: Problems. EBMR: liveness problems.
+Lock-Free_Priority_Queue_2         LFMR: Okish. LFRC: Broken                  ?
 Lock-Free_Bounded_Priority_Queue   Not working.
 
 
 Queue benchmark:
   bounded         Oddities: FIFO + #dequeues.
   EBMR            OK.
-  HPMR            Oddities: Safety + #dequeues + #enqueues
+  HPMR            Oddities: random STORAGE_ERROR exceptions.
   LFRC            OK.
   LFMR            OK.
   LF_QUEUE_LFMR   OK.
