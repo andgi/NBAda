@@ -28,7 +28,7 @@ pragma Style_Checks (Off);
 --                    University of Cambridge, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Mar  8 12:04:29 2006
---  $Id: nbada-epoch_based_memory_reclamation.ads,v 1.9 2008/02/20 14:01:03 andersg Exp $
+--  $Id: nbada-epoch_based_memory_reclamation.ads,v 1.10 2008/02/20 20:08:07 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -161,6 +161,7 @@ package NBAda.Epoch_Based_Memory_Reclamation is
       --        Private_Reference.
       Null_Reference : constant Private_Reference;
       --  Note: A marked null reference is not equal to Null_Reference.
+      function Image (R : Private_Reference) return String;
 
       ----------------------------------------------------------------------
       --  Operations.

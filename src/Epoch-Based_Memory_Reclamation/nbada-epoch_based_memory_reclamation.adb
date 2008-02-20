@@ -28,7 +28,7 @@ pragma Style_Checks (Off);
 --                    University of Cambridge, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Mar  8 12:28:31 2006
---  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.11 2008/02/20 14:01:03 andersg Exp $
+--  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.12 2008/02/20 20:08:07 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -36,6 +36,7 @@ pragma License (GPL);
 
 with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
+with Ada.Tags;
 with Ada.Text_IO;
 
 package body NBAda.Epoch_Based_Memory_Reclamation is
@@ -227,6 +228,22 @@ package body NBAda.Epoch_Based_Memory_Reclamation is
          new Primitives.Standard_Void_Compare_And_Swap (Private_Reference);
 
       ----------------------------------------------------------------------
+      function Image (R : Private_Reference) return String is
+         type Node_Access is access all Managed_Node_Base'Class;
+      begin
+         if Deref (R) /= null then
+            return
+              "(" &
+              Ada.Tags.External_Tag (Node_Access (Deref (R)).all'Tag) & "@" &
+              Private_Reference'Image (R) & ")";
+
+         else
+            return "(" &
+              "@" & Private_Reference'Image (R) & ")";
+         end if;
+      end Image;
+
+      ----------------------------------------------------------------------
       function  Dereference (Link : access Shared_Reference)
                             return Private_Reference is
          ID   : constant Processes := Process_Ids.Process_ID;
@@ -343,10 +360,6 @@ package body NBAda.Epoch_Based_Memory_Reclamation is
       begin
          To_Private_Reference_Access (Shared_Reference_Access (Link)).all :=
            Node;
-
-         if "+"(Tmp) /= null then
-            Delete (Tmp);
-         end if;
       end Store;
 
       ----------------------------------------------------------------------
