@@ -23,7 +23,7 @@
 --                    lock-free queue algorithm.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Nov 28 14:35:35 2006
---  $Id: nbada-lock_free_queues.adb,v 1.4 2007/09/03 10:23:04 andersg Exp $
+--  $Id: nbada-lock_free_queues.adb,v 1.5 2008/02/20 14:13:16 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -84,17 +84,17 @@ package body NBAda.Lock_Free_Queues is
                      raise Queue_Empty;
                   end if;
 
-                  Void_Compare_And_Swap (Link      => From.Tail'Access,
-                                         Old_Value => Tail,
-                                         New_Value => Next);
+                  Compare_And_Swap (Link      => From.Tail'Access,
+                                    Old_Value => Tail,
+                                    New_Value => Next);
                else
                   declare
                      Result : constant Element_Type := "+" (Next).Element;
                   begin
                      if
-                       Boolean_Compare_And_Swap (Link      => From.Head'Access,
-                                                 Old_Value => Head,
-                                                 New_Value => Next)
+                       Compare_And_Swap (Link      => From.Head'Access,
+                                         Old_Value => Head,
+                                         New_Value => Next)
                      then
                         Release (Next);
                         Release (Tail);
@@ -129,23 +129,23 @@ package body NBAda.Lock_Free_Queues is
          begin
             if Tail = On.Tail then
                if Next = Null_Reference then
-                  if Boolean_Compare_And_Swap
+                  if Compare_And_Swap
                     (Link      => "+" (Tail).Next'Access,
                      Old_Value => Next,
                      New_Value => Node)
                   then
-                     Void_Compare_And_Swap (Link      => On.Tail'Access,
-                                            Old_Value => Tail,
-                                            New_Value => Node);
+                     Compare_And_Swap (Link      => On.Tail'Access,
+                                       Old_Value => Tail,
+                                       New_Value => Node);
                      Release (Next);
                      Release (Tail);
                      Release (Node);
                      return;
                   end if;
                else
-                  Void_Compare_And_Swap (Link      => On.Tail'Access,
-                                         Old_Value => Tail,
-                                         New_Value => Next);
+                  Compare_And_Swap (Link      => On.Tail'Access,
+                                    Old_Value => Tail,
+                                    New_Value => Next);
                end if;
             end if;
 
