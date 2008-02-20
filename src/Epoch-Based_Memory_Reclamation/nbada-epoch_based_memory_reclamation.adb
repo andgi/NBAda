@@ -28,7 +28,7 @@ pragma Style_Checks (Off);
 --                    University of Cambridge, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Mar  8 12:28:31 2006
---  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.10 2007/08/30 15:51:09 andersg Exp $
+--  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.11 2008/02/20 14:01:03 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -279,10 +279,10 @@ package body NBAda.Epoch_Based_Memory_Reclamation is
       end Deref;
 
       ----------------------------------------------------------------------
-      function  Boolean_Compare_And_Swap (Link      : access Shared_Reference;
-                                          Old_Value : in Private_Reference;
-                                          New_Value : in Private_Reference)
-                                         return Boolean is
+      function Compare_And_Swap (Link      : access Shared_Reference;
+                                 Old_Value : in Private_Reference;
+                                 New_Value : in Private_Reference)
+                                return Boolean is
 
          type Shared_Reference_Access is access all Shared_Reference;
          type Private_Reference_Access is access all Private_Reference;
@@ -296,12 +296,12 @@ package body NBAda.Epoch_Based_Memory_Reclamation is
               To_Private_Reference_Access (Shared_Reference_Access (Link)),
             Old_Value => Old_Value,
             New_Value => New_Value);
-      end Boolean_Compare_And_Swap;
+      end Compare_And_Swap;
 
       ----------------------------------------------------------------------
-      procedure Void_Compare_And_Swap    (Link      : access Shared_Reference;
-                                          Old_Value : in Private_Reference;
-                                          New_Value : in Private_Reference) is
+      procedure Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in Private_Reference;
+                                  New_Value : in Private_Reference) is
 
          type Shared_Reference_Access is access all Shared_Reference;
          type Private_Reference_Access is access all Private_Reference;
@@ -315,7 +315,7 @@ package body NBAda.Epoch_Based_Memory_Reclamation is
               To_Private_Reference_Access (Shared_Reference_Access (Link)),
             Old_Value => Old_Value,
             New_Value => New_Value);
-      end Void_Compare_And_Swap;
+      end Compare_And_Swap;
 
       ----------------------------------------------------------------------
       procedure Delete  (Node : in Private_Reference) is

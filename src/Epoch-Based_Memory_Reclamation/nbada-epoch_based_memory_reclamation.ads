@@ -28,7 +28,7 @@ pragma Style_Checks (Off);
 --                    University of Cambridge, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Mar  8 12:04:29 2006
---  $Id: nbada-epoch_based_memory_reclamation.ads,v 1.8 2007/08/30 15:51:09 andersg Exp $
+--  $Id: nbada-epoch_based_memory_reclamation.ads,v 1.9 2008/02/20 14:01:03 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -178,14 +178,14 @@ package NBAda.Epoch_Based_Memory_Reclamation is
       function  Deref   (Node : in Private_Reference)
                         return Node_Access;
 
-      function  Boolean_Compare_And_Swap (Link      : access Shared_Reference;
-                                          Old_Value : in Private_Reference;
-                                          New_Value : in Private_Reference)
-                                         return Boolean;
+      function  Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in Private_Reference;
+                                  New_Value : in Private_Reference)
+                                 return Boolean;
 
-      procedure Void_Compare_And_Swap    (Link      : access Shared_Reference;
-                                          Old_Value : in Private_Reference;
-                                          New_Value : in Private_Reference);
+      procedure Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in Private_Reference;
+                                  New_Value : in Private_Reference);
 
       procedure Delete  (Node : in Private_Reference);
 
