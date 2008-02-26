@@ -23,7 +23,7 @@
 --  Description     : Test application for the lock-free dictionaries.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri May 18 14:51:23 2006
---  $Id: dictionary_test.adb,v 1.4 2008/02/26 14:25:20 andersg Exp $
+--  $Id: dictionary_test.adb,v 1.5 2008/02/26 15:04:31 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -500,6 +500,19 @@ begin
    Put_Line ("Elapsed time:" &
                          Duration'Image (Ada.Real_Time.To_Duration (T2 - T1)));
 
+   if Silent then
+      Ada.Text_IO.Put (Integer'Image (No_Inserters)  & "  " &
+                       Integer'Image (No_Finders)  & "  " &
+                       Integer'Image (No_Removers)  & "  " &
+                       Primitives.Unsigned_32'Image (Insert_Count) & "  " &
+                       Primitives.Unsigned_32'Image (Find_Count)  & "  " &
+                       Primitives.Unsigned_32'Image (Found_Count)  & "  " &
+                       Primitives.Unsigned_32'Image (Delete_Count)  & "  " &
+                       Duration'Image (Ada.Real_Time.To_Duration (T2 - T1)) &
+                       "  ");
+   end if;
+
+
    Put_Line ("Emptying dictionary.");
    delay 5.0;
 
@@ -528,6 +541,15 @@ begin
                                Ada.Exceptions.Exception_Message (E));
          Ada.Text_IO.New_Line;
    end;
+
+   if Silent then
+      Ada.Text_IO.Put (Primitives.Unsigned_32'Image (Insert_Count) & "  " &
+                       Primitives.Unsigned_32'Image (Find_Count) & "  " &
+                       Primitives.Unsigned_32'Image (Found_Count) & "  " &
+                       Primitives.Unsigned_32'Image (Delete_Count));
+      Ada.Text_IO.New_Line;
+   end if;
+
 
    Put_Line ("Final insert count: " &
                          Primitives.Unsigned_32'Image (Insert_Count));
