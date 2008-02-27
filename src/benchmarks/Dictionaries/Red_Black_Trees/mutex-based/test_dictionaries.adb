@@ -23,7 +23,7 @@
 --  Description     : Test application for the lock-free dictionaries.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 27 15:15:15 2008
---  $Id: test_dictionaries.adb,v 1.1 2008/02/27 17:27:27 andersg Exp $
+--  $Id: test_dictionaries.adb,v 1.2 2008/02/27 18:35:10 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -61,10 +61,9 @@ package body Test_Dictionaries is
    procedure Delete  (From : in out Dictionary_Type;
                       Key  : in     Key_Type) is
       use Trees;
-      Tmp : Value_Type;
    begin
       From.Mutex.Acquire;
-      Tmp := Delete_Min (From.Dictionary);
+      Delete (From.Dictionary, Key);
       From.Mutex.Release;
    exception
       when Trees.Not_Found =>

@@ -24,7 +24,7 @@
 --                    presentation at Dagstuhl, 2008-02-18.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Feb 26 18:56:37 2008
---  $Id: red_black_trees.adb,v 1.1 2008/02/27 17:27:27 andersg Exp $
+--  $Id: red_black_trees.adb,v 1.2 2008/02/27 18:35:10 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -83,6 +83,8 @@ package body Red_Black_Trees is
 
       procedure Insert (Node : in out Tree_Node_Access);
 
+      Already_Present : Boolean := False;
+
       procedure Insert (Node : in out Tree_Node_Access) is
       begin
          if Node = null then
@@ -103,8 +105,9 @@ package body Red_Black_Trees is
                Insert (Node.Right);
             else
                --  Node.Key = Key;
-               --  This is stupid and dangerous!
-               raise Already_Present;
+               --  This is stupid!
+               --  raise Already_Present;
+               Already_Present := True;
             end if;
 
             if Is_Red (Node.Right) then
@@ -114,9 +117,13 @@ package body Red_Black_Trees is
       end Insert;
 
    begin
-      Verify (Into, True);
+      Verify (Into, False);
       Ada.Text_IO.Put_Line ("Insert " & Image (Key));
       Insert (Into.Root);
+      Into.Root.Color := Black;
+      if Already_Present then
+         raise Red_Black_Trees.Already_Present;
+      end if;
    end Insert;
 
    ----------------------------------------------------------------------------
@@ -134,13 +141,14 @@ package body Red_Black_Trees is
 
       procedure Delete (Node : in out Tree_Node_Access);
 
-      Result : Value_Type;
+      Result    : Value_Type;
+      Not_Found : Boolean := True;
 
       -----------------------------------------------------------------
       procedure Delete (Node : in out Tree_Node_Access) is
       begin
          if Node = null then
-            raise Not_Found;
+            Not_Found := True;
          else
             if Key < Node.Key then
                if not Is_Red (Node.Left) and not Is_Red (Node.Left.Left) then
@@ -186,6 +194,12 @@ package body Red_Black_Trees is
 
    begin
       Delete (From.Mutable.Self.Root);
+      if From.Root /= null then
+         From.Mutable.Self.Root.Color := Black;
+      end if;
+      if Not_Found then
+         raise Red_Black_Trees.Not_Found;
+      end if;
       return Result;
    end Delete;
 
@@ -198,6 +212,9 @@ package body Red_Black_Trees is
    begin
       Verify (From.Mutable.Self.all, False);
       Delete_Min (From.Mutable.Self.Root, Min_Key, Result);
+      if From.Root /= null then
+         From.Mutable.Self.Root.Color := Black;
+      end if;
       return Result;
    end Delete_Min;
 
@@ -207,7 +224,7 @@ package body Red_Black_Trees is
 
       procedure Delete_Max (Node : in out Tree_Node_Access);
 
-      Result : Value_Type;
+      Result    : Value_Type;
 
       procedure Delete_Max (Node : in out Tree_Node_Access) is
       begin
@@ -244,6 +261,9 @@ package body Red_Black_Trees is
 
    begin
       Delete_Max (From.Mutable.Self.Root);
+      if From.Root /= null then
+         From.Mutable.Self.Root.Color := Black;
+      end if;
       return Result;
    end Delete_Max;
 
@@ -283,9 +303,14 @@ package body Red_Black_Trees is
 
       procedure Verify (Node  : in Tree_Node_Access;
                         Level : in Natural) is
-      begin
-         if Node /= null and then Is_Red (Node.Right) then
+      begin         if Node /= null and then Is_Red (Node.Right) then
             Ada.Text_IO.Put_Line ("Error: Right leaning red edge!");
+         end if;
+         if Is_Red (Node)
+           and then Is_Red (Node.Left)
+           and then Is_Red (Node.Left.Left) then
+            Ada.Text_IO.Put_Line
+              ("Error: Too many consecutive left leaning red edges!");
          end if;
          if Print then
             for I in 1 .. 2*Level loop
@@ -377,28 +402,24 @@ package body Red_Black_Trees is
 
    ----------------------------------------------------------------------------
    procedure Rotate_Left  (Parent : in out Tree_Node_Access) is
-      Child             : constant Tree_Node_Access := Parent;
-      Grand_Child       : constant Tree_Node_Access := Child.Right;
-      Grand_Child_Left  : constant Tree_Node_Access := Grand_Child.Left;
+      A : constant Tree_Node_Access := Parent;
+      B : constant Tree_Node_Access := A.Right;
+      T : constant Tree_Node_Access := B.Left;
    begin
-      Parent           := Grand_Child;
-      Grand_Child.Left := Child;
-      Child.Right      := Grand_Child_Left;
-      --  Experimental:
-      if Child.Right /= null then
-         Child.Right.Color := Black;
-      end if;
+      Parent  := B;
+      B.Left  := A;
+      A.Right := T;
    end Rotate_Left;
 
    ----------------------------------------------------------------------------
    procedure Rotate_Right (Parent : in out Tree_Node_Access) is
-      Child             : constant Tree_Node_Access := Parent;
-      Grand_Child       : constant Tree_Node_Access := Child.Left;
-      Grand_Child_Right : constant Tree_Node_Access := Grand_Child.Right;
+      B : constant Tree_Node_Access := Parent;
+      A : constant Tree_Node_Access := B.Left;
+      T : constant Tree_Node_Access := A.Right;
    begin
-      Parent            := Grand_Child;
-      Grand_Child.Right := Child;
-      Child.Left        := Grand_Child_Right;
+      Parent  := A;
+      A.Right := B;
+      B.Left  := T;
    end Rotate_Right;
 
    ----------------------------------------------------------------------------
@@ -413,11 +434,13 @@ package body Red_Black_Trees is
          --  Remove this node.
          Key   := Node.Key;
          Value := Node.Value;
+         --  Safety check. Presumably this should not happen.
+         if Node.Right /= null then
+            raise Constraint_Error;
+         end if;
          Reclaim (Node);
-         Node := null;
       else
-         if not Is_Red (Node.Left) and (Node.Left /= null and then
-                                        not Is_Red (Node.Left.Left)) then
+         if not Is_Red (Node.Left) and not Is_Red (Node.Left.Left) then
             Move_Red_Left (Node);
          end if;
 
