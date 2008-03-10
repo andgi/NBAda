@@ -27,7 +27,7 @@ pragma Style_Checks (OFF);
 --                    Anders Gidenstam.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 21 22:50:08 2008
--- $Id: nbada-lock_free_simple_trees.ads,v 1.1 2008/03/05 11:10:15 andersg Exp $
+-- $Id: nbada-lock_free_simple_trees.ads,v 1.2 2008/03/10 13:00:34 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (ALL_CHECKS);
 
@@ -66,6 +66,10 @@ package NBAda.Lock_Free_Simple_Trees is
    procedure Delete  (From  : in out Dictionary_Type;
                       Key   : in     Key_Type);
 
+   function  Delete (From  : in Dictionary_Type;
+                     Key   : in Key_Type)
+                    return Value_Type;
+
    function  Lookup  (From  : in Dictionary_Type;
                       Key   : in Key_Type)
                      return Value_Type;
@@ -77,9 +81,11 @@ private
 
    package MR_Adapter is
       new Lock_Free_Simple_Trees_Memory_Reclamation_Adapter (Process_Ids);
-   package MR renames MR_Adapter.Node_Memory_Reclamation;
+   package Node_MR renames MR_Adapter.Node_Memory_Reclamation;
+   package State_MR renames MR_Adapter.State_Memory_Reclamation;
 
-   type Node_Reference is new MR.Shared_Reference_Base;
+   type Node_Reference  is new Node_MR.Shared_Reference_Base;
+   type State_Reference is new State_MR.Shared_Reference_Base;
    --  These are atomic types since Shared_Reference_Base is.
 
    type Atomic_Boolean is new Boolean;
@@ -87,25 +93,37 @@ private
    pragma Atomic (Atomic_Boolean);
 
    ----------------------------------------------------------------------
+   type Node_State is
+     new State_MR.Managed_Node_Base with
+      record
+         Value   : Value_Type;
+         Deleted : Boolean := False;
+      end record;
+
+   procedure Free (State : access Node_State);
+
+   package State_Ops is new State_MR.Reference_Operations (Node_State,
+                                                           State_Reference);
+
+   ----------------------------------------------------------------------
    type Tree_Node is
-     new MR.Managed_Node_Base with
+     new Node_MR.Managed_Node_Base with
       record
          Key     : Key_Type;
-         Value   : Value_Type;
-         Deleted : aliased Atomic_Boolean := False;
-         pragma Atomic (Deleted);
+         State   : aliased State_Reference;
+         pragma Atomic (State);
          Left    : aliased Node_Reference;
          pragma Atomic (Left);
          Right   : aliased Node_Reference;
-         pragma Atomic (Left);
+         pragma Atomic (Right);
       end record;
 
    function All_References (Node : access Tree_Node)
-                           return MR.Reference_Set;
+                           return Node_MR.Reference_Set;
    procedure Free (Node : access Tree_Node);
 
-   package Node_Ops is new MR.Operations (Tree_Node,
-                                          Node_Reference);
+   package Node_Ops is new Node_MR.Operations (Tree_Node,
+                                               Node_Reference);
 
    ----------------------------------------------------------------------
    type Mutable_View (Self : access Dictionary_Type) is

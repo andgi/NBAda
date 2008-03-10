@@ -27,7 +27,7 @@ pragma Style_Checks (OFF);
 --                    Anders Gidenstam.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 21 23:22:26 2008
---  $Id: nbada-lock_free_simple_trees.adb,v 1.1 2008/03/05 11:10:14 andersg Exp $
+--  $Id: nbada-lock_free_simple_trees.adb,v 1.2 2008/03/10 13:00:33 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (ALL_CHECKS);
 
@@ -47,6 +47,17 @@ package body NBAda.Lock_Free_Simple_Trees is
    --  Storage pools for the nodes.
    ----------------------------------------------------------------------------
 
+   ----------------------------------------------------------------------
+   Node_State_Pool : Lock_Free_Growing_Storage_Pools.Lock_Free_Storage_Pool
+     (Block_Size => Node_State'Max_Size_In_Storage_Elements);
+
+   type New_Node_State_Access is access Node_State;
+   for New_Node_State_Access'Storage_Pool use Node_State_Pool;
+
+   function Create_Node_State is
+      new State_Ops.Create (New_Node_State_Access);
+
+   ----------------------------------------------------------------------
    Tree_Node_Pool : Lock_Free_Growing_Storage_Pools.Lock_Free_Storage_Pool
        (Block_Size => Tree_Node'Max_Size_In_Storage_Elements);
 
@@ -60,8 +71,8 @@ package body NBAda.Lock_Free_Simple_Trees is
    --  Internal operations.
    ----------------------------------------------------------------------------
 
-   function Compare_And_Swap is
-      new NBAda.Primitives.Boolean_Compare_And_Swap_32 (Atomic_Boolean);
+   function New_Copy (State : State_Ops.Private_Reference)
+                     return State_Ops.Private_Reference;
 
    ----------------------------------------------------------------------------
    --  Public operations.
@@ -77,11 +88,14 @@ package body NBAda.Lock_Free_Simple_Trees is
    procedure Insert  (Into  : in out Dictionary_Type;
                       Key   : in     Key_Type;
                       Value : in     Value_Type) is
-      use Node_Ops;
-      Node : constant Node_Ops.Private_Reference := Create_Tree_Node;
+      use Node_Ops, State_Ops;
+      Node  : constant Node_Ops.Private_Reference  := Create_Tree_Node;
+      State : constant State_Ops.Private_Reference := Create_Node_State;
    begin
-      "+" (Node).Key   := Key;
-      "+" (Node).Value := Value;
+      --  Prepare the new node.
+      "+" (Node).Key    := Key;
+      "+" (State).Value := Value;
+      Store ("+" (Node).State'Access, State);
 
       loop
          declare
@@ -95,14 +109,17 @@ package body NBAda.Lock_Free_Simple_Trees is
                                    New_Value => Node)
                then
                   Release (Root);
+                  Release (State);
                   Release (Node);
                   return;
                end if;
             else
                --  Traverse to a leaf.
                declare
-                  Current : Private_Reference := Root;
-                  Next    : Private_Reference;
+                  Current : Node_Ops.Private_Reference := Root;
+                  Next    : Node_Ops.Private_Reference;
+                  Null_Reference : Node_Ops.Private_Reference
+                    renames Node_Ops.Null_Reference;
                begin
                   Find_Leaf : loop
                      if Key < "+" (Current).Key then
@@ -112,11 +129,29 @@ package body NBAda.Lock_Free_Simple_Trees is
                         Next :=
                           Dereference ("+" (Current).Right'Access);
                      else
-                        --  Current.Key = Key.
-                        --  NOTE: Currently a key can only be inserted once.
-                        Release (Current);
-                        Release (Node);
-                        raise Already_Present;
+                        --  Current.Key = Key. Update value.
+                        Delete (Node);
+                        declare
+                           Current_State :
+                             constant State_Ops.Private_Reference :=
+                             Dereference ("+" (Current).State'Access);
+                        begin
+                           if
+                             Compare_And_Swap (Link      =>
+                                                 "+" (Current).State'Access,
+                                               Old_Value => Current_State,
+                                               New_Value => State)
+                           then
+                              Delete  (Current_State);
+                              Release (State);
+                           else
+                              Release (Current_State);
+                              Delete  (State);
+                           end if;
+                           Release (Current);
+                        end;
+
+                        return;
                      end if;
 
                      exit Find_Leaf when "+" (Next) = null;
@@ -157,6 +192,15 @@ package body NBAda.Lock_Free_Simple_Trees is
    ----------------------------------------------------------------------------
    procedure Delete  (From  : in out Dictionary_Type;
                       Key   : in     Key_Type) is
+      Dummy : Value_Type;
+   begin
+      Dummy := Delete (From, Key);
+   end Delete;
+
+   ----------------------------------------------------------------------------
+   function  Delete (From  : in Dictionary_Type;
+                     Key   : in Key_Type)
+                    return Value_Type is
       use Node_Ops;
       Root  : constant Node_Ops.Private_Reference :=
         Dereference (From.Mutable.Self.Root'Access);
@@ -180,20 +224,39 @@ package body NBAda.Lock_Free_Simple_Trees is
                else
                   --  Current.Key = Key. Set the deletion mark.
                   loop
-                     if "+" (Current).Deleted then
-                        Release (Current);
-                        raise Not_Found;
-                     end if;
+                     declare
+                        use State_Ops;
+                        Current_State : constant State_Ops.Private_Reference :=
+                          Dereference ("+" (Current).State'Access);
+                        New_State     : constant State_Ops.Private_Reference :=
+                          New_Copy (Current_State);
+                     begin
+                        if "+" (Current_State).Deleted then
+                           Release (Current_State);
+                           Release (New_State);
+                           Release (Current);
+                           raise Not_Found;
+                        end if;
 
-                     if
-                       Compare_And_Swap (Target    =>
-                                           "+" (Current).Deleted'Access,
-                                         Old_Value => False,
-                                         New_Value => True)
-                     then
-                        Release (Current);
-                        return;
-                     end if;
+                        "+" (New_State).Deleted := True;
+
+                        if
+                          Compare_And_Swap (Link    =>
+                                              "+" (Current).State'Access,
+                                            Old_Value => Current_State,
+                                            New_Value => New_State)
+                        then
+                           declare
+                              Value : constant Value_Type :=
+                                "+" (Current_State).Value;
+                           begin
+                              Release (Current);
+                              Release (Current_State);
+                              Release (New_State);
+                              return Value;
+                           end;
+                        end if;
+                     end;
                   end loop;
                end if;
 
@@ -238,14 +301,21 @@ package body NBAda.Lock_Free_Simple_Trees is
                else
                   --  Current.Key = Key
                   declare
-                     Value   : constant Value_Type := "+" (Current).Value;
-                     Deleted : constant Boolean :=
-                       Boolean ("+" (Current).Deleted);
+                     use State_Ops;
+                     Current_State : constant State_Ops.Private_Reference :=
+                       Dereference ("+" (Current).State'Access);
                   begin
                      Release (Current);
-                     if not Deleted then
-                        return Value;
+                     if not "+" (Current_State).Deleted then
+                        declare
+                           Value : constant Value_Type :=
+                             "+" (Current_State).Value;
+                        begin
+                           Release (Current_State);
+                           return Value;
+                        end;
                      else
+                        Release (Current_State);
                         raise Not_Found;
                      end if;
                   end;
@@ -285,17 +355,21 @@ package body NBAda.Lock_Free_Simple_Trees is
             Ada.Text_IO.Put_Line ("-");
          else
             declare
+               use State_Ops;
                Left  : constant Node_Ops.Private_Reference :=
                  Dereference ("+" (Node).Left'Access);
                Right : constant Node_Ops.Private_Reference :=
                  Dereference ("+" (Node).Right'Access);
+               State : constant State_Ops.Private_Reference :=
+                 Dereference ("+" (Node).State'Access);
             begin
-               if "+" (Node).Deleted then
+               if "+" (State).Deleted then
                   Ada.Text_IO.Put_Line ("Node (" &
                                         Image ("+" (Node).Key) & ")");
                else
                   Ada.Text_IO.Put_Line ("Node " & Image ("+" (Node).Key));
                end if;
+               Release (State);
                Release (Node);
                Dump (Left, Level + 1);
                Dump (Right, Level + 1);
@@ -315,15 +389,46 @@ package body NBAda.Lock_Free_Simple_Trees is
    ----------------------------------------------------------------------------
 
    ----------------------------------------------------------------------------
+   function New_Copy (State : State_Ops.Private_Reference)
+                     return State_Ops.Private_Reference is
+      use State_Ops;
+      New_State : constant State_Ops.Private_Reference := Create_Node_State;
+   begin
+      "+" (New_State).Deleted := "+" (State).Deleted;
+      "+" (New_State).Value   := "+" (State).Value;
+      return New_State;
+   end New_Copy;
+
+   ----------------------------------------------------------------------------
+   procedure Free (State : access Node_State) is
+
+      procedure Reclaim is new
+        Ada.Unchecked_Deallocation (Node_State,
+                                    New_Node_State_Access);
+
+      function To_New_Node_State_Access is new
+        Ada.Unchecked_Conversion (State_Ops.Node_Access,
+                                  New_Node_State_Access);
+
+      X : New_Node_State_Access :=
+        To_New_Node_State_Access (State_Ops.Node_Access (State));
+      --  This is dangerous in the general case but here we know
+      --  for sure that we have allocated all the nodes of the
+      --  Deque_Node type from the New_Deque_Node_Access pool.
+   begin
+      Reclaim (X);
+   end Free;
+
+   ----------------------------------------------------------------------------
    function All_References (Node : access Tree_Node)
-                           return MR.Reference_Set is
+                           return Node_MR.Reference_Set is
       type Link_Access is access all Node_Reference;
       function To_Shared_Reference_Access is new
         Ada.Unchecked_Conversion (Link_Access,
-                                  MR.Shared_Reference_Base_Access);
+                                  Node_MR.Shared_Reference_Base_Access);
       use Node_Ops;
 
-      Result : constant MR.Reference_Set (1 .. 2) :=
+      Result : constant Node_MR.Reference_Set (1 .. 2) :=
         (To_Shared_Reference_Access (Node.Left'Access),
          To_Shared_Reference_Access (Node.Right'Access));
    begin
