@@ -27,7 +27,7 @@ pragma Style_Checks (OFF);
 --                    Anders Gidenstam.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 21 22:50:08 2008
--- $Id: nbada-lock_free_simple_trees.ads,v 1.2 2008/03/10 13:00:34 andersg Exp $
+-- $Id: nbada-lock_free_simple_trees.ads,v 1.3 2008/03/10 16:23:58 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (ALL_CHECKS);
 
@@ -96,9 +96,14 @@ private
    type Node_State is
      new State_MR.Managed_Node_Base with
       record
+         Key     : Key_Type;
          Value   : Value_Type;
          Deleted : Boolean := False;
       end record;
+   --  Note: This extra indirection is needed to
+   --        1. Allow the value associated with a key to be updated.
+   --        2. Make logical deletion atomic w.r.t. to value updates.
+   --        3. Make deletion of an interior node of the tree feasible.
 
    procedure Free (State : access Node_State);
 
@@ -109,7 +114,6 @@ private
    type Tree_Node is
      new Node_MR.Managed_Node_Base with
       record
-         Key     : Key_Type;
          State   : aliased State_Reference;
          pragma Atomic (State);
          Left    : aliased Node_Reference;
