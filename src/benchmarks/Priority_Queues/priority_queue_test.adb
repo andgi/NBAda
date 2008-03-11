@@ -1,6 +1,5 @@
 -------------------------------------------------------------------------------
---  Lock-Free Priority Queues - Based on the the lock-free set algorithm by
---                              M. Michael.
+--  Priority Queue Test - Test benchmark for lock-free priority queues.
 --
 --  Copyright (C) 2007 - 2008  Anders Gidenstam
 --
@@ -21,15 +20,16 @@
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
 --  Filename        : priority_queue_test.adb
---  Description     : Test of non-blocking priority queue.
+--  Description     : Test benchmark for lock-free priority queues.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 20 16:39:08 2003
---  $Id: priority_queue_test.adb,v 1.1 2008/02/20 20:55:38 andersg Exp $
+--  $Id: priority_queue_test.adb,v 1.2 2008/03/11 16:00:06 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
 with NBAda.Primitives;
+with NBAda.Process_Identification;
 
 with Ada.Text_IO;
 with Ada.Exceptions;
@@ -38,14 +38,48 @@ with Ada.Command_Line;
 
 with System.Task_Info;
 
-with My_Priority_Queue;
+with Test_Priority_Queues;
 
 procedure Priority_Queue_Test is
 
+   package PID is
+      new NBAda.Process_Identification (Max_Number_Of_Processes => 65);
+
+   type Value_Type is
+      record
+         Creator : PID.Process_ID_Type;
+         Index   : Integer;
+      end record;
+   function "<" (Left, Right : Value_Type) return Boolean;
+   function Image (X : Value_Type) return String;
+
+   package Priority_Queues is
+      new Test_Priority_Queues (Element_Type => Value_Type,
+                                "<"          => "<",
+                                Image        => Image,
+                                Process_Ids  => PID);
+   use Priority_Queues;
+
    use NBAda;
 
-   use My_Priority_Queue.Priority_Queues;
-   use My_Priority_Queue;
+   ----------------------------------------------------------------------------
+   function "<" (Left, Right : Value_Type) return Boolean is
+      use type PID.Process_ID_Type;
+   begin
+      return Left.Index < Right.Index or
+        else (Left.Index = Right.Index and Left.Creator < Right.Creator);
+   end "<";
+
+   ----------------------------------------------------------------------------
+   function Image (X : Value_Type) return String is
+   begin
+      return
+        "(" &
+        Integer'Image (X.Index) & ", " &
+        PID.Process_ID_Type'Image (X.Creator) &
+        ")";
+   end Image;
+
 
    ----------------------------------------------------------------------------
    --  Test application.
@@ -68,7 +102,7 @@ procedure Priority_Queue_Test is
    end Consumer;
 
    ----------------------------------------------------------------------------
-   My_Q : My_Priority_Queue.Priority_Queues.Priority_Queue_Type;
+   My_Q : Priority_Queue_Type;
 
    Start                      : aliased Primitives.Unsigned_32 := 0;
    pragma Atomic (Start);
@@ -192,7 +226,7 @@ procedure Priority_Queue_Test is
             Done := False;
 
          exception
-            when My_Priority_Queue.Priority_Queues.Queue_Empty =>
+            when Priority_Queues.Queue_Empty =>
                Put (".");
 
                exit when Done and No_Producers_Running = 0;
@@ -310,7 +344,7 @@ begin
    Put_Line (" Priority Queue ");
 
    Put_Line ("Verifying priority queue...");
-   Verify (My_Q, Print => True);
+--   Verify (My_Q, Print => True);
 
    delay 1.0;
    Put_Line ("Testing with " &
@@ -351,7 +385,7 @@ begin
    end if;
 
    Put_Line ("Verifying priority queue...");
-   Verify (My_Q, Print => False);
+--   Verify (My_Q, Print => False);
 
    delay 5.0;
    Put_Line ("Emptying queue.");
@@ -397,6 +431,6 @@ begin
    end if;
 
    Put_Line ("Verifying priority queue...");
-   Verify (My_Q, Print => True);
+--   Verify (My_Q, Print => True);
 
 end Priority_Queue_Test;
