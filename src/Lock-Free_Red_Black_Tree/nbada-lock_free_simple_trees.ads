@@ -27,7 +27,7 @@ pragma Style_Checks (OFF);
 --                    Anders Gidenstam.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 21 22:50:08 2008
--- $Id: nbada-lock_free_simple_trees.ads,v 1.3 2008/03/10 16:23:58 andersg Exp $
+-- $Id: nbada-lock_free_simple_trees.ads,v 1.4 2008/03/14 16:24:15 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (ALL_CHECKS);
 
@@ -70,6 +70,17 @@ package NBAda.Lock_Free_Simple_Trees is
                      Key   : in Key_Type)
                     return Value_Type;
 
+   function Delete_Min (From : in Dictionary_Type)
+                       return Value_Type;
+
+   type Pair_Type is
+      record
+         Key   : Key_Type;
+         Value : Value_Type;
+      end record;
+   function Delete_Min (From : in Dictionary_Type)
+                       return Pair_Type;
+
    function  Lookup  (From  : in Dictionary_Type;
                       Key   : in Key_Type)
                      return Value_Type;
@@ -98,7 +109,6 @@ private
       record
          Key     : Key_Type;
          Value   : Value_Type;
-         Deleted : Boolean := False;
       end record;
    --  Note: This extra indirection is needed to
    --        1. Allow the value associated with a key to be updated.
@@ -121,6 +131,8 @@ private
          Right   : aliased Node_Reference;
          pragma Atomic (Right);
       end record;
+   --  Note:
+   --    A node is logically deleted if Node.State is marked.
 
    function All_References (Node : access Tree_Node)
                            return Node_MR.Reference_Set;
