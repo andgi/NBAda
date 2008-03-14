@@ -27,7 +27,7 @@ pragma Style_Checks (OFF);
 --                    Anders Gidenstam.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 21 22:50:08 2008
--- $Id: nbada-lock_free_simple_trees.ads,v 1.4 2008/03/14 16:24:15 andersg Exp $
+-- $Id: nbada-lock_free_simple_trees.ads,v 1.5 2008/03/14 18:33:39 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (ALL_CHECKS);
 
@@ -99,16 +99,16 @@ private
    type State_Reference is new State_MR.Shared_Reference_Base;
    --  These are atomic types since Shared_Reference_Base is.
 
-   type Atomic_Boolean is new Boolean;
-   for Atomic_Boolean'Size use 32;
-   pragma Atomic (Atomic_Boolean);
-
    ----------------------------------------------------------------------
    type Node_State is
      new State_MR.Managed_Node_Base with
       record
          Key     : Key_Type;
          Value   : Value_Type;
+         Left    : aliased Node_Reference;
+         pragma Atomic (Left);
+         Right   : aliased Node_Reference;
+         pragma Atomic (Right);
       end record;
    --  Note: This extra indirection is needed to
    --        1. Allow the value associated with a key to be updated.
@@ -126,10 +126,6 @@ private
       record
          State   : aliased State_Reference;
          pragma Atomic (State);
-         Left    : aliased Node_Reference;
-         pragma Atomic (Left);
-         Right   : aliased Node_Reference;
-         pragma Atomic (Right);
       end record;
    --  Note:
    --    A node is logically deleted if Node.State is marked.
