@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 16 11:12:21 2008
---  $Id: nbada-atomic_move.ads,v 1.4 2008/01/24 18:24:47 andersg Exp $
+--  $Id: nbada-atomic_move.ads,v 1.5 2008/04/09 17:41:10 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -55,7 +55,7 @@ package NBAda.Atomic_Move is
    function Dereference (Location : access Shared_Location)
                         return Private_Reference;
 
-   type Move_Status is (Moved_Ok, Not_Moved, Moved_Away, Start);
+   type Move_Status is (Moved_Ok, Not_Moved, Moved_Away, Dunno);
    for Move_Status'Size use 32;
 
    procedure Move (To      : access Shared_Location;
@@ -79,7 +79,7 @@ package NBAda.Atomic_Move is
 
 private
 
-   No_Of_Version_Bits : constant := 8;
+   No_Of_Version_Bits : constant := 15;
 
    type Version_ID is mod 2 ** No_Of_Version_Bits;
    type Node_Access_Impl is
@@ -107,7 +107,7 @@ private
    type Shared_Location_Access is access all Shared_Location;
 
    package Move_Info_MR is
-      new Hazard_Pointers (Max_Number_Of_Dereferences => 2,
+      new Hazard_Pointers (Max_Number_Of_Dereferences => 4,
                            Process_Ids                => Process_Ids);
 
    type Move_Info_Record is new Move_Info_MR.Managed_Node_Base with
@@ -115,8 +115,10 @@ private
          Current : Version_ID := 0;
          New_Pos : Shared_Location_Access;
          Old_Pos : Shared_Location_Access;
-         Status  : aliased Move_Status := Start;
-         pragma Atomic (Status);
+         New_Pos_Value : Node_Ref;
+         --  New idea: Include the expected value of To here - in this way
+         --            it might be possible to learn the outcome and
+         --            to avoid a linearizability problem.
       end record;
    procedure Free (Object : access Move_Info_Record);
 
@@ -125,7 +127,7 @@ private
    package Move_Info_MR_Ops is new Move_Info_MR.Reference_Operations
      (Managed_Node     => Move_Info_Record,
       Shared_Reference => Shared_Move_Info);
-   subtype Move_Info is Move_Info_MR_Ops.Private_Reference;
+   subtype Move_Info_Reference is Move_Info_MR_Ops.Private_Reference;
 
    type Node is limited
       record
