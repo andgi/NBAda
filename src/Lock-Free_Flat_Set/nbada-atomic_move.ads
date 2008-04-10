@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 16 11:12:21 2008
---  $Id: nbada-atomic_move.ads,v 1.5 2008/04/09 17:41:10 andersg Exp $
+--  $Id: nbada-atomic_move.ads,v 1.6 2008/04/10 17:48:03 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -116,6 +116,7 @@ private
          New_Pos : Shared_Location_Access;
          Old_Pos : Shared_Location_Access;
          New_Pos_Value : Node_Ref;
+         Old_Pos_Value : Node_Ref;
          --  New idea: Include the expected value of To here - in this way
          --            it might be possible to learn the outcome and
          --            to avoid a linearizability problem.
@@ -129,10 +130,20 @@ private
       Shared_Reference => Shared_Move_Info);
    subtype Move_Info_Reference is Move_Info_MR_Ops.Private_Reference;
 
+   type Step_Count_Array is array (2 .. 3) of aliased Primitives.Unsigned_32;
+   pragma Atomic_Components (Step_Count_Array);
+   type Result_Count_Array is array (Move_Status) of
+     aliased Primitives.Unsigned_32;
+   pragma Atomic_Components (Result_Count_Array);
+
    type Node is limited
       record
          Status  : aliased Shared_Move_Info;
+         pragma Atomic (Status);
          Element : aliased Element_Type;
+         --  For debugging.
+         Step_Count   : Step_Count_Array := (0, 0);
+         Result_Count : Result_Count_Array := (others => 0);
       end record;
    for Node'Alignment use 2 ** No_Of_Version_Bits;
 

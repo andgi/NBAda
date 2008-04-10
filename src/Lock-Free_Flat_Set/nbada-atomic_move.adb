@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 16 11:46:57 2008
---  $Id: nbada-atomic_move.adb,v 1.8 2008/04/09 17:41:10 andersg Exp $
+--  $Id: nbada-atomic_move.adb,v 1.9 2008/04/10 17:48:03 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -60,6 +60,8 @@ package body NBAda.Atomic_Move is
       new Primitives.Standard_Compare_And_Swap (Shared_Location);
    procedure Void_Compare_And_Swap is
       new Primitives.Standard_Void_Compare_And_Swap (Shared_Location);
+   function Compare_And_Swap is
+      new Primitives.Standard_Boolean_Compare_And_Swap (Shared_Location);
 
    function Compare_And_Swap is
       new Primitives.Boolean_Compare_And_Swap_32 (Move_Status);
@@ -184,7 +186,12 @@ package body NBAda.Atomic_Move is
                if Dereference (To).Ref.Node /= 0 then
                   --  To is occupied. Thanks to Dereference this
                   --  should linearize just fine.
-                  Result := Not_Moved;
+                  if Node_Ref (Element.Location.all) = Old_From then
+                     Result := Not_Moved;
+                  else
+                     --  We might have seen this node in To..
+                     Result := Moved_Away;
+                  end if;
                   Release (Operation);
                   return;
                end if;
@@ -204,12 +211,18 @@ package body NBAda.Atomic_Move is
                   "+" (New_Op).Old_Pos := Old_Pos;
                   "+" (New_Op).New_Pos := New_Pos;
                   "+" (New_Op).New_Pos_Value := Dereference (New_Pos).Ref;
+                  "+" (New_Op).Old_Pos_Value := Old_From;
 
                   --  Give up if occupied.
                   if "+" (New_Op).New_Pos_Value.Node /= 0 then
                      --  To is occupied. Thanks to Dereference this
                      --  should linearize just fine.
-                     Result := Not_Moved;
+                     if Node_Ref (Element.Location.all) = Old_From then
+                        Result := Not_Moved;
+                     else
+                        --  We might actually have seen this node in To..
+                        Result := Moved_Away;
+                     end if;
                      Release (New_Op);
                      Release (Operation);
                      return;
@@ -255,6 +268,9 @@ package body NBAda.Atomic_Move is
                     (Ref      => (Element.Ref.Node, "+" (Operation).Current),
                      Location => "+" (Operation).Old_Pos);
                begin
+                  if Elem.Ref /= "+" (Operation).Old_Pos_Value then
+                     Ada.Text_IO.Put_Line ("Yeargh!");
+                  end if;
                   Help_Move (Element   => Elem,
                              Operation => Operation,
                              Result    => Tmp);
@@ -334,7 +350,12 @@ package body NBAda.Atomic_Move is
       else
          return "(" &
            Node_Access_Impl'Image (Location.Node * Node'Alignment) &
-           ", " & Version_ID'Image (Location.Version) & ")";
+           ", " & Version_ID'Image (Location.Version) & ")" &
+           "  " &
+           Primitives.Unsigned_32'Image
+           (To_Node_Access (Location.Node).Step_Count (2)) & " " &
+           Primitives.Unsigned_32'Image
+           (To_Node_Access (Location.Node).Step_Count (3));
       end if;
    end Image;
 
@@ -397,6 +418,7 @@ package body NBAda.Atomic_Move is
         Move_Info_MR_Ops."+" (Operation).Old_Pos;
    begin
       --  Step 2. Update To.
+      Primitives.Membar;
       declare
          use Move_Info_MR_Ops;
          Old_To : constant Node_Ref := Node_Ref (To.all);
@@ -404,6 +426,7 @@ package body NBAda.Atomic_Move is
       begin
          Primitives.Membar;
          if Operation /= Node.Status then
+            Primitives.Membar;
             Result := Dunno;
             Release (Operation);
             return;
@@ -426,6 +449,9 @@ package body NBAda.Atomic_Move is
                      return;
                   end if;
                   --  Step 2 was done be someone else. Carry on.
+               else
+                  --  Step 2 done.
+                  Primitives.Fetch_And_Add_32 (Node.Step_Count (2)'Access, 1);
                end if;
                --  Step 2 done. Carry on.
             end;
@@ -440,19 +466,24 @@ package body NBAda.Atomic_Move is
       end;
 
       --  Step 3. Clear From.
+      --  We should not reach here otherwise. Verify!
+      Result := Moved_Ok;
       declare
          use Move_Info_MR_Ops;
-         Node : constant Node_Access := To_Node_Access (Element.Ref.Node);
+         Node     : constant Node_Access := To_Node_Access (Element.Ref.Node);
+         Old_From : constant Node_Ref    := "+" (Operation).Old_Pos_Value;
       begin
          Primitives.Membar;
          if Operation = Node.Status then
-            Void_Compare_And_Swap (Target    => From,
-                                   Old_Value => Shared_Location (Element.Ref),
-                                   New_Value => (0, Element.Ref.Version + 1));
+            if
+              Compare_And_Swap (Target    => From,
+                                Old_Value => Shared_Location (Old_From),
+                                New_Value => (0, Old_From.Version + 1))
+            then
+               Primitives.Fetch_And_Add_32 (Node.Step_Count (3)'Access, 1);
+            end if;
          else
-            --  We should not reach here otherwise. Verify!
             Release (Operation);
-            Result := Moved_Ok;
             return;
          end if;
       end;
@@ -480,12 +511,10 @@ package body NBAda.Atomic_Move is
             Delete  (New_Op);
             Release (Operation);
          end if;
-         Result := Moved_Ok;
          --  Update the Element reference to reflect the new position.
          Element.Ref.Version := Version;
          Element.Location    := To;
       end;
-
    end Help_Move;
 
    ----------------------------------------------------------------------------
