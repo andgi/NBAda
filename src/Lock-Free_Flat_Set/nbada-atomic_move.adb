@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 16 11:46:57 2008
---  $Id: nbada-atomic_move.adb,v 1.12 2008/04/11 10:33:31 andersg Exp $
+--  $Id: nbada-atomic_move.adb,v 1.13 2008/04/11 15:25:59 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -63,8 +63,6 @@ package body NBAda.Atomic_Move is
    function Compare_And_Swap is
       new Primitives.Standard_Boolean_Compare_And_Swap (Shared_Location);
 
-   function Compare_And_Swap is
-      new Primitives.Boolean_Compare_And_Swap_32 (Move_Status);
    procedure Compare_And_Swap is
       new Primitives.Void_Compare_And_Swap_32 (Move_Status);
 
@@ -241,16 +239,17 @@ package body NBAda.Atomic_Move is
                      Help_Move (Element   => Element,
                                 Operation => New_Op,
                                 Result    => Result);
-                     if Result = Dunno then
-                        if Node_Ref (Old_Pos.all) = Old_From then
-                           Result := Not_Moved;
-                        elsif
-                          Node_Ref (New_Pos.all) = (Old_From.Node,
-                                                    Old_To.Version + 1)
-                        then
-                           Result := Moved_Ok;
-                        end if;
-                     end if;
+                     --  Help move always return the right result.
+--                       if Result = Dunno then
+--                          if Node_Ref (Old_Pos.all) = Old_From then
+--                             Result := Not_Moved;
+--                          elsif
+--                            Node_Ref (New_Pos.all) = (Old_From.Node,
+--                                                      Old_To.Version + 1)
+--                          then
+--                             Result := Moved_Ok;
+--                          end if;
+--                       end if;
                      return;
                   else
                      Delete  (New_Op);
@@ -314,12 +313,12 @@ package body NBAda.Atomic_Move is
          --  freed safely without the help of a memory reclamation algorithm.
          --  For now the memory is just leaked..
          null;
-      elsif
-        Result = Dunno and
-        Dereference (Tmp_Location (ID)'Access).Ref.Node = Node.Ref.Node
-      then
-         --  The move must have succeded after all.
-         null;
+--        elsif
+--          Result = Dunno and
+--          Dereference (Tmp_Location (ID)'Access).Ref.Node = Node.Ref.Node
+--        then
+--           --  The move must have succeded after all.
+--           null;
       end if;
    end Delete;
 
@@ -383,6 +382,11 @@ package body NBAda.Atomic_Move is
       begin
          Primitives.Membar;
          if Operation = Node.Status then
+            --  We know this operation will result in Not_Moved. Verify!
+            Compare_And_Swap (Target    => "+" (Operation).Result'Access,
+                              Old_Value => Dunno,
+                              New_Value => Not_Moved);
+
             declare
                New_Status : constant Move_Info_Reference := New_Move_Info;
             begin
@@ -401,12 +405,13 @@ package body NBAda.Atomic_Move is
                else
                   Delete  (New_Status);
                   Release (Operation);
-                  Result := Dunno; -- ?! Can we be more specific?
+                  Result := Not_Moved; --  This is right, isn't it?
                end if;
             end;
          else
+            Result := "+" (Operation).Result;
             Release (Operation);
-            Result := Dunno; -- ?! Can we be more specific?
+--            Result := Dunno; -- ?! Can we be more specific?
          end if;
       end Give_Up;
 
@@ -425,7 +430,7 @@ package body NBAda.Atomic_Move is
          Primitives.Membar;
          if Operation /= Node.Status then
             Primitives.Membar;
-            Result := Dunno;
+            Result := "+" (Operation).Result;
             Release (Operation);
             return;
          end if;
@@ -464,8 +469,13 @@ package body NBAda.Atomic_Move is
       end;
 
       --  Step 3. Clear From.
-      --  We should not reach here otherwise. Verify!
+      --  We know this operation will result in Moved_Ok. Verify!
+      Compare_And_Swap (Target    =>
+                          Move_Info_MR_Ops."+" (Operation).Result'Access,
+                        Old_Value => Dunno,
+                        New_Value => Moved_Ok);
       Result := Moved_Ok;
+
       declare
          use Move_Info_MR_Ops;
          Node     : constant Node_Access := To_Node_Access (Element.Ref.Node);

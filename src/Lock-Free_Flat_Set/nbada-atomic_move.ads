@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 16 11:12:21 2008
---  $Id: nbada-atomic_move.ads,v 1.6 2008/04/10 17:48:03 andersg Exp $
+--  $Id: nbada-atomic_move.ads,v 1.7 2008/04/11 15:25:59 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -117,9 +117,8 @@ private
          Old_Pos : Shared_Location_Access;
          New_Pos_Value : Node_Ref;
          Old_Pos_Value : Node_Ref;
-         --  New idea: Include the expected value of To here - in this way
-         --            it might be possible to learn the outcome and
-         --            to avoid a linearizability problem.
+         Result        : aliased Move_Status := Dunno;
+         pragma Atomic (Result);
       end record;
    procedure Free (Object : access Move_Info_Record);
 
