@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 16 17:14:04 2008
---  $Id: move_test.adb,v 1.4 2008/04/10 17:48:03 andersg Exp $
+--  $Id: move_test.adb,v 1.5 2008/04/11 10:31:13 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -65,9 +65,9 @@ procedure Move_Test is
    ----------------------------------------------------------------------------
 
    No_Of_Locations : constant := 32;
-   No_Of_Moves     : constant := 100_000;
+   No_Of_Moves     : constant := 1_000_000;
    No_Of_Movers    : Natural  := 8;
-   No_Of_Elements  : Natural  := 1;
+   No_Of_Elements  : Natural  := 4;
 
    Move_Count : array (Move_Status) of aliased Primitives.Unsigned_32 :=
      (others => 0);

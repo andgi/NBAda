@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 16 11:46:57 2008
---  $Id: nbada-atomic_move.adb,v 1.10 2008/04/11 09:55:08 andersg Exp $
+--  $Id: nbada-atomic_move.adb,v 1.11 2008/04/11 10:31:13 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -341,18 +341,18 @@ package body NBAda.Atomic_Move is
 
    ----------------------------------------------------------------------------
    function Image (Location : Shared_Location) return String is
+      use Primitives;
    begin
       if Location.Node = 0 then
          return "(null, " & Version_ID'Image (Location.Version) & ")";
       else
          return "(" &
-           Node_Access_Impl'Image (Location.Node * Node'Alignment) &
+           Unsigned_32'Image (Unsigned_32 (Location.Node) * Node'Alignment) &
            ", " & Version_ID'Image (Location.Version) & ")" &
            "  " &
-           Primitives.Unsigned_32'Image
-           (To_Node_Access (Location.Node).Step_Count (2)) & " " &
-           Primitives.Unsigned_32'Image
-           (To_Node_Access (Location.Node).Step_Count (3));
+           Unsigned_32'Image (To_Node_Access (Location.Node).Step_Count (2)) &
+           " " &
+           Unsigned_32'Image (To_Node_Access (Location.Node).Step_Count (3));
       end if;
    end Image;
 
