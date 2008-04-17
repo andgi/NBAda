@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 16 11:46:57 2008
---  $Id: nbada-atomic_move.adb,v 1.13 2008/04/11 15:25:59 andersg Exp $
+--  $Id: nbada-atomic_move.adb,v 1.14 2008/04/17 14:26:23 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -207,7 +207,6 @@ package body NBAda.Atomic_Move is
                   New_Pos : constant Shared_Location_Access :=
                     To_Shared_Location_Access (Location_Access (To));
                begin
-                  "+" (New_Op).Current := Old_From.Version;
                   "+" (New_Op).Old_Pos := Old_Pos;
                   "+" (New_Op).New_Pos := New_Pos;
                   "+" (New_Op).New_Pos_Value := Old_To;
@@ -264,7 +263,9 @@ package body NBAda.Atomic_Move is
                declare
                   Tmp  : Move_Status;
                   Elem : Private_Reference :=
-                    (Ref      => (Element.Ref.Node, "+" (Operation).Current),
+                    (Ref      =>
+                       (Element.Ref.Node,
+                        "+" (Operation).Old_Pos_Value.Version),
                      Location => "+" (Operation).Old_Pos);
                begin
                   Help_Move (Element   => Elem,
@@ -288,7 +289,6 @@ package body NBAda.Atomic_Move is
       New_Node.Element  := Element;
       Tmp.Location      := Tmp_Location (ID)'Access;
       Tmp_Location (ID) := (Tmp.Ref.Node, 0);
-      "+" (New_MI).Current := 0;
       "+" (New_MI).New_Pos := null;
       "+" (New_MI).Old_Pos := Tmp.Location;
       Store (New_Node.Status'Access, New_MI);
@@ -390,7 +390,6 @@ package body NBAda.Atomic_Move is
             declare
                New_Status : constant Move_Info_Reference := New_Move_Info;
             begin
-               "+" (New_Status).Current := 0;
                "+" (New_Status).Old_Pos := Element.Location;
                "+" (New_Status).New_Pos := null;
                if
@@ -505,7 +504,6 @@ package body NBAda.Atomic_Move is
          Version : constant Version_ID :=
            "+" (Operation).New_Pos_Value.Version + 1;
       begin
-         "+" (New_Op).Current := 0;
          "+" (New_Op).Old_Pos := To;
          "+" (New_Op).New_Pos := null;
          if

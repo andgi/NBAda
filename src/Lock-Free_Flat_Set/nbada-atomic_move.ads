@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 16 11:12:21 2008
---  $Id: nbada-atomic_move.ads,v 1.7 2008/04/11 15:25:59 andersg Exp $
+--  $Id: nbada-atomic_move.ads,v 1.8 2008/04/17 14:26:23 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -79,7 +79,7 @@ package NBAda.Atomic_Move is
 
 private
 
-   No_Of_Version_Bits : constant := 15;
+   No_Of_Version_Bits : constant := 8;
 
    type Version_ID is mod 2 ** No_Of_Version_Bits;
    type Node_Access_Impl is
@@ -112,7 +112,6 @@ private
 
    type Move_Info_Record is new Move_Info_MR.Managed_Node_Base with
       record
-         Current : Version_ID := 0;
          New_Pos : Shared_Location_Access;
          Old_Pos : Shared_Location_Access;
          New_Pos_Value : Node_Ref;
