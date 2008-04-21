@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 16 11:46:57 2008
---  $Id: nbada-atomic_move.adb,v 1.14 2008/04/17 14:26:23 andersg Exp $
+--  $Id: nbada-atomic_move.adb,v 1.15 2008/04/21 11:34:29 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -117,6 +117,7 @@ package body NBAda.Atomic_Move is
             begin
                if
                  "+" (Status).New_Pos = null and then
+--                  "+" (Status).Old_Pos = Location) and then
                  Node_Ref (Location.all) = Ref
                then
                   Release (Status);
@@ -196,8 +197,6 @@ package body NBAda.Atomic_Move is
                   return;
                end if;
 
---               Element.Ref.Version := Old_From.Version;
-               --  Element.Ref should be current.
                declare
                   use Move_Info_MR_Ops;
                   New_Op  : constant Move_Info_Reference := New_Move_Info;
@@ -212,21 +211,6 @@ package body NBAda.Atomic_Move is
                   "+" (New_Op).New_Pos_Value := Old_To;
                   "+" (New_Op).Old_Pos_Value := Old_From;
 
-                  --  Give up if occupied.
-                  if "+" (New_Op).New_Pos_Value.Node /= 0 then
-                     --  To is occupied. Thanks to Dereference this
-                     --  should linearize just fine.
-                     if Node_Ref (Element.Location.all) = Old_From then
-                        Result := Not_Moved;
-                     else
-                        --  We might actually have seen this node in To..
-                        Result := Moved_Away;
-                     end if;
-                     Release (New_Op);
-                     Release (Operation);
-                     return;
-                  end if;
-
                   if
                     Compare_And_Swap (Link      => Node.Status'Access,
                                       Old_Value => Operation,
@@ -238,17 +222,6 @@ package body NBAda.Atomic_Move is
                      Help_Move (Element   => Element,
                                 Operation => New_Op,
                                 Result    => Result);
-                     --  Help move always return the right result.
---                       if Result = Dunno then
---                          if Node_Ref (Old_Pos.all) = Old_From then
---                             Result := Not_Moved;
---                          elsif
---                            Node_Ref (New_Pos.all) = (Old_From.Node,
---                                                      Old_To.Version + 1)
---                          then
---                             Result := Moved_Ok;
---                          end if;
---                       end if;
                      return;
                   else
                      Delete  (New_Op);
