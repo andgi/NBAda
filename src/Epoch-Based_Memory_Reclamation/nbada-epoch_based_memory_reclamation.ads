@@ -28,7 +28,7 @@ pragma Style_Checks (Off);
 --                    University of Cambridge, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Mar  8 12:04:29 2006
---  $Id: nbada-epoch_based_memory_reclamation.ads,v 1.10 2008/02/20 20:08:07 andersg Exp $
+--  $Id: nbada-epoch_based_memory_reclamation.ads,v 1.11 2008/05/07 10:14:28 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -116,7 +116,10 @@ package NBAda.Epoch_Based_Memory_Reclamation is
 
       procedure Initialize (Shared    : access Shared_Reference;
                             New_Value : in     Node_Access);
-      --  Note: Initialize is only safe to use when there are no
+      procedure Store   (Link : access Shared_Reference;
+                         Node : in     Node_Access)
+        renames Initialize;
+      --  Note: Initialize and Store are only safe to use when there are no
       --        concurrent updates.
 
    private
