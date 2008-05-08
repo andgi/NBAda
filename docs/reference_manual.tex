@@ -8,7 +8,7 @@
 %  Stuhlsatzenhausweg 85
 %  66123 Saarbrücken, Germany
 %
-% $Id: reference_manual.tex,v 1.9 2008/02/11 18:59:25 andersg Exp $
+% $Id: reference_manual.tex,v 1.10 2008/05/08 11:45:27 andersg Exp $
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -74,6 +74,11 @@
                {\begin{small}}
                {\end{small}}
 
+%%%%% For the draft version.
+\newif\ifreleaseA
+\releaseAtrue
+
+
 %%%%% Make index
 %\makeindex
 
@@ -93,7 +98,11 @@
     \vspace{5mm}
     \huge Non-blocking Algorithms and Data Structures Library\\
     \vspace{5mm}
-    \huge Reference Manual
+    \huge Reference Manual\\
+    \ifreleaseA
+    \Large version 0.1.0
+    \vspace{5mm}
+    \fi
   }
   \author{%
     Anders Gidenstam  (andersg(at)mpi-inf.mpg.de)
@@ -390,25 +399,55 @@ The \cmd{nbada\_config.adb} can be compiled, e.g. with the command
       \cmd{LFRC}                 & Lock-free reference counting memory
                                    reclamation.
       & \ref{chpt:Memory-reclamation}\\
-      \cmd{LFMR}                 & Lock-free memory reclamation.
+      \cmd{LFMR}                 & Lock-free reference counting memory
+                                   reclamation.
       & \ref{chpt:Memory-reclamation}\\
       \cmd{SW\_LL\_SC}           & Lock-free load-linked/store-conditional
                                    primitive.
       & \ref{chpt:LFLLSC}\\
-      \cmd{LF\_STACKS\_EBMR}     & Lock-free dynamic stack.
+      \cmd{LF\_STACKS\_EBMR}     & Lock-free dynamic stack
+                                   \cite{IBM:1983,Michael:2004:SMR}.
       & \ref{chpt:LFSTACKS}\\
-      \cmd{LF\_STACKS\_HPMR}     & Lock-free dynamic stack.
+      \cmd{LF\_STACKS\_HPMR}     & Lock-free dynamic stack
+                                   \cite{IBM:1983,Michael:2004:SMR}.
       & \ref{chpt:LFSTACKS}\\
-      \cmd{LF\_SETS}             & Lock-free set.
-      & \ref{chpt:LFSETS}\\
-      \cmd{LF\_QUEUES\_BOUNDED}  & Lock-free bounded queue.
+      \cmd{LF\_QUEUES\_BOUNDED}  & Lock-free bounded queue
+                                   \cite{TsigasZhang2001:SPAA}.
       & \ref{chpt:LFQUEUES}\\
-      \cmd{LF\_QUEUES\_EBMR}     & Lock-free dynamic queue.
+      \cmd{LF\_QUEUES\_EBMR}     & Lock-free dynamic queue
+                                   \cite{Michael:1996:PODC}.
       & \ref{chpt:LFQUEUES}\\
-      \cmd{LF\_QUEUES\_HPMR}     & Lock-free dynamic queue.
+      \cmd{LF\_QUEUES\_HPMR}     & Lock-free dynamic queue
+                                   \cite{Michael:1996:PODC}.
       & \ref{chpt:LFQUEUES}\\
-      \cmd{LF\_DEQUES}           & Lock-free deque (a.k.a double ended queue).
+      \cmd{LF\_QUEUES\_LFRC}     & Lock-free dynamic queue
+                                   \cite{HoffmanShSh:2007:TBQ}.
+      & \ref{chpt:LFQUEUES}\\
+      \cmd{LF\_QUEUES\_LFMR}     & Lock-free dynamic queue
+                                   \cite{HoffmanShSh:2007:TBQ}.
+      & \ref{chpt:LFQUEUES}\\
+      \cmd{LF\_DEQUES\_LFRC}     & Lock-free dynamic deque
+                                   (a.k.a double ended queue) \cite{SunT04c}.
       & \ref{chpt:LFDEQUES}\\
+      \cmd{LF\_DEQUES\_LFMR}     & Lock-free dynamic deque
+                                   (a.k.a double ended queue) \cite{SunT04c}.
+      & \ref{chpt:LFDEQUES}\\
+      \cmd{LF\_PRIORITY\_QUEUES\_EBMR} & Lock-free dynamic priority queue.
+      & \ref{chpt:LFPRIORITYQUEUES}\\
+      \cmd{LF\_PRIORITY\_QUEUES\_HPMR} & Lock-free dynamic priority queue.
+      & \ref{chpt:LFPRIORITYQUEUES}\\
+      \cmd{LF\_SETS\_EBMR}       & Lock-free dynamic set
+                                   \cite{Michael:2002:HPDLF}.
+      & \ref{chpt:LFSETS}\\
+      \cmd{LF\_SETS\_HPMR}       & Lock-free dynamic set
+                                   \cite{Michael:2002:HPDLF}.
+      & \ref{chpt:LFSETS}\\
+      \cmd{LF\_QUEUES\_DICTIONARY\_EBMR} & Lock-free dynamic dictionary
+                                           \cite{Michael:2002:HPDLF}.
+      & \ref{chpt:LFMAPS}\\
+      \cmd{LF\_QUEUES\_DICTIONARY\_HPMR} & Lock-free dynamic dictionary
+                                           \cite{Michael:2002:HPDLF}.
+      & \ref{chpt:LFMAPS}\\
       \hline
     \end{tabular}
   \end{small}
@@ -448,11 +487,19 @@ Libraries:
         SW_LL_SC
         LF_STACKS_EBMR
         LF_STACKS_HPMR
-        LF_SETS
         LF_QUEUES_BOUNDED
         LF_QUEUES_EBMR
         LF_QUEUES_HPMR
-        LF_DEQUES
+        LF_QUEUES_LFMR
+        LF_QUEUES_LFRC
+        LF_DEQUES_LFMR
+        LF_DEQUES_LFRC
+        LF_PRIORITY_QUEUES_EBMR
+        LF_PRIORITY_QUEUES_HPMR
+        LF_SETS_EBMR
+        LF_SETS_HPMR
+        LF_DICTIONARIES_EBMR
+        LF_DICTIONARIES_HPMR
 \end{verbatim}
 \end{TextOutput}
 
@@ -633,7 +680,7 @@ end NBAda.Atomic_Single_Writer_Registers;
 
 A snapshot is a composite data structure consisting of a number
 of fields. Each field can be written separately and the entire state
-of the composit can be read atomically.
+of the composite can be read atomically.
 
 \remove{
 \begin{itemize}
@@ -902,6 +949,18 @@ end NBAda.Lock_Free_Bounded_Queues;
 \end{lstlisting}
 \end{AdaCode}
 
+\paragraph{Application constraints:}
+\begin{itemize}
+\item The type \code{Element\_Type} must be atomic.
+\item \code{Element\_Type'Object\_Size} must be equal to
+  \code{System.Word\_Size}.
+\item The values passed as the two generic formal parameters
+  \code{Null\_0} and \code{Null\_1} MUST be different and MUST NOT
+  appear as data values in the queue.
+\item The operation \code{Make\_Empty} SHOULD NOT be used when concurrent
+  access to the queue object is possible.
+\end{itemize}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsubsection*{The package NBAda.Lock\_Free\_Queues}
 
@@ -940,15 +999,15 @@ end NBAda.Lock_Free_Queues;
 \end{lstlisting}
 \end{AdaCode}
 
-\remove{%% Do any of my dictionaries work yet?
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Dictionaries}\label{chpt:LFMAPS}
-
-\begin{AdaCode}
-\begin{lstlisting}
-\end{lstlisting}
-\end{AdaCode}
-} %% end-remove
+\paragraph{Application constraints:}
+\begin{itemize}
+\item Any task that calls an operation in \code{NBAda.Lock\_Free\_Queues}
+  must have registered an identity by calling the operation
+  \code{Register} of the appropriate instance of
+  \code{NBAda.Process\_Identification}.
+\item The operation \code{Init} SHOULD NOT be used when concurrent
+  access to the queue object is possible.
+\end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Deques}\label{chpt:LFDEQUES}
@@ -995,6 +1054,89 @@ end NBAda.Lock_Free_Deques;
 \end{lstlisting}
 \end{AdaCode}
 
+\paragraph{Application constraints:}
+\begin{itemize}
+\item Any task that calls an operation in \code{NBAda.Lock\_Free\_Deques}
+  must have registered an identity by calling the operation
+  \code{Register} of the appropriate instance of
+  \code{NBAda.Process\_Identification}.
+\item The operation \code{Init} SHOULD NOT be used when concurrent
+  access to the queue object is possible.
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Priority Queues}\label{chpt:LFPRIORITYQUEUES}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection*{The package NBAda.Lock\_Free\_Priority\_Queues}
+
+\nbada\ contains a lock-free dynamic priority queue data structure
+based on my (unpublished) modification of Michael's
+list-based lock-free set algorithm~\cite{Michael:2002:HPDLF}.
+
+The include flag for \cmd{nbada\_config} is
+\cmd{LF\_PRIORITY\_QUEUES\_EBMR} or \cmd{LF\_PRIORITY\_QUEUES\_HPMR}.
+
+\begin{AdaCode}
+\begin{lstlisting}
+generic
+
+   type Element_Type is private;
+
+   with function "<" (Left, Right : Element_Type) return Boolean is <>;
+   --  Note: Element_Type must be totally ordered.
+
+   with package Process_Ids is
+     new Process_Identification (<>);
+   --  Process identification.
+
+package NBAda.Lock_Free_Priority_Queues is
+
+   type Priority_Queue_Type is limited private;
+
+   Queue_Empty     : exception;
+   Already_Present : exception;
+
+   procedure Initialize (Queue : in out Priority_Queue_Type);
+
+   procedure Insert  (Into    : in out Priority_Queue_Type;
+                      Element : in     Element_Type);
+
+   procedure Delete_Min (From    : in out Priority_Queue_Type;
+                         Element :    out Element_Type);
+   function  Delete_Min (From : in Priority_Queue_Type)
+                        return Element_Type;
+   function  Delete_Min (From : access Priority_Queue_Type)
+                        return Element_Type;
+
+private
+
+      ...  --  Implementation specific
+
+end NBAda.Lock_Free_Priority_Queues;
+\end{lstlisting}
+\end{AdaCode}
+
+\paragraph{Application constraints:}
+\begin{itemize}
+\item Any task that calls an operation in
+  \code{NBAda.Lock\_Free\_Priority\_Queues} must have registered an
+  identity by calling the operation \code{Register} of the appropriate
+  instance of \code{NBAda.Process\_Identification}.
+\item The function \code{"$<$"} on \code{Element\_Type} MUST define a total
+  order.
+\item The operation \code{Initialize} SHOULD NOT be used when concurrent
+  access to the priority queue object is possible.
+\end{itemize}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Dictionaries and Sets}\label{chpt:LFMAPS}\label{chpt:LFSETS}
+
+\begin{AdaCode}
+\begin{lstlisting}
+\end{lstlisting}
+\end{AdaCode}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Support Packages}\label{chpt:Support-pkgs}
