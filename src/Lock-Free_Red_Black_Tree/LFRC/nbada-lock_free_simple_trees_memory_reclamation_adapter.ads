@@ -27,14 +27,15 @@ pragma Style_Checks (Off);
 --                    tree algorithm by A. Gidenstam.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Sep  6 11:48:14 2007
---  $Id: nbada-lock_free_simple_trees_memory_reclamation_adapter.ads,v 1.1 2008/03/05 11:10:15 andersg Exp $
+--  $Id: nbada-lock_free_simple_trees_memory_reclamation_adapter.ads,v 1.2 2008/05/08 08:48:44 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
 with NBAda.Lock_Free_Reference_Counting;
-with NBAda.Epoch_Based_Memory_Reclamation;
+--  with NBAda.Epoch_Based_Memory_Reclamation;
+with NBAda.Hazard_Pointers;
 with NBAda.Process_Identification;
 
 generic
@@ -48,7 +49,9 @@ package NBAda.Lock_Free_Simple_Trees_Memory_Reclamation_Adapter is
    package Node_Memory_Reclamation is new NBAda.Lock_Free_Reference_Counting
      (Max_Number_Of_Guards => 128);
 
-   package State_Memory_Reclamation is new NBAda.Epoch_Based_Memory_Reclamation
-     (Process_Ids);
+   package State_Memory_Reclamation is
+--      new NBAda.Epoch_Based_Memory_Reclamation (Process_Ids);
+      new NBAda.Hazard_Pointers (Max_Number_Of_Dereferences => 5,
+                                 Process_Ids                => Process_Ids);
 
 end NBAda.Lock_Free_Simple_Trees_Memory_Reclamation_Adapter;

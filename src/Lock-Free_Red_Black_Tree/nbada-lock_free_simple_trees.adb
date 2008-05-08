@@ -27,7 +27,7 @@ pragma Style_Checks (OFF);
 --                    Anders Gidenstam.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 21 23:22:26 2008
---  $Id: nbada-lock_free_simple_trees.adb,v 1.5 2008/03/14 18:33:39 andersg Exp $
+--  $Id: nbada-lock_free_simple_trees.adb,v 1.6 2008/05/08 08:48:44 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (ALL_CHECKS);
 
@@ -95,7 +95,25 @@ package body NBAda.Lock_Free_Simple_Trees is
    ----------------------------------------------------------------------------
    procedure Init    (Dictionary : in out Dictionary_Type) is
    begin
-      null;
+      loop
+         declare
+            use Node_Ops;
+            Root : constant Private_Reference :=
+              Dereference (Dictionary.Root'Access);
+         begin
+            if
+              Compare_And_Swap (Link      => Dictionary.Root'Access,
+                                Old_Value => Root,
+                                New_Value => Null_Reference)
+            then
+               --  Delete the whole tree here, not just Root.
+               Delete (Root);
+               exit;
+            else
+               Release (Root);
+            end if;
+         end;
+      end loop;
    end Init;
 
    ----------------------------------------------------------------------------
@@ -108,11 +126,9 @@ package body NBAda.Lock_Free_Simple_Trees is
       --  Note:
       --    Root      is always released.
       --    New_Node  is released or deleted if Done = True;
-      --    New_State is released or deleted if Done = True;
 
       use Node_Ops, State_Ops;
       New_Node  : constant Node_Ops.Private_Reference  := Create_Tree_Node;
-      New_State : State_Ops.Private_Reference := Create_Node_State;
 
       ----------------------------------------------------------------------
       procedure Traverse_And_Insert (Root : in     Node_Ops.Private_Reference;
@@ -130,7 +146,7 @@ package body NBAda.Lock_Free_Simple_Trees is
                --  Help removing this logically deleted node.
                Remove_Node (Into.Root'Access,
                             Current, Current_State);
-               --  Retry.
+               --  Retry from start. Can we do better?
                return;
             end if;
             if Key < "+" (Current_State).Key then
@@ -141,29 +157,31 @@ package body NBAda.Lock_Free_Simple_Trees is
                  Dereference ("+" (Current_State).Right'Access);
             else
                --  Current.Key = Key. Update value.
-               Delete (New_Node);
-               Delete (New_State);
-
-               New_State := New_Copy (Current_State);
-               "+" (New_State).Key   := Key;
-               "+" (New_State).Value := Value;
-               if
-                 Compare_And_Swap (Link      =>
-                                     "+" (Current).State'Access,
-                                   Old_Value => Current_State,
-                                   New_Value => New_State)
-               then
-                  Delete  (Current_State);
-                  Release (New_State);
-               else
-                  --  The relevant node's state was concurrently changed.
-                  --  Consider this update overwritten. Is this really OK?!
-                  Release (Current_State);
-                  Delete  (New_State);
-               end if;
-               Release (Current);
-               Done := True;
-               return;
+               declare
+                  New_State : constant State_Ops.Private_Reference :=
+                    New_Copy (Current_State);
+               begin
+                  "+" (New_State).Key   := Key;
+                  "+" (New_State).Value := Value;
+                  if
+                    Compare_And_Swap (Link      =>
+                                        "+" (Current).State'Access,
+                                      Old_Value => Current_State,
+                                      New_Value => New_State)
+                  then
+                     Delete  (Current_State);
+                     Release (New_State);
+                  else
+                     --  The relevant node's state was concurrently changed.
+                     --  Consider this update overwritten. Is this really OK?!
+                     Release (Current_State);
+                     Delete  (New_State);
+                  end if;
+                  Release (Current);
+                  Delete  (New_Node);
+                  Done := True;
+                  return;
+               end;
             end if;
 
             exit Find_Leaf when "+" (Next) = null;
@@ -180,7 +198,14 @@ package body NBAda.Lock_Free_Simple_Trees is
             declare
                Parent_State : constant State_Ops.Private_Reference :=
                  New_Copy (Current_State);
+               New_State    : constant State_Ops.Private_Reference :=
+                 Create_Node_State;
             begin
+               --  Prepare the new node.
+               "+" (New_State).Key   := Key;
+               "+" (New_State).Value := Value;
+               Store ("+" (New_Node).State'Access, New_State);
+
                if Key < "+" (Current_State).Key then
                   Store ("+" (Parent_State).Left'Access, New_Node);
                elsif "+" (Current_State).Key < Key then
@@ -202,7 +227,10 @@ package body NBAda.Lock_Free_Simple_Trees is
                   Delete  (Parent_State);
                   --  Insertion of New_Node failed due to concurrent
                   --  operations.
-                  --  Retry from the root. Can we do better?
+                  --  Retry from start. Can we do better?
+                  Delete  (New_State);
+                  Store ("+" (New_Node).State'Access,
+                         State_Ops.Null_Reference);
                end if;
                Release (Current);
             end;
@@ -214,11 +242,6 @@ package body NBAda.Lock_Free_Simple_Trees is
       ----------------------------------------------------------------------
 
    begin
-      --  Prepare the new node.
-      "+" (New_State).Key   := Key;
-      "+" (New_State).Value := Value;
-      Store ("+" (New_Node).State'Access, New_State);
-
       loop
          declare
             Root : constant Node_Ops.Private_Reference :=
@@ -226,16 +249,26 @@ package body NBAda.Lock_Free_Simple_Trees is
             Done : Boolean;
          begin
             if "+" (Root) = null then
-               if
-                 Compare_And_Swap (Link      => Into.Root'Access,
-                                   Old_Value => Node_Ops.Null_Reference,
-                                   New_Value => New_Node)
-               then
-                  Release (Root);
-                  Release (New_State);
-                  Release (New_Node);
-                  return;
-               end if;
+               declare
+                  New_State    : constant State_Ops.Private_Reference :=
+                    Create_Node_State;
+               begin
+                  --  Prepare the new node.
+                  "+" (New_State).Key   := Key;
+                  "+" (New_State).Value := Value;
+                  Store ("+" (New_Node).State'Access, New_State);
+                  if
+                    Compare_And_Swap (Link      => Into.Root'Access,
+                                      Old_Value => Node_Ops.Null_Reference,
+                                      New_Value => New_Node)
+                  then
+                     Release (Root);
+                     Release (New_Node);
+                     return;
+                  else
+                     Delete (New_State);
+                  end if;
+               end;
             else
                --  Traverse to a leaf.
                Traverse_And_Insert (Root, Done);
@@ -356,6 +389,8 @@ package body NBAda.Lock_Free_Simple_Trees is
          end record;
       function Find_Min (Root : in Node_Ops.Private_Reference)
                         return Node_And_State;
+      --  If the returned node state is marked the node should be
+      --  removed and the operation retried.
       --  Note: Root will be released.
 
       ----------------------------------------------------------------------
@@ -367,8 +402,12 @@ package body NBAda.Lock_Free_Simple_Trees is
       begin
          Traverse : loop
             Current_State := Dereference ("+" (Current).State'Access);
-            Next := Dereference ("+" (Current_State).Left'Access);
             --  Note: What if this node is marked deleted?
+            if Is_Marked (Current_State) then
+               --  Help delete the marked node. Can this be avoided?
+               return (Current, Current_State);
+            end if;
+            Next := Dereference ("+" (Current_State).Left'Access);
 
             if "+" (Next) = null then
                exit Traverse;
@@ -396,32 +435,32 @@ package body NBAda.Lock_Free_Simple_Trees is
                declare
                   Min : constant Node_And_State := Find_Min (Root);
                begin
-                  --  Set the deletion mark.
-                  if Is_Marked (Min.State) then
-                     --  Retry. Uhu.. live lock..
-                     Release (Min.State);
-                     Release (Min.Node);
-                     raise Not_Found; --  Let's break linearizability instead...
-                  end if;
-
-                  if
-                    Compare_And_Swap (Link    =>
-                                        "+" (Min.Node).State'Access,
-                                      Old_Value => Min.State,
-                                      New_Value => State_Ops.Mark (Min.State))
-                  then
-                     declare
-                        Value : constant Pair_Type :=
-                          ("+" (Min.State).Key,
-                           "+" (Min.State).Value);
-                     begin
-                        Remove_Node (From.Mutable.Self.Root'Access,
-                                     Min.Node, Min.State);
-                        return Value;
-                     end;
+                  if not Is_Marked (Min.State) then
+                     --  Set the deletion mark.
+                     if
+                       Compare_And_Swap (Link    =>
+                                           "+" (Min.Node).State'Access,
+                                         Old_Value => Min.State,
+                                         New_Value =>
+                                           State_Ops.Mark (Min.State))
+                     then
+                        declare
+                           Value : constant Pair_Type :=
+                             ("+" (Min.State).Key,
+                              "+" (Min.State).Value);
+                        begin
+                           Remove_Node (From.Mutable.Self.Root'Access,
+                                        Min.Node, Min.State);
+                           return Value;
+                        end;
+                     else
+                        Release (Min.State);
+                        Release (Min.Node);
+                     end if;
                   else
-                     Release (Min.State);
-                     Release (Min.Node);
+                     --  Min is marked, help delete it.
+                     Remove_Node (From.Mutable.Self.Root'Access,
+                                  Min.Node, Min.State);
                   end if;
                end;
             end if;
@@ -638,6 +677,8 @@ package body NBAda.Lock_Free_Simple_Trees is
       if "+" (Left) /= null and "+" (Right) /= null then
          --  Two subtrees.
          --  For now: Cannot remove the node.
+         Ada.Text_IO.Put_Line
+           ("Remove_Node: Marked node with two subtrees. Bad!");
          Release (Left);
          Release (Right);
          Release (Old_State);
@@ -655,6 +696,29 @@ package body NBAda.Lock_Free_Simple_Trees is
          Release (Right);
       end if;
 
+      --  Check if the node to remove is immediately below Root.
+      declare
+         Current_Root : constant Node_Ops.Unsafe_Reference_Value :=
+           Unsafe_Read (Root);
+      begin
+         if Current_Root = Node then
+            --  Attempt to dechain Node.
+            if
+              Compare_And_Swap (Link      => Root,
+                                Old_Value => Node,
+                                New_Value => New_Child)
+            then
+               Delete  (Node);
+            else
+               Release (Node);
+            end if;
+            Release (New_Child);
+            Release (Old_State);
+            return;
+         end if;
+      end;
+
+      --  Node is not immediately below Root. Find the parent.
       declare
          Parent       : constant Node_Ops.Private_Reference :=
            Find_Parent (Root,
