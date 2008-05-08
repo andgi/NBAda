@@ -23,7 +23,7 @@
 --  Description     : NBAda build config.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Aug 30 11:18:46 2007
--- $Id: nbada_config.adb,v 1.18 2008/02/26 14:39:03 andersg Exp $
+--  $Id: nbada_config.adb,v 1.19 2008/05/08 11:52:52 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Command_Line;
@@ -65,6 +65,8 @@ procedure NBAda_Config is
       LF_QUEUES_LFRC,
       LF_DEQUES_LFMR,
       LF_DEQUES_LFRC,
+      LF_PRIORITY_QUEUES_EBMR,
+      LF_PRIORITY_QUEUES_HPMR,
       LF_SETS_EBMR,
       LF_SETS_HPMR,
       LF_DICTIONARIES_EBMR,
@@ -139,6 +141,12 @@ procedure NBAda_Config is
       LF_DEQUES_LFRC =>
         "+" ("-I" & Install_Base & "/Lock-Free_Deque " &
              "-I" & Install_Base & "/Lock-Free_Deque/LFRC"),
+      LF_PRIORITY_QUEUES_EBMR =>
+        "+" ("-I" & Install_Base & "/Lock-Free_Priority_Queue " &
+             "-I" & Install_Base & "/Lock-Free_Priority_Queue/EBMR"),
+      LF_PRIORITY_QUEUES_HPMR =>
+        "+" ("-I" & Install_Base & "/Lock-Free_Priority_Queue " &
+             "-I" & Install_Base & "/Lock-Free_Priority_Queue/HPMR"),
       LF_SETS_EBMR =>
         "+" ("-I" & Install_Base & "/Lock-Free_Sets " &
              "-I" & Install_Base & "/Lock-Free_Sets/EBMR"),
@@ -199,6 +207,12 @@ procedure NBAda_Config is
                           LF_POOLS   => True,
                           PTB        => True,
                           LFRC       => True, others => False),
+      LF_PRIORITY_QUEUES_EBMR  => (PRIMITIVES      => True,
+                                   LF_POOLS        => True,
+                                   EBMR            => True, others => False),
+      LF_PRIORITY_QUEUES_HPMR  => (PRIMITIVES      => True,
+                                   LF_POOLS        => True,
+                                   HPMR            => True, others => False),
       LF_SETS_EBMR    => (PRIMITIVES      => True,
                           LF_POOLS        => True,
                           EBMR            => True, others => False),
