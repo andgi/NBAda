@@ -27,7 +27,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:10:15 2004
---  $Id: nbada-hazard_pointers.ads,v 1.20 2008/02/20 20:56:54 andersg Exp $
+--  $Id: nbada-hazard_pointers.ads,v 1.21 2008/05/13 10:20:36 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -42,8 +42,10 @@ generic
      new Process_Identification (<>);
    --  Process identification.
 
-   Integrity_Checking : Boolean := True;
+   Integrity_Checking : Boolean := False;
    --  Enable strong integrity checking.
+   Verbose_Debug : Boolean := False;
+   --  Enable verbose debug output.
 package NBAda.Hazard_Pointers is
 
    ----------------------------------------------------------------------------
@@ -253,6 +255,7 @@ package NBAda.Hazard_Pointers is
    ----------------------------------------------------------------------------
 
    procedure Print_Statistics;
+   --  NOTE: Not thread-safe.
 
 --  private
 
@@ -287,6 +290,7 @@ private
          pragma Atomic (MM_Next);
          MM_Magic : Primitives.Unsigned_32 := MM_Live;
          pragma Atomic (MM_Magic);
+         --  NOTE: MM_Magic is only used when Integrity_Checking is set.
       end record;
 
 end NBAda.Hazard_Pointers;

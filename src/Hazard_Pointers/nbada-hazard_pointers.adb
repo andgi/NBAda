@@ -27,7 +27,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:35:09 2004
---  $Id: nbada-hazard_pointers.adb,v 1.20 2008/02/20 20:56:54 andersg Exp $
+--  $Id: nbada-hazard_pointers.adb,v 1.21 2008/05/13 10:20:36 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -37,6 +37,7 @@ with NBAda.Internals.Hash_Tables;
 with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
 with Ada.Tags;
+with Ada.Finalization;
 with Ada.Text_IO;
 
 package body NBAda.Hazard_Pointers is
@@ -53,6 +54,10 @@ package body NBAda.Hazard_Pointers is
    procedure Scan (ID : in Processes);
    function Hash_Ref (Ref  : in Managed_Node_Access;
                       Size : in Natural) return Natural;
+   function  Image (Node : in Managed_Node_Access) return String;
+   procedure Reclaim_All;
+   --  Reclaim all reclaimable nodes in the deletion lists of all tasks.
+   --  NOTE: Not thread-safe.
 
    package HP_Sets is
       new NBAda.Internals.Hash_Tables (Managed_Node_Access, "=", Hash_Ref);
@@ -215,9 +220,13 @@ package body NBAda.Hazard_Pointers is
       begin
          Release (Local);
          Managed_Node_Base (Local.all).MM_Next  := D_List (ID);
-         Managed_Node_Base (Local.all).MM_Magic := MM_Deleted;
          D_List  (ID)      := Managed_Node_Access (Local);
          D_Count (ID)      := D_Count (ID) + 1;
+
+         if Integrity_Checking then
+            Managed_Node_Base (Local.all).MM_Magic := MM_Deleted;
+         end if;
+
          if D_Count (ID) >=
            Node_Count (1.5 * Float (Node_Count (Processes'Last) *
                                     Node_Count (Max_Number_Of_Dereferences)))
@@ -314,6 +323,11 @@ package body NBAda.Hazard_Pointers is
               "@" & Private_Reference_Impl'Image (R.Ref) & ", HP[" &
               Integer'Image (R.HP) & "])";
          end if;
+      exception
+         when Storage_Error =>
+            return "(" &
+              "@" & Private_Reference_Impl'Image (R.Ref) & ", HP[" &
+              Integer'Image (R.HP) & "])";
       end Image;
 
       ----------------------------------------------------------------------
@@ -496,17 +510,19 @@ package body NBAda.Hazard_Pointers is
          Deleted : constant Node_Access := Deref (Node);
          use type Primitives.Unsigned_32;
       begin
-         if Integrity_Checking and then Deleted.MM_Magic /= MM_Live then
-            Ada.Exceptions.Raise_Exception
-              (Constraint_Error'Identity,
-               "hazard_pointers.adb: " &
-               "Error: Deleting an already deleted or non-existing node! " &
-               Image (Node));
+         if Integrity_Checking then
+            if Deleted.MM_Magic /= MM_Live then
+               Ada.Exceptions.Raise_Exception
+                 (Constraint_Error'Identity,
+                  "hazard_pointers.adb: " &
+                  "Error: Deleting an already deleted or non-existing node! " &
+                  Image (Node));
+            end if;
+            Managed_Node_Base (Deleted.all).MM_Magic := MM_Deleted;
          end if;
 
          Release (Node);
-         Managed_Node_Base (Deleted.all).MM_Next  := D_List (ID);
-         Managed_Node_Base (Deleted.all).MM_Magic := MM_Deleted;
+         Managed_Node_Base (Deleted.all).MM_Next := D_List (ID);
          D_List  (ID)      := Managed_Node_Access (Deleted);
          D_Count (ID)      := D_Count (ID) + 1;
          if D_Count (ID) >=
@@ -568,6 +584,11 @@ package body NBAda.Hazard_Pointers is
                  Managed_Node_Access (Node);
 
                Primitives.Fetch_And_Add (Created'Access, 1);
+
+               if Verbose_Debug then
+                  Ada.Text_IO.Put_Line ("Created node " &
+                                        Image (Managed_Node_Access (Node)));
+               end if;
 
                return (Ref => To_Private_Reference (Node),
                        HP  => Natural (Index));
@@ -644,12 +665,54 @@ package body NBAda.Hazard_Pointers is
 
    ----------------------------------------------------------------------------
    procedure Print_Statistics is
+      use type Primitives.Standard_Unsigned;
+
+      function Count_Unreclaimed return Primitives.Standard_Unsigned;
+      function Count_HPs_Set return Natural;
+
+      -----------------------------------------------------------------
+      function Count_Unreclaimed return Primitives.Standard_Unsigned is
+         Count : Primitives.Standard_Unsigned := 0;
+      begin
+         --  Note: This is not thread safe.
+         for P in D_Count'Range loop
+            Count := Count + Primitives.Standard_Unsigned (D_Count (P));
+         end loop;
+         return Count;
+      end Count_Unreclaimed;
+
+      -----------------------------------------------------------------
+      function Count_HPs_Set return Natural is
+         Count : Natural := 0;
+      begin
+         --  Note: This is not thread safe.
+         for P in Persistent_Shared_Variables'Range loop
+            for I in Persistent_Shared_Variables (P).Hazard_Pointer'Range loop
+               if
+                 Persistent_Shared_Variables (P).Hazard_Pointer (I) /= null
+               then
+                  Count := Count + 1;
+               end if;
+            end loop;
+         end loop;
+         return Count;
+      end Count_HPs_Set;
+
+      -----------------------------------------------------------------
    begin
       Ada.Text_IO.Put_Line ("Hazard_Pointers.Print_Statistics:");
       Ada.Text_IO.Put_Line ("  #Created = " &
                             Primitives.Standard_Unsigned'Image (Created));
       Ada.Text_IO.Put_Line ("  #Reclaimed = " &
                             Primitives.Standard_Unsigned'Image (Reclaimed));
+      Ada.Text_IO.Put_Line ("  #Awaiting reclamation = " &
+                            Primitives.Standard_Unsigned'Image
+                            (Count_Unreclaimed));
+      Ada.Text_IO.Put_Line ("  #Not accounted for = " &
+                            Primitives.Standard_Unsigned'Image
+                            (Created - Reclaimed - Count_Unreclaimed));
+      Ada.Text_IO.Put_Line ("  #Hazard pointers set = " &
+                            Integer'Image (Count_HPs_Set));
    end Print_Statistics;
 
    ----------------------------------------------------------------------------
@@ -661,7 +724,7 @@ package body NBAda.Hazard_Pointers is
       use HP_Sets;
       use type Primitives.Unsigned_32;
 
-      New_D_List  : Managed_Node_Access := null;
+      New_D_List  : Managed_Node_Access;
       New_D_Count : Node_Count          := 0;
       Node        : Managed_Node_Access;
       Ref         : Managed_Node_Access;
@@ -683,6 +746,27 @@ package body NBAda.Hazard_Pointers is
 
       while D_List (ID) /= null loop
          Node        := D_List (ID);
+
+         if Verbose_Debug then
+            Ada.Text_IO.Put_Line ("Scanning node " & Image (Node));
+         end if;
+         if Integrity_Checking then
+            begin
+               if Node /= null and then Node.MM_Next /= null then
+                  --  Just to force Node to be dereferenced.
+                  null;
+               end if;
+            exception
+               when Storage_Error =>
+                  Ada.Exceptions.Raise_Exception
+                    (Constraint_Error'Identity,
+                     "hazard_pointers.adb: " &
+                     "Error: Invalid node pointer (" &
+                     Image (Node) &
+                     " ) in deletion list!");
+            end;
+         end if;
+
          D_List (ID) := Managed_Node_Access (Node.MM_Next);
          if Member (Node, P_Set (ID).all) then
             Node.MM_Next := New_D_List;
@@ -690,15 +774,20 @@ package body NBAda.Hazard_Pointers is
             New_D_Count  := New_D_Count + 1;
          else
             --  Reclaim node storage.
-            if Node.MM_Magic /= MM_Deleted then
-               Ada.Exceptions.Raise_Exception
-                 (Constraint_Error'Identity,
-                  "hazard_pointers.adb: " &
-                  "Error: Reclaiming an undeleted node!");
+            if Integrity_Checking then
+               if Node.MM_Magic /= MM_Deleted then
+                  Ada.Exceptions.Raise_Exception
+                    (Constraint_Error'Identity,
+                     "hazard_pointers.adb: " &
+                     "Error: Reclaiming an undeleted node!");
+               end if;
+               Node.MM_Magic := MM_Reclaimed;
             end if;
-            Node.MM_Magic := MM_Reclaimed;
             Node.MM_Next  := null;
 
+            if Verbose_Debug then
+               Ada.Text_IO.Put_Line ("Reclaiming node " & Image (Node));
+            end if;
             Free (Node);
 
             Primitives.Fetch_And_Add (Reclaimed'Access, 1);
@@ -719,5 +808,43 @@ package body NBAda.Hazard_Pointers is
       return Natural ((To_Unsigned (Ref) / 4) mod
                       Primitives.Standard_Unsigned (Size));
    end Hash_Ref;
+
+   ----------------------------------------------------------------------------
+   function Image (Node : in Managed_Node_Access) return String is
+      function To_Unsigned is
+         new Ada.Unchecked_Conversion (Managed_Node_Access,
+                                       Primitives.Standard_Unsigned);
+   begin
+      return Primitives.Standard_Unsigned'Image (To_Unsigned (Node));
+   end Image;
+
+   ----------------------------------------------------------------------------
+   procedure Reclaim_All is
+   begin
+      for P in D_List'Range loop
+         Scan (P);
+      end loop;
+   end Reclaim_All;
+
+   ----------------------------------------------------------------------------
+   type Finalizator is new Ada.Finalization.Limited_Controlled
+     with null record;
+
+   procedure Finalize (Object : in out Finalizator);
+
+   procedure Finalize (Object : in out Finalizator) is
+   begin
+      if Integrity_Checking or Verbose_Debug then
+         Print_Statistics;
+      end if;
+--        Reclaim_All;
+--        if Integrity_Checking then
+--           Print_Statistics;
+--        end if;
+   end Finalize;
+
+   Finally : Finalizator;
+--  NOTE: The Finalizator is a really really dangerous idea!
+--        It might be destroyed AFTER the node storage pool is destroyed!
 
 end NBAda.Hazard_Pointers;
