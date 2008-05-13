@@ -23,7 +23,7 @@
 --  Description     : Track local references.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Oct 30 10:37:19 2007
---  $Id: memory_reclamation_debug.ads,v 1.1 2007/10/30 14:59:26 andersg Exp $
+--  $Id: memory_reclamation_debug.ads,v 1.2 2008/05/13 12:59:27 andersg Exp $
 -------------------------------------------------------------------------------
 
 with NBAda.Process_Identification;
@@ -59,6 +59,7 @@ package Memory_Reclamation_Debug is
    --  Verifies that there are no unreleased private references.
 
    procedure Enter;
+   procedure Exit_Quiescent (Where  : String := "");
    type Reference_Array is array (Positive range <>) of Private_Reference;
    procedure Exit_Quiescent (Where  : String := "";
                              Except : Reference_Array);

@@ -23,7 +23,7 @@
 --  Description     : Track local references.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Oct 30 10:41:12 2007
---  $Id: memory_reclamation_debug.adb,v 1.1 2007/10/30 14:59:26 andersg Exp $
+--  $Id: memory_reclamation_debug.adb,v 1.2 2008/05/13 12:59:27 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Text_IO;
@@ -140,6 +140,13 @@ package body Memory_Reclamation_Debug is
          end if;
       end loop;
    end Enter;
+
+   ----------------------------------------------------------------------------
+   procedure Exit_Quiescent (Where  : String := "") is
+      None : Reference_Array (1 .. 0);
+   begin
+      Exit_Quiescent (Where, None);
+   end Exit_Quiescent;
 
    ----------------------------------------------------------------------------
    procedure Exit_Quiescent (Where  : String := "";
