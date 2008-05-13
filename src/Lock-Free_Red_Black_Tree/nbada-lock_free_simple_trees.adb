@@ -27,7 +27,7 @@ pragma Style_Checks (OFF);
 --                    Anders Gidenstam.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 21 23:22:26 2008
---  $Id: nbada-lock_free_simple_trees.adb,v 1.6 2008/05/08 08:48:44 andersg Exp $
+--  $Id: nbada-lock_free_simple_trees.adb,v 1.7 2008/05/13 12:08:28 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (ALL_CHECKS);
 
@@ -191,7 +191,7 @@ package body NBAda.Lock_Free_Simple_Trees is
             Current := Next;
             Next    := Null_Reference;
          end loop Find_Leaf;
-         Release (Next); --  Next should be null here.
+         --  Next should be null here. Current and Current_State are valid.
 
          if not Is_Marked (Current_State) then
             --  Attempt to add New_Node below Current.
@@ -228,14 +228,16 @@ package body NBAda.Lock_Free_Simple_Trees is
                   --  Insertion of New_Node failed due to concurrent
                   --  operations.
                   --  Retry from start. Can we do better?
-                  Delete  (New_State);
                   Store ("+" (New_Node).State'Access,
                          State_Ops.Null_Reference);
+                  Delete  (New_State);
                end if;
                Release (Current);
             end;
          else
             --  This should never ever happen!
+            Release (Current_State);
+            Release (Current);
             raise Constraint_Error;
          end if;
       end Traverse_And_Insert;
@@ -266,6 +268,8 @@ package body NBAda.Lock_Free_Simple_Trees is
                      Release (New_Node);
                      return;
                   else
+                     Store ("+" (New_Node).State'Access,
+                            State_Ops.Null_Reference);
                      Delete (New_State);
                   end if;
                end;
@@ -402,7 +406,6 @@ package body NBAda.Lock_Free_Simple_Trees is
       begin
          Traverse : loop
             Current_State := Dereference ("+" (Current).State'Access);
-            --  Note: What if this node is marked deleted?
             if Is_Marked (Current_State) then
                --  Help delete the marked node. Can this be avoided?
                return (Current, Current_State);
@@ -670,8 +673,7 @@ package body NBAda.Lock_Free_Simple_Trees is
         Dereference ("+" (Old_State).Left'Access);
       Right : constant Node_Ops.Private_Reference :=
         Dereference ("+" (Old_State).Right'Access);
-      New_Child : Node_Ops.Private_Reference :=
-        Node_Ops.Null_Reference;
+      New_Child : Node_Ops.Private_Reference;
    begin
       --  Check if there is a subtree to move up.
       if "+" (Left) /= null and "+" (Right) /= null then
@@ -683,17 +685,15 @@ package body NBAda.Lock_Free_Simple_Trees is
          Release (Right);
          Release (Old_State);
          Release (Node);
-         return;
+         raise Constraint_Error;
       elsif "+" (Left) /= null then
          New_Child := Left;
-         Release (Right);
+         --  Right should be null here.
       elsif "+" (Right) /= null then
          New_Child := Right;
-         Release (Left);
+         --  Left should be null here.
       else
-         --  Both of these are null. Remove release calls?
-         Release (Left);
-         Release (Right);
+         New_Child := Node_Ops.Null_Reference;
       end if;
 
       --  Check if the node to remove is immediately below Root.
@@ -791,9 +791,15 @@ package body NBAda.Lock_Free_Simple_Trees is
       --  First release the node references.
       declare
          use Node_Ops;
+         Left  : constant Node_Ops.Private_Reference :=
+           Dereference (State.Left'Access);
+         Right : constant Node_Ops.Private_Reference :=
+           Dereference (State.Right'Access);
       begin
          Store (State.Left'Access, Null_Reference);
          Store (State.Right'Access, Null_Reference);
+         Delete (Left);
+         Delete (Right);
       end;
       Reclaim (X);
    end Free;
@@ -835,6 +841,7 @@ package body NBAda.Lock_Free_Simple_Trees is
          use State_Ops;
          State : constant Private_Reference := Dereference (X.State'Access);
       begin
+         Store (X.State'Access, Null_Reference);
          Delete (State);
       end;
       Reclaim (X);
