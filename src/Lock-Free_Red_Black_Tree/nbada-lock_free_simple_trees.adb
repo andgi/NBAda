@@ -27,7 +27,7 @@ pragma Style_Checks (OFF);
 --                    Anders Gidenstam.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 21 23:22:26 2008
---  $Id: nbada-lock_free_simple_trees.adb,v 1.7 2008/05/13 12:08:28 andersg Exp $
+--  $Id: nbada-lock_free_simple_trees.adb,v 1.8 2008/05/13 12:38:41 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (ALL_CHECKS);
 
@@ -265,6 +265,7 @@ package body NBAda.Lock_Free_Simple_Trees is
                                       New_Value => New_Node)
                   then
                      Release (Root);
+                     Release (New_State);
                      Release (New_Node);
                      return;
                   else
