@@ -27,7 +27,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:35:09 2004
---  $Id: nbada-hazard_pointers.adb,v 1.21 2008/05/13 10:20:36 andersg Exp $
+--  $Id: nbada-hazard_pointers.adb,v 1.22 2008/05/14 15:46:25 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -218,6 +218,10 @@ package body NBAda.Hazard_Pointers is
       procedure Delete      (Local  : in Node_Access) is
          ID : constant Processes := Process_Ids.Process_ID;
       begin
+         if Local = null then
+            return;
+         end if;
+
          Release (Local);
          Managed_Node_Base (Local.all).MM_Next  := D_List (ID);
          D_List  (ID)      := Managed_Node_Access (Local);
@@ -510,6 +514,10 @@ package body NBAda.Hazard_Pointers is
          Deleted : constant Node_Access := Deref (Node);
          use type Primitives.Unsigned_32;
       begin
+         if Deref (Node) = null then
+            return;
+         end if;
+
          if Integrity_Checking then
             if Deleted.MM_Magic /= MM_Live then
                Ada.Exceptions.Raise_Exception
@@ -844,7 +852,7 @@ package body NBAda.Hazard_Pointers is
    end Finalize;
 
    Finally : Finalizator;
---  NOTE: The Finalizator is a really really dangerous idea!
---        It might be destroyed AFTER the node storage pool is destroyed!
+--  NOTE: The Finalizator is a dangerous idea!  It is likely to be
+--        destroyed AFTER the node storage pool is destroyed!
 
 end NBAda.Hazard_Pointers;

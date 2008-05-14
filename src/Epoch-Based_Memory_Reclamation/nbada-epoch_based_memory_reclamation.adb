@@ -28,7 +28,7 @@ pragma Style_Checks (Off);
 --                    University of Cambridge, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Mar  8 12:28:31 2006
---  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.13 2008/05/14 12:36:51 andersg Exp $
+--  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.14 2008/05/14 15:44:40 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -153,6 +153,10 @@ package body NBAda.Epoch_Based_Memory_Reclamation is
          ID    : constant Processes := Process_Ids.Process_ID;
          Epoch : constant Epoch_ID  := Current_Epoch (ID).ID mod 3;
       begin
+         if Local = null then
+            return;
+         end if;
+
          Release (Local);
          Managed_Node_Base (Local.all).MM_Next :=
            Shared_Reference_Base (D_List (ID, Epoch));
@@ -343,6 +347,10 @@ package body NBAda.Epoch_Based_Memory_Reclamation is
          Epoch   : constant Epoch_ID  := Current_Epoch (ID).ID mod 3;
          Deleted : constant Node_Access := Deref (Node);
       begin
+         if Deref (Node) = null then
+            return;
+         end if;
+
          Release (Node);
          Managed_Node_Base (Deleted.all).MM_Next :=
            Shared_Reference_Base (D_List (ID, Epoch));

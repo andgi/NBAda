@@ -3,7 +3,7 @@
 --  garbage reclamation scheme by A. Gidenstam, M. Papatriantafilou, H. Sundell
 --  and P. Tsigas.
 --
---  Copyright (C) 2004 - 2007  Anders Gidenstam
+--  Copyright (C) 2004 - 2008  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ pragma Style_Checks (Off);
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 14:07:58 2004
---  $Id: nbada-lock_free_memory_reclamation.adb,v 1.33 2008/02/12 18:17:13 andersg Exp $
+--  $Id: nbada-lock_free_memory_reclamation.adb,v 1.34 2008/05/14 15:47:59 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -46,6 +46,7 @@ with NBAda.Internals.Hash_Tables;
 with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
 with Ada.Tags;
+with Ada.Finalization;
 
 with Ada.Text_IO;
 
@@ -272,6 +273,10 @@ package body NBAda.Lock_Free_Memory_Reclamation is
          PL    : Persistent_Local renames Persistent_Local_Variables (ID).all;
          Index : Node_Index;
       begin
+         if Deref (Node) = null then
+            return;
+         end if;
+
          Release (Node);
          declare
             Node_Base : constant Managed_Node_Access :=
@@ -857,5 +862,22 @@ package body NBAda.Lock_Free_Memory_Reclamation is
       return Natural
         ((To_Unsigned (Ref) / 4) mod Primitives.Standard_Unsigned (Size));
    end Hash_Ref;
+
+   ----------------------------------------------------------------------------
+   type Finalizator is new Ada.Finalization.Limited_Controlled
+     with null record;
+
+   procedure Finalize (Object : in out Finalizator);
+
+   procedure Finalize (Object : in out Finalizator) is
+   begin
+      if Debug then
+         Print_Statistics;
+      end if;
+   end Finalize;
+
+   Finally : Finalizator;
+--  NOTE: The Finalizator is a dangerous idea!  It is likely to be
+--        destroyed AFTER the node storage pool has been destroyed!
 
 end NBAda.Lock_Free_Memory_Reclamation;
