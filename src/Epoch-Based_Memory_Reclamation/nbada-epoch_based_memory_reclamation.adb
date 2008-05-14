@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Epoch-based memory reclamation.
---  Copyright (C) 2006 - 2007  Anders Gidenstam
+--  Copyright (C) 2006 - 2008  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@ pragma Style_Checks (Off);
 --                    University of Cambridge, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Mar  8 12:28:31 2006
---  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.12 2008/02/20 20:08:07 andersg Exp $
+--  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.13 2008/05/14 12:36:51 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -37,6 +37,7 @@ pragma License (GPL);
 with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
 with Ada.Tags;
+with Ada.Finalization;
 with Ada.Text_IO;
 
 package body NBAda.Epoch_Based_Memory_Reclamation is
@@ -87,6 +88,7 @@ package body NBAda.Epoch_Based_Memory_Reclamation is
    Dereferenced_Count : array (Processes) of Natural := (others => 0);
    D_List             : array (Processes, Epoch_ID range 0 .. 2) of
      Managed_Node_Access;
+   D_Count            : array (Processes) of Natural := (others => 0);
    CS_Count           : array (Processes) of Node_Count := (others => 0);
 
    --  Shared statistics.
@@ -155,6 +157,7 @@ package body NBAda.Epoch_Based_Memory_Reclamation is
          Managed_Node_Base (Local.all).MM_Next :=
            Shared_Reference_Base (D_List (ID, Epoch));
          D_List  (ID, Epoch) := Managed_Node_Access (Local);
+         D_Count (ID)        := D_Count (ID) + 1;
       end Delete;
 
       ----------------------------------------------------------------------
@@ -344,6 +347,7 @@ package body NBAda.Epoch_Based_Memory_Reclamation is
          Managed_Node_Base (Deleted.all).MM_Next :=
            Shared_Reference_Base (D_List (ID, Epoch));
          D_List  (ID, Epoch) := Managed_Node_Access (Deleted);
+         D_Count (ID)        := D_Count (ID) + 1;
       end Delete;
 
       ----------------------------------------------------------------------
@@ -438,6 +442,22 @@ package body NBAda.Epoch_Based_Memory_Reclamation is
 
    ----------------------------------------------------------------------------
    procedure Print_Statistics is
+      use type Primitives.Standard_Unsigned;
+
+      function Count_Unreclaimed return Natural;
+
+      ----------------------------------------------------------------------
+      function Count_Unreclaimed return Natural is
+         Count : Natural := 0;
+      begin
+         --  Note: This is not thread safe.
+         for P in D_Count'Range loop
+            Count := Count + Natural (D_Count (P));
+         end loop;
+         return Count;
+      end Count_Unreclaimed;
+
+      ----------------------------------------------------------------------
    begin
       Ada.Text_IO.Put_Line
         ("Epoch_Based_Memory_Reclamation.Print_Statistics:");
@@ -447,6 +467,12 @@ package body NBAda.Epoch_Based_Memory_Reclamation is
       Ada.Text_IO.Put_Line
         ("  #Reclaimed = " &
          Primitives.Standard_Unsigned'Image (Reclaimed));
+      Ada.Text_IO.Put_Line
+        ("  #Awaiting reclamation = " &
+         Natural'Image (Count_Unreclaimed));
+      Ada.Text_IO.Put_Line
+        ("  #Not accounted for = " &
+         Natural'Image (Natural (Created - Reclaimed) - Count_Unreclaimed));
       Ada.Text_IO.Put_Line
         ("  #Epochs = " &
          Epoch_ID'Image (Global_Epoch.ID));
@@ -549,7 +575,25 @@ package body NBAda.Epoch_Based_Memory_Reclamation is
          Free (Node);
 
          Primitives.Fetch_And_Add (Reclaimed'Access, 1);
+         D_Count (ID) := D_Count (ID) - 1;
       end loop;
    end Cleanup;
+
+   ----------------------------------------------------------------------------
+   type Finalizator is new Ada.Finalization.Limited_Controlled
+     with null record;
+
+   procedure Finalize (Object : in out Finalizator);
+
+   procedure Finalize (Object : in out Finalizator) is
+   begin
+      if Debug then
+         Print_Statistics;
+      end if;
+   end Finalize;
+
+   Finally : Finalizator;
+--  NOTE: The Finalizator is a really really dangerous idea!
+--        It might be destroyed AFTER the node storage pool is destroyed!
 
 end NBAda.Epoch_Based_Memory_Reclamation;

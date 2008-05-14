@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Epoch-based memory reclamation.
---  Copyright (C) 2006 - 2007  Anders Gidenstam
+--  Copyright (C) 2006 - 2008  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@ pragma Style_Checks (Off);
 --                    University of Cambridge, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Mar  8 12:04:29 2006
---  $Id: nbada-epoch_based_memory_reclamation.ads,v 1.11 2008/05/07 10:14:28 andersg Exp $
+--  $Id: nbada-epoch_based_memory_reclamation.ads,v 1.12 2008/05/14 12:36:51 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -46,6 +46,9 @@ generic
    Epoch_Update_Threshold : Natural := 100;
    --  The number of critical sections entered between attempts to update
    --  the global epoch.
+
+   Debug : Boolean := False;
+   --  Enable debug output and extra checks.
 
 package NBAda.Epoch_Based_Memory_Reclamation is
 
@@ -250,6 +253,7 @@ package NBAda.Epoch_Based_Memory_Reclamation is
    end Reference_Operations;
 
    procedure Print_Statistics;
+   --  NOTE: Not thread-safe.
 
 private
 
