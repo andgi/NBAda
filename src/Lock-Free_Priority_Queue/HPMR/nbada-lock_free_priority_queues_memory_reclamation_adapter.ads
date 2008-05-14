@@ -30,7 +30,7 @@ pragma Style_Checks (Off);
 --                    pages 73-82, August 2002.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Sep  5 17:01:01 2007
---  $Id: nbada-lock_free_priority_queues_memory_reclamation_adapter.ads,v 1.1 2008/02/20 20:55:38 andersg Exp $
+--  $Id: nbada-lock_free_priority_queues_memory_reclamation_adapter.ads,v 1.2 2008/05/14 11:44:34 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -49,7 +49,8 @@ package NBAda.Lock_Free_Priority_Queues_Memory_Reclamation_Adapter is
 
    package Memory_Reclamation is
       new NBAda.Hazard_Pointers (Process_Ids                => Process_Ids,
-                                 Max_Number_Of_Dereferences => 4,
-                                 Integrity_Checking         => True);
+                                 Max_Number_Of_Dereferences => 4
+                                 --  Integrity_Checking         => True
+                                 );
 
 end NBAda.Lock_Free_Priority_Queues_Memory_Reclamation_Adapter;
