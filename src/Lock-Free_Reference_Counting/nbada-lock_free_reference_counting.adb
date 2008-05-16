@@ -29,7 +29,7 @@ pragma Style_Checks (Off);
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:55:18 2006
---  $Id: nbada-lock_free_reference_counting.adb,v 1.11 2008/02/07 16:12:11 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.adb,v 1.12 2008/05/16 10:14:30 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -41,6 +41,7 @@ with Ada.Unchecked_Conversion;
 
 with Ada.Exceptions;
 with Ada.Tags;
+with Ada.Finalization;
 with Ada.Text_IO;
 
 package body NBAda.Lock_Free_Reference_Counting is
@@ -567,6 +568,7 @@ package body NBAda.Lock_Free_Reference_Counting is
 
    ----------------------------------------------------------------------------
    procedure Print_Statistics is
+      use type Primitives.Unsigned_32;
    begin
       if Collect_Statistics then
          Ada.Text_IO.Put_Line
@@ -576,6 +578,9 @@ package body NBAda.Lock_Free_Reference_Counting is
          Ada.Text_IO.Put_Line
            ("  #Reclaimed = " &
             Primitives.Unsigned_32'Image (No_Nodes_Reclaimed));
+         Ada.Text_IO.Put_Line ("  #Not reclaimed = " &
+                               Primitives.Unsigned_32'Image
+                               (No_Nodes_Created - No_Nodes_Reclaimed));
       end if;
    end Print_Statistics;
 
@@ -702,5 +707,21 @@ package body NBAda.Lock_Free_Reference_Counting is
       return Primitives.Standard_Unsigned'Image (To_Unsigned (Node));
    end Image;
 
+   ----------------------------------------------------------------------------
+   type Finalizator is new Ada.Finalization.Limited_Controlled
+     with null record;
+
+   procedure Finalize (Object : in out Finalizator);
+
+   procedure Finalize (Object : in out Finalizator) is
+   begin
+      if Collect_Statistics then
+         Print_Statistics;
+      end if;
+   end Finalize;
+
+   Finally : Finalizator;
+--  NOTE: The Finalizator is a really really dangerous idea!
+--        It might be destroyed AFTER the node storage pool is destroyed!
 
 end NBAda.Lock_Free_Reference_Counting;
