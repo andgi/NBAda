@@ -29,7 +29,7 @@ pragma Style_Checks (Off);
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:55:18 2006
---  $Id: nbada-lock_free_reference_counting.adb,v 1.12 2008/05/16 10:14:30 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.adb,v 1.13 2008/06/13 18:27:25 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -217,7 +217,6 @@ package body NBAda.Lock_Free_Reference_Counting is
                                  Increment => -1) = 1
                then
                   Clean_And_Liberate (Node_Base);
-
                end if;
             end;
          end if;
@@ -291,7 +290,6 @@ package body NBAda.Lock_Free_Reference_Counting is
                         Increment => -1) = 1
                      then
                         Clean_And_Liberate (Old_Value_Base);
-
                      end if;
                   end;
                end if;
@@ -322,7 +320,7 @@ package body NBAda.Lock_Free_Reference_Counting is
                          Node : in Private_Reference) is
          use type Reference_Count;
          Old : constant Node_Access :=
-           To_Node_Access (To_Private_Reference (Link.all));
+           To_Node_Access (Unmark (To_Private_Reference (Link.all)));
       begin
          To_Shared_Reference_Base_Access (Link.all'Unchecked_Access).all :=
            (Ref => Shared_Reference_Base_Impl (Node));
@@ -346,11 +344,7 @@ package body NBAda.Lock_Free_Reference_Counting is
                if Fetch_And_Add (Target    => Old_Base.MM_RC'Access,
                                  Increment => -1) = 1
                then
-                  --  NOTE: We cannot allow recursion here as it will easily
-                  --        overflow the stack.
-
                   Clean_And_Liberate (Old_Base);
-
                end if;
             end;
          end if;

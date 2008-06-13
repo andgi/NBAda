@@ -28,7 +28,7 @@ pragma Style_Checks (Off);
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:42:38 2006
---  $Id: nbada-lock_free_reference_counting.ads,v 1.12 2008/02/07 16:12:11 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.ads,v 1.13 2008/06/13 18:27:26 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -42,7 +42,7 @@ generic
    --  The maximum number of simultaneously active guards.
    --  (Here: One guard per thread is good.)
 
-   Integrity_Checking : Boolean := True;
+   Integrity_Checking : Boolean := False;
    --  Enable strong integrity checking.
 
    Collect_Statistics : Boolean := True;
