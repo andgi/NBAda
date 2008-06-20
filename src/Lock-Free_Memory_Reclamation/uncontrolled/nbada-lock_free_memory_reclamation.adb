@@ -34,7 +34,7 @@ pragma Style_Checks (Off);
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 14:07:58 2004
---  $Id: nbada-lock_free_memory_reclamation.adb,v 1.34 2008/05/14 15:47:59 andersg Exp $
+--  $Id: nbada-lock_free_memory_reclamation.adb,v 1.35 2008/06/20 15:20:37 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -133,10 +133,10 @@ package body NBAda.Lock_Free_Memory_Reclamation is
      Persistent_Local_Access := (others => new Persistent_Local);
    --  FIXME: Free these during finalization of the package.
 
-   No_Nodes_Created   : aliased Primitives.Unsigned_32 := 0;
-   pragma Atomic (No_Nodes_Created);
-   No_Nodes_Reclaimed : aliased Primitives.Unsigned_32 := 0;
-   pragma Atomic (No_Nodes_Reclaimed);
+   Nodes_Created   : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Nodes_Created);
+   Nodes_Reclaimed : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Nodes_Reclaimed);
 
 
    --  The P_Sets are preallocated from the heap as it can easily become
@@ -474,8 +474,8 @@ package body NBAda.Lock_Free_Memory_Reclamation is
             PS.Hazard_Pointer (Index) := Atomic_Node_Access (Node);
          end if;
 
-         if Debug then
-            Fetch_And_Add (No_Nodes_Created'Access, 1);
+         if Collect_Statistics then
+            Fetch_And_Add (Nodes_Created'Access, 1);
          end if;
 
          return (To_Private_Reference (Node), Natural (Index));
@@ -691,13 +691,57 @@ package body NBAda.Lock_Free_Memory_Reclamation is
 
    ----------------------------------------------------------------------------
    procedure Print_Statistics is
+      use type Primitives.Unsigned_32;
+
+      function Count_Unreclaimed return Primitives.Unsigned_32;
+      function Count_HPs_Set return Natural;
+
+      -----------------------------------------------------------------
+      function Count_Unreclaimed return Primitives.Unsigned_32 is
+         Count : Primitives.Unsigned_32 := 0;
+      begin
+         --  Note: This is not thread safe.
+         for P in Persistent_Local_Variables'Range loop
+            Count := Count +
+              Primitives.Unsigned_32 (Persistent_Local_Variables (P).D_Count);
+         end loop;
+         return Count;
+      end Count_Unreclaimed;
+
+      -----------------------------------------------------------------
+      function Count_HPs_Set return Natural is
+         Count : Natural := 0;
+      begin
+         --  Note: This is not thread safe.
+         for P in Persistent_Shared_Variables'Range loop
+            for I in Persistent_Shared_Variables (P).Hazard_Pointer'Range loop
+               if
+                 Persistent_Shared_Variables (P).Hazard_Pointer (I) /= null
+               then
+                  Count := Count + 1;
+               end if;
+            end loop;
+         end loop;
+         return Count;
+      end Count_HPs_Set;
+
+      -----------------------------------------------------------------
    begin
       Ada.Text_IO.Put_Line ("Lock_Free_Memory_Reclamation.Print_Statistics:");
       Ada.Text_IO.Put_Line ("  #Created = " &
-                            Primitives.Unsigned_32'Image (No_Nodes_Created));
+                            Primitives.Unsigned_32'Image (Nodes_Created));
       Ada.Text_IO.Put_Line ("  #Reclaimed = " &
-                            Primitives.Unsigned_32'Image (No_Nodes_Reclaimed));
+                            Primitives.Unsigned_32'Image (Nodes_Reclaimed));
 
+      Ada.Text_IO.Put_Line ("  #Awaiting reclamation = " &
+                            Primitives.Unsigned_32'Image
+                            (Count_Unreclaimed));
+      Ada.Text_IO.Put_Line
+        ("  #Not accounted for = " &
+         Primitives.Unsigned_32'Image
+         (Nodes_Created - Nodes_Reclaimed - Count_Unreclaimed));
+      Ada.Text_IO.Put_Line ("  #Hazard pointers set = " &
+                            Integer'Image (Count_HPs_Set));
    end Print_Statistics;
 
    ----------------------------------------------------------------------------
@@ -776,8 +820,8 @@ package body NBAda.Lock_Free_Memory_Reclamation is
                         Concurrent => False);
                Free (Managed_Node_Access (Node));
 
-               if Debug then
-                  Fetch_And_Add (No_Nodes_Reclaimed'Access, 1);
+               if Collect_Statistics then
+                  Fetch_And_Add (Nodes_Reclaimed'Access, 1);
                end if;
             else
                Dispose (Managed_Node_Access (Node),
@@ -871,7 +915,7 @@ package body NBAda.Lock_Free_Memory_Reclamation is
 
    procedure Finalize (Object : in out Finalizator) is
    begin
-      if Debug then
+      if Collect_Statistics then
          Print_Statistics;
       end if;
    end Finalize;

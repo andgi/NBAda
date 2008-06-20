@@ -34,7 +34,7 @@ pragma Style_Checks (Off);
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 13:54:45 2004
---  $Id: nbada-lock_free_memory_reclamation.ads,v 1.21 2007/10/30 15:13:21 andersg Exp $
+--  $Id: nbada-lock_free_memory_reclamation.ads,v 1.22 2008/06/20 15:20:37 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -68,8 +68,11 @@ generic
    Scan_Threshold               : Natural := Clean_Up_Threshold;
    --  The threshold on the delete list size for Scan to be done.
 
-   Debug : Boolean := False;
-   --  Enables some profiling.
+--   Integrity_Checking : Boolean := False;
+   --  Enable strong integrity checking.
+
+   Collect_Statistics : Boolean := True;
+   --  Enable some statics gathering.
 
 package NBAda.Lock_Free_Memory_Reclamation is
 
