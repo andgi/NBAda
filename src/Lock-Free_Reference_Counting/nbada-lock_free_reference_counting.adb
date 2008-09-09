@@ -29,7 +29,7 @@ pragma Style_Checks (Off);
 --                    23(2), 147--196, May 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Nov 29 16:55:18 2006
---  $Id: nbada-lock_free_reference_counting.adb,v 1.13 2008/06/13 18:27:25 andersg Exp $
+--  $Id: nbada-lock_free_reference_counting.adb,v 1.14 2008/09/09 09:42:23 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -547,7 +547,7 @@ package body NBAda.Lock_Free_Reference_Counting is
       ----------------------------------------------------------------------
       ----------------------------------------------------------------------
       function To_Node_Access (X : Private_Reference)
-                                     return Node_Access is
+                              return Node_Access is
 
          function To_Node_Access is
             new Ada.Unchecked_Conversion (Private_Reference,
