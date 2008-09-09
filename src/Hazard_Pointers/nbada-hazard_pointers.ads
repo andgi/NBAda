@@ -27,7 +27,7 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:10:15 2004
---  $Id: nbada-hazard_pointers.ads,v 1.21 2008/05/13 10:20:36 andersg Exp $
+--  $Id: nbada-hazard_pointers.ads,v 1.22 2008/09/09 09:40:05 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -123,6 +123,8 @@ package NBAda.Hazard_Pointers is
       --   pragma Volatile (Shared_Reference);
       --  Note: All shared variables of type Shared_Reference MUST be
       --        declared atomic by 'pragma Atomic (Variable_Name);' .
+
+      pragma No_Strict_Aliasing (Node_Access);
 
    end Operations;
 
@@ -275,7 +277,8 @@ private
    type Shared_Reference_Base_Impl is new Primitives.Standard_Unsigned;
    type Shared_Reference_Base is
       record
-         Ref : Shared_Reference_Base_Impl := 0;
+         Ref : aliased Shared_Reference_Base_Impl := 0;
+         pragma Atomic (Ref);
       end record;
    for Shared_Reference_Base'Size use Primitives.Standard_Unsigned'Size;
    pragma Atomic (Shared_Reference_Base);

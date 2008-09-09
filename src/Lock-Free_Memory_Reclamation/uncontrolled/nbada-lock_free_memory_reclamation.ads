@@ -34,7 +34,7 @@ pragma Style_Checks (Off);
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 13:54:45 2004
---  $Id: nbada-lock_free_memory_reclamation.ads,v 1.22 2008/06/20 15:20:37 andersg Exp $
+--  $Id: nbada-lock_free_memory_reclamation.ads,v 1.23 2008/09/09 09:44:16 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -307,7 +307,8 @@ private
    type Shared_Reference_Base_Impl is new Primitives.Standard_Unsigned;
    type Shared_Reference_Base is
       record
-         Ref : Shared_Reference_Base_Impl := 0;
+         Ref : aliased Shared_Reference_Base_Impl := 0;
+         pragma Atomic (Ref);
       end record;
    for Shared_Reference_Base'Size use Primitives.Standard_Unsigned'Size;
    pragma Atomic (Shared_Reference_Base);
