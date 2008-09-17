@@ -24,7 +24,7 @@
 --  Description     : Test of non-blocking priority queue.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 20 16:39:08 2003
---  $Id: priority_queue_test.adb,v 1.1 2008/02/20 20:55:38 andersg Exp $
+--  $Id: priority_queue_test.adb,v 1.1.2.1 2008/09/17 22:58:44 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -35,8 +35,6 @@ with Ada.Text_IO;
 with Ada.Exceptions;
 with Ada.Real_Time;
 with Ada.Command_Line;
-
-with System.Task_Info;
 
 with My_Priority_Queue;
 
@@ -54,17 +52,14 @@ procedure Priority_Queue_Test is
    No_Of_Elements : constant := 1000;
 
    ----------------------------------------------------------------------------
-   function Pinned_Task return System.Task_Info.Task_Info_Type;
    procedure Print_Usage;
    procedure Put_Line (S : in String);
    procedure Put (S : in String);
 
    ----------------------------------------------------------------------------
    task type Producer is
-      pragma Task_Info (Pinned_Task);
    end Producer;
    task type Consumer is
-      pragma Task_Info (Pinned_Task);
    end Consumer;
 
    ----------------------------------------------------------------------------
@@ -80,26 +75,6 @@ procedure Priority_Queue_Test is
    pragma Atomic (No_Producers_Running);
    No_Consumers_Running       : aliased Primitives.Unsigned_32 := 0;
    pragma Atomic (No_Consumers_Running);
-
-
-   ----------------------------------------------------------------------------
-   function Pinned_Task return System.Task_Info.Task_Info_Type is
-   begin
-      --  GNAT/IRIX
---        return new System.Task_Info.Thread_Attributes'
---          (Scope       => System.Task_Info.PTHREAD_SCOPE_SYSTEM,
---           Inheritance => System.Task_Info.PTHREAD_EXPLICIT_SCHED,
---           Policy      => System.Task_Info.SCHED_RR,
---           Priority    => System.Task_Info.No_Specified_Priority,
---           Runon_CPU   =>
---             --System.Task_Info.ANY_CPU
---             Integer (Primitives.Fetch_And_Add_32 (Task_Count'Access, 1))
---           );
-      --  GNAT/Linux
-      return System.Task_Info.System_Scope;
-      --  GNAT/Solaris
---      return System.Task_Info.New_Bound_Thread_Attributes;
-   end Pinned_Task;
 
    ----------------------------------------------------------------------------
    task body Producer is
