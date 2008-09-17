@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Fetch and Add test.
---  Copyright (C) 2004 - 2007  Anders Gidenstam
+--  Copyright (C) 2004 - 2008  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 --  Description     : Test of synchronization primitives package.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Jul  9 14:07:11 2002
---  $Id: faa_test.adb,v 1.10 2007/08/30 14:11:43 andersg Exp $
+--  $Id: faa_test.adb,v 1.10.2.1 2008/09/17 21:49:48 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -31,8 +31,6 @@ with NBAda.Primitives;
 with Ada.Text_IO;
 with Ada.Exceptions;
 
-with System.Task_Info;
-
 procedure FAA_Test is
 
    Count : aliased NBAda.Primitives.Standard_Unsigned := 0;
@@ -40,48 +38,26 @@ procedure FAA_Test is
    Count_CAS : aliased NBAda.Primitives.Standard_Unsigned := 0;
    pragma Atomic (Count_CAS);
 
-   function System_Scope_Task return System.Task_Info.Task_Info_Type;
-
    task type Counter is
-      pragma Task_Info (System_Scope_Task);
    end Counter;
 
---   function CAS is
---      new NBAda.Primitives.Boolean_Compare_And_Swap_32
---      (NBAda.Primitives.Unsigned_32);
-
-   ----------------------------------------------------------------------------
-   function System_Scope_Task return System.Task_Info.Task_Info_Type is
-   begin
-      --  GNAT/IRIX
---        return new System.Task_Info.Thread_Attributes'
---          (Scope       => System.Task_Info.PTHREAD_SCOPE_SYSTEM,
---           Inheritance => System.Task_Info.PTHREAD_EXPLICIT_SCHED,
---           Policy      => System.Task_Info.SCHED_RR,
---           Priority    => System.Task_Info.No_Specified_Priority,
---           Runon_CPU   =>
---             --System.Task_Info.ANY_CPU
---             Integer (NBAda.Primitives.Fetch_And_Add (Task_Count'Access, 1))
---           );
---  GNAT/Linux
-      return System.Task_Info.System_Scope;
---  GNAT/Solaris
---      return System.Task_Info.New_Bound_Thread_Attributes;
-   end System_Scope_Task;
+   function CAS is
+      new NBAda.Primitives.Boolean_Compare_And_Swap_32
+     (NBAda.Primitives.Standard_Unsigned);
 
    task body Counter is
    begin
       for I in 1 .. 10_000_000 loop
          NBAda.Primitives.Fetch_And_Add (Target    => Count'Access,
                                          Increment => 1);
---           loop
---              declare
---                 use type NBAda.Primitives.Unsigned_32;
---                 T : NBAda.Primitives.Unsigned_32 := Count_CAS;
---              begin
---                 exit when CAS (Count_CAS'Access, T, T + 1);
---              end;
---           end loop;
+         loop
+            declare
+               use type NBAda.Primitives.Standard_Unsigned;
+               T : NBAda.Primitives.Standard_Unsigned := Count_CAS;
+            begin
+               exit when CAS (Count_CAS'Access, T, T + 1);
+            end;
+         end loop;
       end loop;
       Ada.Text_IO.Put_Line
         ("Count: " &
