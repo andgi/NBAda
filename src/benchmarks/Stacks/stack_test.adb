@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Stack test - A small test benchmark for concurrent stack data-structures.
---  Copyright (C) 2005 - 2007  Anders Gidenstam
+--  Copyright (C) 2005 - 2008  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 --  Description     : Test of the lock-free stack.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 18:54:53 2005
---  $Id: stack_test.adb,v 1.7 2007/09/07 11:45:42 andersg Exp $
+--  $Id: stack_test.adb,v 1.8.2.1 2008/09/17 21:29:39 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -34,8 +34,6 @@ with Ada.Text_IO;
 with Ada.Exceptions;
 
 with Ada.Real_Time;
-
-with System.Task_Info;
 
 with Test_Stack;
 
@@ -62,7 +60,7 @@ procedure Stack_Test is
    --  Test application.
    ----------------------------------------------------------------------------
 
-   No_Of_Elements : constant := 100_000;
+   No_Of_Elements : constant := 10_000;
    STACK_LIFO_PROPERTY_VIOLATION : exception;
 
    Output_File : Ada.Text_IO.File_Type renames
@@ -70,46 +68,29 @@ procedure Stack_Test is
 --     Ada.Text_IO.Standard_Error;
 
 
-   function Pinned_Task return System.Task_Info.Task_Info_Type;
    procedure Print_Usage;
    procedure Put_Line (S : in String);
 
    task type Pusher is
-      pragma Task_Info (Pinned_Task);
       pragma Storage_Size (1 * 1024 * 1024);
    end Pusher;
 
    task type Popper is
-      pragma Task_Info (Pinned_Task);
       pragma Storage_Size (1 * 1024 * 1024);
    end Popper;
 
    Stack                : aliased Stacks.Stack_Type;
 
    Start                : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Start);
    Push_Count           : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Push_Count);
    Pop_Count            : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Pop_Count);
    No_Pushers_Running   : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (No_Pushers_Running);
    No_Poppers_Running   : aliased Primitives.Unsigned_32 := 0;
-
---   Task_Count : aliased Primitives.Unsigned_32 := 0;
-   function Pinned_Task return System.Task_Info.Task_Info_Type is
-   begin
-      --  GNAT/IRIX
---        return new System.Task_Info.Thread_Attributes'
---          (Scope       => System.Task_Info.PTHREAD_SCOPE_SYSTEM,
---           Inheritance => System.Task_Info.PTHREAD_EXPLICIT_SCHED,
---           Policy      => System.Task_Info.SCHED_RR,
---           Priority    => System.Task_Info.No_Specified_Priority,
---           Runon_CPU   =>
---             --System.Task_Info.ANY_CPU
---             Integer (Primitives.Fetch_And_Add_32 (Task_Count'Access, 1))
---           );
-      --  GNAT/Linux
-      return System.Task_Info.System_Scope;
-      --  GNAT/Solaris
---      return System.Task_Info.New_Bound_Thread_Attributes;
-   end Pinned_Task;
+   pragma Atomic (No_Poppers_Running);
 
    ----------------------------------------------------------------------------
    task body Pusher is
@@ -177,6 +158,7 @@ procedure Stack_Test is
          Last : array (PID.Process_ID_Type) of Integer := (others => 0);
          V    : Value_Type;
          Done : Boolean := False;
+         pragma Volatile (Done); --  Strange GNAT GPL 2008 workaround.
       begin
 
          declare
@@ -193,7 +175,7 @@ procedure Stack_Test is
                V       := Pop (Stack'Access);
                No_Pops := Primitives.Unsigned_32'Succ (No_Pops);
 
-               Done := False;
+               Done    := False;
 
 --                 if V.Index <= Last (V.Creator) then
 --                    raise QUEUE_FIFO_PROPERTY_VIOLATION;
@@ -207,10 +189,9 @@ procedure Stack_Test is
                      use type Primitives.Unsigned_32;
                   begin
                      exit when Done and No_Pushers_Running = 0;
+                     Done := True;
                   end;
                   delay 0.0;
-
-                  Done := True;
             end;
          end loop;
 
