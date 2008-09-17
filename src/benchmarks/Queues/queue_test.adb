@@ -23,7 +23,7 @@
 --  Description     : Benchmark application for lock-free queues.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Apr 13 22:09:40 2005
---  $Id: queue_test.adb,v 1.15 2008/06/19 17:06:16 andersg Exp $
+--  $Id: queue_test.adb,v 1.15.2.1 2008/09/17 21:03:46 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -155,6 +155,7 @@ procedure Queue_Test is
          Last : array (PID.Process_ID_Type) of Integer := (others => 0);
          V    : Value_Type;
          Done : Boolean := False;
+         pragma Volatile (Done); --  Strange GNAT GPL 2008 workaround.
       begin
 
          declare
