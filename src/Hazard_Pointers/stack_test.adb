@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Example Stack - A lock-free stack using hazard pointers.
---  Copyright (C) 2005 - 2007  Anders Gidenstam
+--  Copyright (C) 2005 - 2008  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 --  Description     : Test of the lock-free example stack.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 18:54:53 2005
---  $Id: stack_test.adb,v 1.6 2007/08/30 16:14:05 andersg Exp $
+--  $Id: stack_test.adb,v 1.6.2.1 2008/09/17 20:52:04 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -34,8 +34,6 @@ with Ada.Text_IO;
 with Ada.Exceptions;
 
 with Ada.Real_Time;
-
-with System.Task_Info;
 
 with Example_Stack;
 
@@ -67,44 +65,26 @@ procedure Stack_Test is
      Ada.Text_IO.Standard_Output;
 --     Ada.Text_IO.Standard_Error;
 
-   function Pinned_Task return System.Task_Info.Task_Info_Type;
-
    task type Pusher is
-      pragma Task_Info (Pinned_Task);
       pragma Storage_Size (1 * 1024 * 1024);
    end Pusher;
 
    task type Popper is
-      pragma Task_Info (Pinned_Task);
       pragma Storage_Size (1 * 1024 * 1024);
    end Popper;
 
    Stack                : aliased Stacks.Stack_Type;
 
    Start                : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Start);
    Push_Count           : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Push_Count);
    Pop_Count            : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Pop_Count);
    No_Pushers_Running   : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (No_Pushers_Running);
    No_Poppers_Running   : aliased Primitives.Unsigned_32 := 0;
-
---   Task_Count : aliased Primitives.Unsigned_32 := 0;
-   function Pinned_Task return System.Task_Info.Task_Info_Type is
-   begin
-      --  GNAT/IRIX
---        return new System.Task_Info.Thread_Attributes'
---          (Scope       => System.Task_Info.PTHREAD_SCOPE_SYSTEM,
---           Inheritance => System.Task_Info.PTHREAD_EXPLICIT_SCHED,
---           Policy      => System.Task_Info.SCHED_RR,
---           Priority    => System.Task_Info.No_Specified_Priority,
---           Runon_CPU   =>
---             --System.Task_Info.ANY_CPU
---             Integer (Primitives.Fetch_And_Add_32 (Task_Count'Access, 1))
---           );
-      --  GNAT/Linux
-      return System.Task_Info.System_Scope;
-      --  GNAT/Solaris
---      return System.Task_Info.New_Bound_Thread_Attributes;
-   end Pinned_Task;
+   pragma Atomic (No_Poppers_Running);
 
    ----------------------------------------------------------------------------
    task body Pusher is
@@ -202,7 +182,8 @@ procedure Stack_Test is
                   declare
                      use type Primitives.Unsigned_32;
                   begin
-                     exit when Done and No_Pushers_Running = 0;
+--                     exit when Done and No_Pushers_Running = 0;
+                     exit when No_Pushers_Running = 0;
                   end;
                   delay 0.0;
 
@@ -303,5 +284,4 @@ begin
          Ada.Text_IO.Put_Line ("Final pop count: " &
                                Primitives.Unsigned_32'Image (Pop_Count));
    end;
-   HP.Print_Statistics;
 end Stack_Test;
