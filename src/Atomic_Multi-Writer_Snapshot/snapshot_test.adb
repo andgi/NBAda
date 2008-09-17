@@ -3,7 +3,7 @@
 --  "An Optimal Multi-Writer Snapshot Algorithm", Proceedings of STOC'05,
 --  ACM, 2005.
 --
---  Copyright (C) 2007  Anders Gidenstam
+--  Copyright (C) 2007 - 2008  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 --                    Proceedings of STOC'05, ACM, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue May 15 13:19:07 2007
--- $Id: snapshot_test.adb,v 1.4 2007/08/31 15:03:14 andersg Exp $
+-- $Id: snapshot_test.adb,v 1.5 2008/09/17 20:02:23 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -37,8 +37,6 @@ with Ada.Text_IO;
 with Ada.Exceptions;
 
 with Ada.Real_Time;
-
-with System.Task_Info;
 
 with NBAda.Process_Identification;
 with NBAda.Primitives;
@@ -73,15 +71,11 @@ procedure Snapshot_Test is
    No_Of_Writes : constant := 100_000;
 
    ----------------------------------------------------------------------
-   function Pinned_Task return System.Task_Info.Task_Info_Type;
-
    task type Writer is
-      pragma Task_Info (Pinned_Task);
       pragma Storage_Size (1 * 1024 * 1024);
    end Writer;
 
    task type Reader is
-      pragma Task_Info (Pinned_Task);
       pragma Storage_Size (1 * 1024 * 1024);
    end Reader;
 
@@ -90,30 +84,15 @@ procedure Snapshot_Test is
      (others => My_Int_Components.Create (Default_Value => 42));
 
    Start              : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Start);
    Write_Count        : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Write_Count);
    Scan_Count         : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Scan_Count);
    No_Writers_Running : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (No_Writers_Running);
    No_Readers_Running : aliased Primitives.Unsigned_32 := 0;
-
-   ----------------------------------------------------------------------
-   --   Task_Count : aliased Primitives.Unsigned_32 := 0;
-   function Pinned_Task return System.Task_Info.Task_Info_Type is
-   begin
-      --  GNAT/IRIX
---        return new System.Task_Info.Thread_Attributes'
---          (Scope       => System.Task_Info.PTHREAD_SCOPE_SYSTEM,
---           Inheritance => System.Task_Info.PTHREAD_EXPLICIT_SCHED,
---           Policy      => System.Task_Info.SCHED_RR,
---           Priority    => System.Task_Info.No_Specified_Priority,
---           Runon_CPU   =>
---             --System.Task_Info.ANY_CPU
---             Integer (Primitives.Fetch_And_Add_32 (Task_Count'Access, 1))
---           );
-      --  GNAT/Linux
-      return System.Task_Info.System_Scope;
-      --  GNAT/Solaris
---      return System.Task_Info.New_Bound_Thread_Attributes;
-   end Pinned_Task;
+   pragma Atomic (No_Readers_Running);
 
    ----------------------------------------------------------------------
    task body Writer is
