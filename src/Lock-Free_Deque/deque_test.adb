@@ -24,7 +24,7 @@
 --  Description     : Test program for the lock-free deque.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Feb 16 16:06:25 2006
--- $Id: deque_test.adb,v 1.11 2007/10/30 15:11:24 andersg Exp $
+-- $Id: deque_test.adb,v 1.11.2.1 2008/09/17 21:26:21 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -35,8 +35,6 @@ with Ada.Text_IO;
 with Ada.Exceptions;
 
 with Ada.Real_Time;
-
-with System.Task_Info;
 
 with My_Deque;
 
@@ -63,23 +61,17 @@ procedure Deque_Test is
      Ada.Text_IO.Standard_Output;
 --     Ada.Text_IO.Standard_Error;
 
-   function Pinned_Task return System.Task_Info.Task_Info_Type;
-
    task type Left_Producer is
-      pragma Task_Info (Pinned_Task);
       pragma Storage_Size (1 * 1024 * 1024);
    end Left_Producer;
    task type Right_Producer is
-      pragma Task_Info (Pinned_Task);
       pragma Storage_Size (1 * 1024 * 1024);
    end Right_Producer;
 
    task type Right_Consumer is
-      pragma Task_Info (Pinned_Task);
       pragma Storage_Size (1 * 1024 * 1024);
    end Right_Consumer;
    task type Left_Consumer is
-      pragma Task_Info (Pinned_Task);
       pragma Storage_Size (1 * 1024 * 1024);
    end Left_Consumer;
 
@@ -87,31 +79,19 @@ procedure Deque_Test is
    Deque                      : aliased Deques.Deque_Type;
 
    Start                      : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Start);
    Right_Push_Count           : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Right_Push_Count);
    Left_Push_Count            : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Left_Push_Count);
    Right_Pop_Count            : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Right_Pop_Count);
    Left_Pop_Count             : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Left_Pop_Count);
    No_Producers_Running       : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (No_Producers_Running);
    No_Consumers_Running       : aliased Primitives.Unsigned_32 := 0;
-
---   Task_Count : aliased Primitives.Unsigned_32 := 0;
-   function Pinned_Task return System.Task_Info.Task_Info_Type is
-   begin
-      --  GNAT/IRIX
---        return new System.Task_Info.Thread_Attributes'
---          (Scope       => System.Task_Info.PTHREAD_SCOPE_SYSTEM,
---           Inheritance => System.Task_Info.PTHREAD_EXPLICIT_SCHED,
---           Policy      => System.Task_Info.SCHED_RR,
---           Priority    => System.Task_Info.No_Specified_Priority,
---           Runon_CPU   =>
---             --System.Task_Info.ANY_CPU
---             Integer (Primitives.Fetch_And_Add_32 (Task_Count'Access, 1))
---           );
-      --  GNAT/Linux
-      return System.Task_Info.System_Scope;
-      --  GNAT/Solaris
---      return System.Task_Info.New_Bound_Thread_Attributes;
-   end Pinned_Task;
+   pragma Atomic (No_Consumers_Running);
 
    ----------------------------------------------------------------------------
    task body Right_Producer is
