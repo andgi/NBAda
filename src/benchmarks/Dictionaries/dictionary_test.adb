@@ -23,7 +23,7 @@
 --  Description     : Test application for the lock-free dictionaries.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri May 18 14:51:23 2006
---  $Id: dictionary_test.adb,v 1.5 2008/02/26 15:04:31 andersg Exp $
+--  $Id: dictionary_test.adb,v 1.5.2.1 2008/09/17 20:35:56 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -38,8 +38,6 @@ with Ada.Command_Line;
 with Ada.Real_Time;
 
 with Ada.Numerics.Discrete_Random;
-
-with System.Task_Info;
 
 with Test_Dictionaries;
 
@@ -76,7 +74,6 @@ procedure Dictionary_Test is
 
    package Random is new Ada.Numerics.Discrete_Random (Natural);
 
-   function Pinned_Task return System.Task_Info.Task_Info_Type;
    procedure Print_Usage;
    procedure Put_Line (S : in String);
    procedure Put (S : in String);
@@ -84,48 +81,33 @@ procedure Dictionary_Test is
    Default_Stack_Size : constant := 1 * 1024 * 1024;
 
    task type Inserter is
-      pragma Task_Info (Pinned_Task);
       pragma Storage_Size (Default_Stack_Size);
    end Inserter;
    task type Remover is
-      pragma Task_Info (Pinned_Task);
       pragma Storage_Size (Default_Stack_Size);
    end Remover;
    task type Finder is
-      pragma Task_Info (Pinned_Task);
       pragma Storage_Size (Default_Stack_Size);
    end Finder;
 
    Dictionary  : aliased Dictionaries.Dictionary_Type;
 
    Start                  : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Start);
    Insert_Count           : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Insert_Count);
    Delete_Count           : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Delete_Count);
    Find_Count             : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Find_Count);
    Found_Count            : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Found_Count);
    No_Inserters_Running   : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (No_Inserters_Running);
    No_Removers_Running    : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (No_Removers_Running);
    No_Finders_Running     : aliased Primitives.Unsigned_32 := 0;
-
---   Task_Count : aliased Primitives.Unsigned_32 := 0;
-
-   function Pinned_Task return System.Task_Info.Task_Info_Type is
-   begin
-      --  GNAT/IRIX
---        return new System.Task_Info.Thread_Attributes'
---          (Scope       => System.Task_Info.PTHREAD_SCOPE_SYSTEM,
---           Inheritance => System.Task_Info.PTHREAD_EXPLICIT_SCHED,
---           Policy      => System.Task_Info.SCHED_RR,
---           Priority    => System.Task_Info.No_Specified_Priority,
---           Runon_CPU   =>
---             --System.Task_Info.ANY_CPU
---             Integer (Primitives.Fetch_And_Add_32 (Task_Count'Access, 1))
---           );
-      --  GNAT/Linux
-      return System.Task_Info.System_Scope;
-      --  GNAT/Solaris
---      return System.Task_Info.New_Bound_Thread_Attributes;
-   end Pinned_Task;
+   pragma Atomic (No_Finders_Running);
 
    -----------------------------------------------------------------------
    task body Inserter is
