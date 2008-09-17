@@ -28,7 +28,7 @@ pragma Style_Checks (Off);
 --                    University of Cambridge, 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Mar  8 12:28:31 2006
---  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.14 2008/05/14 15:44:40 andersg Exp $
+--  $Id: nbada-epoch_based_memory_reclamation.adb,v 1.14.2.1 2008/09/17 22:34:24 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -37,8 +37,9 @@ pragma License (GPL);
 with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
 with Ada.Tags;
-with Ada.Finalization;
 with Ada.Text_IO;
+
+with NBAda.Internals.Cleanup_Tools;
 
 package body NBAda.Epoch_Based_Memory_Reclamation is
 
@@ -588,20 +589,22 @@ package body NBAda.Epoch_Based_Memory_Reclamation is
    end Cleanup;
 
    ----------------------------------------------------------------------------
-   type Finalizator is new Ada.Finalization.Limited_Controlled
-     with null record;
-
-   procedure Finalize (Object : in out Finalizator);
-
-   procedure Finalize (Object : in out Finalizator) is
+   procedure Finalize;
+   procedure Finalize is
    begin
       if Debug then
          Print_Statistics;
       end if;
    end Finalize;
 
-   Finally : Finalizator;
---  NOTE: The Finalizator is a really really dangerous idea!
---        It might be destroyed AFTER the node storage pool is destroyed!
+   type Local_Action is access procedure;
+   function Lope_Hole is new Ada.Unchecked_Conversion
+     (Local_Action,
+      NBAda.Internals.Cleanup_Tools.Action);
+
+   Finally :
+     NBAda.Internals.Cleanup_Tools.On_Exit (Lope_Hole (Finalize'Access));
+--  NOTE: This is a really really dangerous idea!
+--        Finally might be destroyed AFTER the node storage pool is destroyed!
 
 end NBAda.Epoch_Based_Memory_Reclamation;

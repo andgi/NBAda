@@ -34,19 +34,19 @@ pragma Style_Checks (Off);
 --                    pages 202 - 207, IEEE Computer Society, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Nov 19 14:07:58 2004
---  $Id: nbada-lock_free_memory_reclamation.adb,v 1.35 2008/06/20 15:20:37 andersg Exp $
+--  $Id: nbada-lock_free_memory_reclamation.adb,v 1.35.2.1 2008/09/17 22:34:25 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
 with NBAda.Internals.Hash_Tables;
+with NBAda.Internals.Cleanup_Tools;
 
 --  with Ada.Unchecked_Deallocation;
 with Ada.Unchecked_Conversion;
 with Ada.Exceptions;
 with Ada.Tags;
-with Ada.Finalization;
 
 with Ada.Text_IO;
 
@@ -908,20 +908,23 @@ package body NBAda.Lock_Free_Memory_Reclamation is
    end Hash_Ref;
 
    ----------------------------------------------------------------------------
-   type Finalizator is new Ada.Finalization.Limited_Controlled
-     with null record;
+   procedure Finalize;
 
-   procedure Finalize (Object : in out Finalizator);
-
-   procedure Finalize (Object : in out Finalizator) is
+   procedure Finalize is
    begin
       if Collect_Statistics then
          Print_Statistics;
       end if;
    end Finalize;
 
-   Finally : Finalizator;
---  NOTE: The Finalizator is a dangerous idea!  It is likely to be
---        destroyed AFTER the node storage pool has been destroyed!
+   type Local_Action is access procedure;
+   function Lope_Hole is new Ada.Unchecked_Conversion
+     (Local_Action,
+      NBAda.Internals.Cleanup_Tools.Action);
+
+   Finally :
+     NBAda.Internals.Cleanup_Tools.On_Exit (Lope_Hole (Finalize'Access));
+--  NOTE: This is a really really dangerous idea!
+--        Finally might be destroyed AFTER the node storage pool is destroyed!
 
 end NBAda.Lock_Free_Memory_Reclamation;
