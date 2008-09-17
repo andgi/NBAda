@@ -3,7 +3,7 @@
 --  garbage reclamation scheme by A. Gidenstam, M. Papatriantafilou, H. Sundell
 --  and P. Tsigas.
 --
---  Copyright (C) 2004 - 2007  Anders Gidenstam
+--  Copyright (C) 2004 - 2008  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 -- Description     : Example application for lock-free reference counting.
 -- Author          : Anders Gidenstam
 -- Created On      : Wed Apr 13 22:09:40 2005
--- $Id: queue_test.adb,v 1.14 2007/09/04 12:03:59 andersg Exp $
+-- $Id: queue_test.adb,v 1.14.2.1 2008/09/17 22:55:00 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -36,8 +36,6 @@ with Ada.Text_IO;
 with Ada.Exceptions;
 
 with Ada.Real_Time;
-
-with System.Task_Info;
 
 with My_Queue;
 
@@ -59,44 +57,26 @@ procedure Queue_Test is
      Ada.Text_IO.Standard_Output;
 --     Ada.Text_IO.Standard_Error;
 
-   function Pinned_Task return System.Task_Info.Task_Info_Type;
-
    task type Producer is
-      pragma Task_Info (Pinned_Task);
       pragma Storage_Size (1 * 1024 * 1024);
    end Producer;
 
    task type Consumer is
-      pragma Task_Info (Pinned_Task);
       pragma Storage_Size (1 * 1024 * 1024);
    end Consumer;
 
    Queue                : aliased Queues.Queue_Type;
 
    Start                : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Start);
    Enqueue_Count        : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Enqueue_Count);
    Dequeue_Count        : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Dequeue_Count);
    No_Producers_Running : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (No_Producers_Running);
    No_Consumers_Running : aliased Primitives.Unsigned_32 := 0;
-
---   Task_Count : aliased Primitives.Unsigned_32 := 0;
-   function Pinned_Task return System.Task_Info.Task_Info_Type is
-   begin
-      --  GNAT/IRIX
---        return new System.Task_Info.Thread_Attributes'
---          (Scope       => System.Task_Info.PTHREAD_SCOPE_SYSTEM,
---           Inheritance => System.Task_Info.PTHREAD_EXPLICIT_SCHED,
---           Policy      => System.Task_Info.SCHED_RR,
---           Priority    => System.Task_Info.No_Specified_Priority,
---           Runon_CPU   =>
---             --System.Task_Info.ANY_CPU
---             Integer (Primitives.Fetch_And_Add_32 (Task_Count'Access, 1))
---           );
-      --  GNAT/Linux
-      return System.Task_Info.System_Scope;
-      --  GNAT/Solaris
---      return System.Task_Info.New_Bound_Thread_Attributes;
-   end Pinned_Task;
+   pragma Atomic (No_Consumers_Running);
 
    ----------------------------------------------------------------------------
    task body Producer is
@@ -165,6 +145,7 @@ procedure Queue_Test is
          Last : array (PID.Process_ID_Type) of Integer := (others => 0);
          V    : Value_Type;
          Done : Boolean := False;
+         pragma Volatile (Done); --  Strange GNAT GPL 2008 workaround.
       begin
 
          declare
@@ -302,6 +283,5 @@ begin
                                Primitives.Unsigned_32'Image (Enqueue_Count));
          Ada.Text_IO.Put_Line ("Final dequeue count: " &
                                Primitives.Unsigned_32'Image (Dequeue_Count));
-         My_Queue.Queues.LFMR.Print_Statistics;
    end;
 end Queue_Test;

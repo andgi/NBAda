@@ -26,7 +26,7 @@
 --                    scheme.
 --  Author          : Anders Gidenstam
 --  Created On      : Sat May  7 20:54:49 2005
---  $Id: example_queue.ads,v 1.11 2007/09/04 12:03:59 andersg Exp $
+--  $Id: example_queue.ads,v 1.11.2.1 2008/09/17 22:55:00 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -71,7 +71,7 @@ package Example_Queue is
       Clean_Up_Threshold           => 256,
       --  Clean up and scan often.
       Process_Ids                  => Process_Ids,
-      Debug                        => True);
+      Collect_Statistics           => True);
 
 private
 
