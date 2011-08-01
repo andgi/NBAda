@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 18 15:14:04 2008
---  $Id: sets_test.adb,v 1.3 2008/01/24 18:24:47 andersg Exp $
+--  $Id: sets_test.adb,v 1.4 2008/07/29 14:28:44 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -40,7 +40,6 @@ with Ada.Command_Line;
 with Ada.Text_IO;
 with Ada.Exceptions;
 with Ada.Real_Time;
-with System.Task_Info;
 
 procedure Sets_Test is
 
@@ -66,7 +65,7 @@ procedure Sets_Test is
 
    No_Of_Sets      : constant := 4;
    Set_Size       :  constant := 8;
-   No_Of_Moves     : constant := 100_000;
+   No_Of_Moves     : constant := 1_000_000;
    No_Of_Movers    : Natural  := 4;
    No_Of_Elements  : Natural  := 2;
 
@@ -78,12 +77,10 @@ procedure Sets_Test is
    type Set_Array is array (Index) of aliased FLS.Flat_Set_Type (Set_Size);
 
    ----------------------------------------------------------------------
-   function Pinned_Task return System.Task_Info.Task_Info_Type;
    procedure Check;
    procedure Print_Usage;
 
    task type Mover is
-      pragma Task_Info (Pinned_Task);
       --  pragma Storage_Size (1 * 1024 * 1024);
    end Mover;
 
@@ -91,27 +88,9 @@ procedure Sets_Test is
    Set : Set_Array;
 
    Start             : aliased Primitives.Unsigned_32 := 0;
+   pragma Atomic (Start);
    Set_No            : aliased Primitives.Unsigned_32 := 0;
-
-   ----------------------------------------------------------------------
---   Task_Count : aliased Primitives.Unsigned_32 := 0;
-   function Pinned_Task return System.Task_Info.Task_Info_Type is
-   begin
-      --  GNAT/IRIX
---        return new System.Task_Info.Thread_Attributes'
---          (Scope       => System.Task_Info.PTHREAD_SCOPE_SYSTEM,
---           Inheritance => System.Task_Info.PTHREAD_EXPLICIT_SCHED,
---           Policy      => System.Task_Info.SCHED_RR,
---           Priority    => System.Task_Info.No_Specified_Priority,
---           Runon_CPU   =>
---             --System.Task_Info.ANY_CPU
---             Integer (Primitives.Fetch_And_Add_32 (Task_Count'Access, 1))
---           );
-      --  GNAT/Linux
-      return System.Task_Info.System_Scope;
-      --  GNAT/Solaris
---      return System.Task_Info.New_Bound_Thread_Attributes;
-   end Pinned_Task;
+   pragma Atomic (Set_No);
 
    ----------------------------------------------------------------------
    task body Mover is

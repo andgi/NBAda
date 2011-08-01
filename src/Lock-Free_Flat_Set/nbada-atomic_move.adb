@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 16 11:46:57 2008
---  $Id: nbada-atomic_move.adb,v 1.15 2008/04/21 11:34:29 andersg Exp $
+--  $Id: nbada-atomic_move.adb,v 1.17 2008/07/23 12:12:38 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -151,7 +151,9 @@ package body NBAda.Atomic_Move is
          new Ada.Unchecked_Conversion (Location_Access,
                                        Shared_Location_Access);
    begin
-      if To = Element.Location then
+      if
+        To_Shared_Location_Access (Location_Access (To)) = Element.Location
+      then
          Result := Moved_Ok;
          return;
       end if;
@@ -175,7 +177,7 @@ package body NBAda.Atomic_Move is
 
             if Old_From /= Element.Ref then
                --  The Node is no longer present in Element.Location.
-               Result := Moved_Away;
+               Result := No_Op;
                Release (Operation);
                return;
             elsif "+" (Operation).New_Pos = null then
@@ -187,12 +189,7 @@ package body NBAda.Atomic_Move is
                if Old_To.Node /= 0 then
                   --  To is occupied. Thanks to Dereference this
                   --  should linearize just fine.
-                  if Node_Ref (Element.Location.all) = Old_From then
-                     Result := Not_Moved;
-                  else
-                     --  We might have seen this node in To..
-                     Result := Moved_Away;
-                  end if;
+                  Result := No_Op;
                   Release (Operation);
                   return;
                end if;
@@ -251,6 +248,14 @@ package body NBAda.Atomic_Move is
    end Move;
 
    ----------------------------------------------------------------------------
+   function Fresh (Element : in Private_Reference)
+                  return Boolean is
+   begin
+      Primitives.Membar;
+      return Node_Ref (Element.Location.all) = Element.Ref;
+   end Fresh;
+
+   ----------------------------------------------------------------------------
    function Create (Element : Element_Type) return Private_Reference is
       use Move_Info_MR_Ops;
       ID       : constant Processes := Process_Ids.Process_ID;
@@ -279,19 +284,18 @@ package body NBAda.Atomic_Move is
          Move (Element => Node,
                To      => Tmp_Location (ID)'Access,
                Result  => Result);
-         exit when Result /= Not_Moved;
+         exit when Result = Moved_Ok;
+
+         --  Check whether Element is still up to date.
+         if Node_Ref (Element.Location.all) /= Element.Ref then
+            return;
+         end if;
       end loop;
       if Result = Moved_Ok then
          --  The node is now ready for deletion. However, the memory cannot be
          --  freed safely without the help of a memory reclamation algorithm.
          --  For now the memory is just leaked..
          null;
---        elsif
---          Result = Dunno and
---          Dereference (Tmp_Location (ID)'Access).Ref.Node = Node.Ref.Node
---        then
---           --  The move must have succeded after all.
---           null;
       end if;
    end Delete;
 
@@ -358,7 +362,7 @@ package body NBAda.Atomic_Move is
             --  We know this operation will result in Not_Moved. Verify!
             Compare_And_Swap (Target    => "+" (Operation).Result'Access,
                               Old_Value => Dunno,
-                              New_Value => Not_Moved);
+                              New_Value => No_Op);
 
             declare
                New_Status : constant Move_Info_Reference := New_Move_Info;
@@ -373,17 +377,16 @@ package body NBAda.Atomic_Move is
                   Release (New_Status);
                   Delete  (Operation);
                   --  We completed the operation.
-                  Result := Not_Moved;
+                  Result := No_Op;
                else
                   Delete  (New_Status);
                   Release (Operation);
-                  Result := Not_Moved; --  This is right, isn't it?
+                  Result := No_Op; --  This is right, isn't it?
                end if;
             end;
          else
             Result := "+" (Operation).Result;
             Release (Operation);
---            Result := Dunno; -- ?! Can we be more specific?
          end if;
       end Give_Up;
 
@@ -418,7 +421,7 @@ package body NBAda.Atomic_Move is
                                  New_Value => Shared_Location (Res));
                if Res /= Old_To then
                   --  To was occupied.
-                  if Res.Node /= Element.Ref.Node then
+                  if Res /= (Element.Ref.Node, Old_To.Version + 1) then
                      --  This should be safe now.
                      Give_Up (Node, Operation, Result);
                      return;
@@ -437,6 +440,20 @@ package body NBAda.Atomic_Move is
                return;
             end if;
             --  Step 2 was done be someone else. Carry on.
+         end if;
+      end;
+
+      --  Optimization: Return early if done.
+      declare
+         use Move_Info_MR_Ops;
+         Node   : constant Node_Access := To_Node_Access (Element.Ref.Node);
+      begin
+         Primitives.Membar;
+         if Operation /= Node.Status then
+            Primitives.Membar;
+            Result := "+" (Operation).Result;
+            Release (Operation);
+            return;
          end if;
       end;
 
@@ -463,6 +480,20 @@ package body NBAda.Atomic_Move is
                Primitives.Fetch_And_Add_32 (Node.Step_Count (3)'Access, 1);
             end if;
          else
+            Release (Operation);
+            return;
+         end if;
+      end;
+
+      --  Optimization: Return early if done.
+      declare
+         use Move_Info_MR_Ops;
+         Node   : constant Node_Access := To_Node_Access (Element.Ref.Node);
+      begin
+         Primitives.Membar;
+         if Operation /= Node.Status then
+            Primitives.Membar;
+            Result := "+" (Operation).Result;
             Release (Operation);
             return;
          end if;

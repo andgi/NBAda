@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Jan 15 19:05:03 2008
---  $Id: nbada-lock_free_flat_sets.adb,v 1.3 2008/01/22 18:53:17 andersg Exp $
+--  $Id: nbada-lock_free_flat_sets.adb,v 1.4 2008/07/29 14:35:07 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -62,21 +62,28 @@ package body NBAda.Lock_Free_Flat_Sets is
    ----------------------------------------------------------------------------
    procedure Get_Any (From    : in out Flat_Set_Type;
                       Element :    out Element_Reference) is
+      use type Primitives.Standard_Unsigned;
+      function To_Unsigned is
+         new Ada.Unchecked_Conversion (AM.Shared_Location,
+                                       Primitives.Standard_Unsigned);
+      Last_Checksum : Primitives.Standard_Unsigned := 0;
+      Checks        : constant := 2;
+      Check         : Natural := 1;
+      Checksum      : Primitives.Standard_Unsigned;
    begin
       loop
          declare
             Status : constant Set_State := From.State;
             I      : Flat_Set_Size := Flat_Set_Size (Status.Last);
          begin
-            if Status.Empty then
-               raise Flat_Set_Empty;
-            end if;
+            Checksum := 0;
             for J in 0 .. From.Size loop
                declare
                   use AM;
                   Node  : constant Private_Reference :=
                     AM.Dereference (From.Set (I)'Access);
                begin
+                  Checksum := Checksum + To_Unsigned (From.Set (I));
                   if Node /= Null_Reference then
                      Compare_And_Swap
                        (Target    => From.State'Access,
@@ -93,15 +100,16 @@ package body NBAda.Lock_Free_Flat_Sets is
                   I := I - 1;
                end if;
             end loop;
-            if
-              Compare_And_Swap (Target    => From.State'Access,
-                                Old_Value => Status,
-                                New_Value =>
-                                  (True, Status.Last, Status.Version + 1))
-            then
-               raise Flat_Set_Empty;
-            end if;
          end;
+         --  The set might be empty.
+         if Checksum = Last_Checksum and Check >= Checks then
+            raise Flat_Set_Empty;
+         elsif Checksum = Last_Checksum then
+            Check := Check + 1;
+         else
+            Last_Checksum := Checksum;
+            Check := 1;
+         end if;
       end loop;
    end Get_Any;
 
@@ -113,7 +121,7 @@ package body NBAda.Lock_Free_Flat_Sets is
          new Ada.Unchecked_Conversion (AM.Shared_Location,
                                        Primitives.Standard_Unsigned);
       Last_Checksum : Primitives.Standard_Unsigned := 0;
-      Checks        : constant := 5;
+      Checks        : constant := 2;
       Check         : Natural := 1;
       Checksum      : Primitives.Standard_Unsigned;
    begin
@@ -136,41 +144,25 @@ package body NBAda.Lock_Free_Flat_Sets is
                        AM.Dereference (Into.Set (I)'Access);
                      exit Move_Into when Dest /= Null_Reference;
 
-                     --  Preemptive reset of empty flag.
-                     --  This could be undone by other operations.
-                     --  Is it even needed?
-                     if Status.Empty then
---                        Compare_And_Swap
---                          (Target    => Into.State'Access,
---                           Old_Value => Status,
---                           New_Value =>
---                             (False, Set_Index (I), Status.Version + 1));
-                        Primitives.Membar;
-                        Into.State :=
-                          (False, Set_Index (I), Status.Version + 7);
-                        Primitives.Membar;
-                     end if;
                      Move (Element => Element,
                            To      => Into.Set (I)'Access,
                            Result  => Result);
                      case Result is
                         when Moved_Ok =>
---                           Compare_And_Swap
---                             (Target    => Into.State'Access,
---                              Old_Value => Status,
---                              New_Value =>
---                                (False, Set_Index (I), Status.Version + 1));
-                           Primitives.Membar;
-                           Into.State :=
-                             (False, Set_Index (I), Status.Version + 1);
-                           Primitives.Membar;
+                           Compare_And_Swap
+                             (Target    => Into.State'Access,
+                              Old_Value => Status,
+                              New_Value =>
+                                (False, Set_Index (I), Status.Version + 1));
                            return;
 
-                        when Moved_Away =>
-                           return;
+                        when No_Op =>
+                           if not Fresh (Element) then
+                              return;
+                           end if;
 
                         when others =>
-                           null;
+                           raise Program_Error;
                      end case;
                   end loop Move_Into;
                end;

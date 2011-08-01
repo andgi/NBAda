@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 16 17:14:04 2008
---  $Id: move_test.adb,v 1.5 2008/04/11 10:31:13 andersg Exp $
+--  $Id: move_test.adb,v 1.7 2008/07/23 12:13:16 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -40,7 +40,6 @@ with Ada.Command_Line;
 with Ada.Text_IO;
 with Ada.Exceptions;
 with Ada.Real_Time;
-with System.Task_Info;
 
 procedure Move_Test is
 
@@ -65,7 +64,7 @@ procedure Move_Test is
    ----------------------------------------------------------------------------
 
    No_Of_Locations : constant := 32;
-   No_Of_Moves     : constant := 1_000_000;
+   No_Of_Moves     : Natural  := 50_000_000;
    No_Of_Movers    : Natural  := 8;
    No_Of_Elements  : Natural  := 4;
 
@@ -77,13 +76,13 @@ procedure Move_Test is
 --   pragma Atomic_Components (Location_Array);
 
    ----------------------------------------------------------------------
-   function Pinned_Task return System.Task_Info.Task_Info_Type;
    procedure Print_Usage;
+   procedure Put_Line (S : in String);
+   procedure Put (S : in String);
    function To_Index (I : Natural) return Index;
    procedure Dump (LA : Location_Array);
 
    task type Mover is
-      pragma Task_Info (Pinned_Task);
       --  pragma Storage_Size (1 * 1024 * 1024);
    end Mover;
 
@@ -91,26 +90,7 @@ procedure Move_Test is
    Location : Location_Array;
 
    Start             : aliased Primitives.Unsigned_32 := 0;
-
-   ----------------------------------------------------------------------
---   Task_Count : aliased Primitives.Unsigned_32 := 0;
-   function Pinned_Task return System.Task_Info.Task_Info_Type is
-   begin
-      --  GNAT/IRIX
---        return new System.Task_Info.Thread_Attributes'
---          (Scope       => System.Task_Info.PTHREAD_SCOPE_SYSTEM,
---           Inheritance => System.Task_Info.PTHREAD_EXPLICIT_SCHED,
---           Policy      => System.Task_Info.SCHED_RR,
---           Priority    => System.Task_Info.No_Specified_Priority,
---           Runon_CPU   =>
---             --System.Task_Info.ANY_CPU
---             Integer (Primitives.Fetch_And_Add_32 (Task_Count'Access, 1))
---           );
-      --  GNAT/Linux
-      return System.Task_Info.System_Scope;
-      --  GNAT/Solaris
---      return System.Task_Info.New_Bound_Thread_Attributes;
-   end Pinned_Task;
+   pragma Atomic (Start);
 
    ----------------------------------------------------------------------
    task body Mover is
@@ -133,7 +113,7 @@ procedure Move_Test is
          Elem   : Private_Reference;
          I      : Index := To_Index (Natural (ID));
       begin
-         for M in 1 .. No_Of_Moves loop
+         for M in 1 .. No_Of_Moves / No_Of_Movers loop
             loop
                Elem := Dereference (Location (I)'Access);
                if Elem /= Null_Reference then
@@ -191,7 +171,29 @@ procedure Move_Test is
          " [OPTION] ");
       Ada.Text_IO.Put_Line
         ("  -h             Print this message.");
+      Ada.Text_IO.Put_Line
+        ("  -t  <#threads> Set the number of mover threads.");
+      Ada.Text_IO.Put_Line
+        ("  -m  <#moves>   Set the total number of moves.");
+      Ada.Text_IO.Put_Line
+        ("  -s             Single line output.");
    end Print_Usage;
+
+   ----------------------------------------------------------------------
+   Silent : Boolean := False;
+
+   procedure Put_Line (S : in String) is
+   begin
+      if not Silent then
+         Ada.Text_IO.Put_Line (S);
+      end if;
+   end Put_Line;
+   procedure Put (S : in String) is
+   begin
+      if not Silent then
+         Ada.Text_IO.Put (S);
+      end if;
+   end Put;
 
    ----------------------------------------------------------------------
    function To_Index (I : Natural) return Index is
@@ -225,6 +227,24 @@ begin
          if Ada.Command_Line.Argument (N) = "-h" then
             Print_Usage;
             return;
+         elsif Ada.Command_Line.Argument (N) = "-t" then
+            declare
+               T : Natural;
+            begin
+               N := N + 1;
+               T := Integer'Value (Ada.Command_Line.Argument (N));
+               No_Of_Movers := T;
+            end;
+         elsif Ada.Command_Line.Argument (N) = "-m" then
+            declare
+               T : Natural;
+            begin
+               N := N + 1;
+               T := Integer'Value (Ada.Command_Line.Argument (N));
+               No_Of_Moves := T;
+            end;
+         elsif Ada.Command_Line.Argument (N) = "-s" then
+            Silent := True;
          else
             Ada.Text_IO.Put_Line ("Unknown option.");
             Ada.Text_IO.New_Line;
@@ -283,31 +303,6 @@ begin
       end loop;
       Ada.Text_IO.Put_Line ("  Total:" &
                             Primitives.Unsigned_32'Image (Sum));
-   end;
-
-   Dump (Location);
-
-   return;
-
-   declare
-      E : Private_Reference;
-      I : Index := 0;
-   begin
-      for J in 1 .. 470 loop
-         E := Dereference (Location (I)'Access);
-
-         if E /= Null_Reference then
-            Move (Element => E,
-                  To      => Location (I + 1)'Access,
-                  Result  => Res);
-
-            Ada.Text_IO.Put_Line ("Move: " & Move_Status'Image (Res));
-         else
-            Ada.Text_IO.Put_Line ("null");
-         end if;
-
-         I := I + 1;
-      end loop;
    end;
 
    Dump (Location);

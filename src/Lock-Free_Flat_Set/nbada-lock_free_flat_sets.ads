@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Jan 15 17:41:28 2008
---  $Id: nbada-lock_free_flat_sets.ads,v 1.4 2008/01/24 18:24:47 andersg Exp $
+--  $Id: nbada-lock_free_flat_sets.ads,v 1.5 2008/07/29 14:35:07 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -58,6 +58,8 @@ package NBAda.Lock_Free_Flat_Sets is
 
    type Element_Access is access all Element_Type;
    function Dereference (Ref : Element_Reference) return Element_Access;
+   function "+" (Ref : Element_Reference) return Element_Access
+     renames Dereference;
    --  NOTE: Do not store the returned Element_Access.
 
    procedure Get_Any (From    : in out Flat_Set_Type;

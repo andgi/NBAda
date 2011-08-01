@@ -27,7 +27,7 @@
 --                    (ESA 2005), LNCS 3669, pages 329 - 242, 2005.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Jan 16 11:12:21 2008
---  $Id: nbada-atomic_move.ads,v 1.8 2008/04/17 14:26:23 andersg Exp $
+--  $Id: nbada-atomic_move.ads,v 1.9 2008/07/23 12:12:38 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -55,7 +55,7 @@ package NBAda.Atomic_Move is
    function Dereference (Location : access Shared_Location)
                         return Private_Reference;
 
-   type Move_Status is (Moved_Ok, Not_Moved, Moved_Away, Dunno);
+   type Move_Status is (Moved_Ok, No_Op, Dunno);
    for Move_Status'Size use 32;
 
    procedure Move (To      : access Shared_Location;
@@ -63,6 +63,10 @@ package NBAda.Atomic_Move is
                    Result  :    out Move_Status);
    --  Move atomically moves Element to the new shared location thereby
    --  removing it from it's previous shared location.
+
+   function Fresh (Element : in Private_Reference)
+                  return Boolean;
+   --  Returns True if the Element reference is still usable for move.
 
    function Create (Element : Element_Type) return Private_Reference;
    procedure Delete (Element : in Private_Reference);
