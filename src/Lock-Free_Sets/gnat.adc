@@ -2,3 +2,4 @@ pragma Warnings (On);
 pragma Initialize_Scalars;
 pragma Validity_Checks (ALL_CHECKS);
 pragma Style_Checks (ALL_CHECKS);
+pragma Ada_95;
