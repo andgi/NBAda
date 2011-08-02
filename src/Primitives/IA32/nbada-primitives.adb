@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Primitives - A binding to the synchronization primitives of the hardware.
---  Copyright (C) 2004 - 2007  Anders Gidenstam
+--  Copyright (C) 2004 - 2011  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@
 --  Description     : Synchronization primitives.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Jul  5 14:53:50 2002
---  $Id: nbada-primitives.adb,v 1.18 2007/08/30 14:11:43 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -60,7 +59,11 @@ package body NBAda.Primitives is
    --        AMD Athlon XP 1600+).
    --        To disable the mfence instruction, change the string constant
    --        MFENCE to "#mfence" instead of "mfence".
-
+   --
+   --        Note that the IA32 cmpxchg instruction effectively behaves as a
+   --        memory barrier too and is cheaper (it may not synchronize with
+   --        old string instructions and similar, though).
+   
    PAUSE : constant String := "pause";
    --  NOTE: The "pause" instruction in the machine code below is
    --        important to lower the impact of spinning on
@@ -202,11 +205,9 @@ package body NBAda.Primitives is
       System.Machine_Code.Asm
         (Template =>
            "#BEGIN Compare_And_Swap_32"  & LF & HT &
-           MFENCE                        & LF & HT &
            "movl %2, %%eax"              & LF & HT &
            "lock cmpxchg %3, (%1)"       & LF & HT &   -- Compare & swap
            "movl %%eax, %0"              & LF & HT &
-           MFENCE                        & LF & HT &
            "#END Compare_And_Swap_32",
          Outputs  => Element'Asm_Output ("=g", New_Value), -- %0 = New_Value
          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
@@ -232,11 +233,9 @@ package body NBAda.Primitives is
       System.Machine_Code.Asm
         (Template =>
            "#BEGIN Compare_And_Swap_32"  & LF & HT &
-           MFENCE                        & LF & HT &
            "movl %2, %%eax"              & LF & HT &
            "lock cmpxchg %3, (%1)"       & LF & HT &   -- Compare & swap
            "movl %%eax, %0"              & LF & HT &
-           MFENCE                        & LF & HT &
            "#END Compare_And_Swap_32",
          Outputs  => Element'Asm_Output ("=g", Tmp),       -- %0 = Tmp
          Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
@@ -261,10 +260,8 @@ package body NBAda.Primitives is
       System.Machine_Code.Asm
         (Template =>
            "#BEGIN Void_Compare_And_Swap_32" & LF & HT &
-           MFENCE                            & LF & HT &
            "movl %1, %%eax"                  & LF & HT &
            "lock cmpxchg %2, (%0)"           & LF & HT &   -- Compare & swap
-           MFENCE                            & LF & HT &
           "#END Void_Compare_And_Swap_32",
          Inputs   => (Element_Access'Asm_Input ("r",       -- %0 = Target
                                                 Element_Access (Target)),
@@ -395,9 +392,7 @@ package body NBAda.Primitives is
         (Template =>
            "#BEGIN Compare_And_Swap_64"  & LF & HT &
            "movl %2, %%edi"              & LF & HT &
-           MFENCE                        & LF & HT &
            "lock cmpxchg8b (%%edi)"      & LF & HT &   -- Compare & swap
-           MFENCE                        & LF & HT &
            "#END Compare_And_Swap_64",
          Outputs  => (Unsigned_32'Asm_Output   ("=a",       -- %0 old[1] = eax
                                                 To_UA (Tmp_Old'Access)(1)),
@@ -443,9 +438,7 @@ package body NBAda.Primitives is
         (Template =>
            "#BEGIN Compare_And_Swap_64"  & LF & HT &
            "movl %2, %%edi"              & LF & HT &
-           MFENCE                        & LF & HT &
            "lock cmpxchg8b (%%edi)"      & LF & HT &   -- Compare & swap
-           MFENCE                        & LF & HT &
            "#END Compare_And_Swap_64",
          Outputs  => (Unsigned_32'Asm_Output   ("=a",       -- %0 old[1] = eax
                                                 To_UA (Tmp_Old'Access)(1)),
@@ -490,9 +483,7 @@ package body NBAda.Primitives is
         (Template =>
            "#BEGIN Compare_And_Swap_64"  & LF & HT &
            "movl %0, %%edi"              & LF & HT &
-           MFENCE                        & LF & HT &
            "lock cmpxchg8b (%%edi)"      & LF & HT &   -- Compare & swap
-           MFENCE                        & LF & HT &
            "#END Compare_And_Swap_64",
          Inputs   => (Element_Access'Asm_Input ("m",        -- %0 = Target
                                                 Element_Access (Target)),
