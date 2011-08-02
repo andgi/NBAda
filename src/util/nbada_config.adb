@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --  NBAda - A library of non-blocking algorithms and data structures.
 --
---  Copyright (C) 2007 - 2008  Anders Gidenstam
+--  Copyright (C) 2007 - 2011  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -63,6 +63,8 @@ procedure NBAda_Config is
       LF_QUEUES_HPMR,
       LF_QUEUES_LFMR,
       LF_QUEUES_LFRC,
+      LF_QUEUES_LFMR_2,
+      LF_QUEUES_LFRC_2,
       LF_DEQUES_LFMR,
       LF_DEQUES_LFRC,
       LF_PRIORITY_QUEUES_EBMR,
@@ -82,7 +84,7 @@ procedure NBAda_Config is
 
    --  NBAda source code base directory.
    Install_Base : constant String :=
-     "/home/andersg/projects/Ada/Non-Blocking/NBAda/src";
+     "/home/anders/projects/Ada/Non-Blocking/NBAda.git/src";
    --  Default architecture.
    Default_Architecture : constant Architecture := IA32;
 
@@ -137,6 +139,12 @@ procedure NBAda_Config is
       LF_QUEUES_LFRC =>
         "+" ("-I" & Install_Base & "/Lock-Free_Queue_2 " &
              "-I" & Install_Base & "/Lock-Free_Queue_2/LFRC"),
+      LF_QUEUES_LFMR_2 =>
+        "+" ("-I" & Install_Base & "/Lock-Free_Queue_3 " &
+             "-I" & Install_Base & "/Lock-Free_Queue_3/LFMR"),
+      LF_QUEUES_LFRC_2 =>
+        "+" ("-I" & Install_Base & "/Lock-Free_Queue_3 " &
+             "-I" & Install_Base & "/Lock-Free_Queue_3/LFRC"),
       LF_DEQUES_LFMR =>
         "+" ("-I" & Install_Base & "/Lock-Free_Deque " &
              "-I" & Install_Base & "/Lock-Free_Deque/LFMR"),
@@ -208,6 +216,13 @@ procedure NBAda_Config is
                           LF_POOLS        => True,
                           PTB             => True,
                           LFRC            => True, others => False),
+      LF_QUEUES_LFMR_2 => (PRIMITIVES      => True,
+                           LF_POOLS        => True,
+                           LFMR            => True, others => False),
+      LF_QUEUES_LFRC_2 => (PRIMITIVES      => True,
+                           LF_POOLS        => True,
+                           PTB             => True,
+                           LFRC            => True, others => False),
       LF_DEQUES_LFMR  => (PRIMITIVES => True,
                           LF_POOLS   => True,
                           LFMR       => True, others => False),
