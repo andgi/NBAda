@@ -23,7 +23,7 @@
 --  Description     : NBAda build config.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Aug 30 11:18:46 2007
---  $Id: nbada_config.adb,v 1.19 2008/05/08 11:52:52 andersg Exp $
+--  $Id: nbada_config.adb,v 1.20 2008/06/26 09:20:30 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Command_Line;
@@ -70,7 +70,9 @@ procedure NBAda_Config is
       LF_SETS_EBMR,
       LF_SETS_HPMR,
       LF_DICTIONARIES_EBMR,
-      LF_DICTIONARIES_HPMR
+      LF_DICTIONARIES_HPMR,
+      LF_UBTREES_LFMR,
+      LF_UBTREES_LFRC
       );
    type Architecture is (IA32, SPARCV8PLUS, SPARCV9, MIPSN32);
    type Target_Array is array (Target) of Boolean;
@@ -156,7 +158,13 @@ procedure NBAda_Config is
       LF_DICTIONARIES_EBMR =>
         "+" ("-I" & Install_Base & "/Lock-Free_Dictionary"),
       LF_DICTIONARIES_HPMR =>
-        "+" ("-I" & Install_Base & "/Lock-Free_Dictionary")
+        "+" ("-I" & Install_Base & "/Lock-Free_Dictionary"),
+      LF_UBTREES_LFMR =>
+        "+" ("-I" & Install_Base & "/Lock-Free_Red_Black_Tree " &
+             "-I" & Install_Base & "/Lock-Free_Red_Black_Tree/LFMR"),
+      LF_UBTREES_LFRC =>
+        "+" ("-I" & Install_Base & "/Lock-Free_Red_Black_Tree " &
+             "-I" & Install_Base & "/Lock-Free_Red_Black_Tree/LFRC")
       );
 
    --  Component dependencies.
@@ -226,7 +234,16 @@ procedure NBAda_Config is
       LF_DICTIONARIES_HPMR => (PRIMITIVES      => True,
                                LF_POOLS        => True,
                                HPMR            => True,
-                               LF_SETS_HPMR    => True, others => False)
+                               LF_SETS_HPMR    => True, others => False),
+      LF_UBTREES_LFMR =>      (PRIMITIVES => True,
+                               LF_POOLS   => True,
+                               HPMR       => True,
+                               LFMR       => True, others => False),
+      LF_UBTREES_LFRC =>      (PRIMITIVES => True,
+                               LF_POOLS   => True,
+                               HPMR       => True,
+                               PTB        => True,
+                               LFRC       => True, others => False)
       );
 
    ----------------------------------------------------------------------
