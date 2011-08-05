@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Hazard Pointers - An implementation of Maged Michael's hazard pointers.
---  Copyright (C) 2004 - 2008  Anders Gidenstam
+--  Copyright (C) 2004 - 2011  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -27,7 +27,6 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:35:09 2004
---  $Id: nbada-hazard_pointers.adb,v 1.22.2.1 2008/09/17 22:34:25 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -302,6 +301,12 @@ package body NBAda.Hazard_Pointers is
       function To_Shared_Reference_Base_Access is
          new Ada.Unchecked_Conversion (Shared_Reference_Access,
                                        Shared_Reference_Base_Access);
+      function  Deref   (Node : in Private_Reference)
+                        return Node_Access;
+      pragma Inline (Deref);
+      pragma Inline_Always (Deref);
+      procedure Validate (Node  : in Private_Reference;
+                          Where : in String);
 
       ----------------------------------------------------------------------
       function Boolean_Compare_And_Swap_Impl is new
@@ -364,7 +369,6 @@ package body NBAda.Hazard_Pointers is
             if Integrity_Checking then
                declare
                   use type Primitives.Unsigned_32;
-                  State : Primitives.Unsigned_32 := 0;
                begin
                   loop
                      Node.Ref := To_Private_Reference (Link.all);
@@ -378,8 +382,6 @@ package body NBAda.Hazard_Pointers is
                               "hazard_pointers.adb: " &
                               "Dereference found a nonsense reference value." &
                               Image (Node));
-                        else
-                           State := Deref (Node).MM_Magic;
                         end if;
                      end if;
 
@@ -388,13 +390,20 @@ package body NBAda.Hazard_Pointers is
                      --  before Link is read again.
                      exit when To_Private_Reference (Link.all) = Node.Ref;
                   end loop;
-                  if Deref (Node) /= null and then
-                    not (State = MM_Live or State = MM_Deleted)  then
-                     Ada.Exceptions.Raise_Exception
-                       (Constraint_Error'Identity,
-                        "hazard_pointers.adb: " &
-                        "Dereferenced a non-existing node! " &
-                        Image (Node));
+                  if Deref (Node) /= null then
+                     declare
+                        State : constant Primitives.Unsigned_32 :=
+                          Deref (Node).MM_Magic;
+                     begin
+                        if not (State = MM_Live or State = MM_Deleted) then
+                           Ada.Exceptions.Raise_Exception
+                             (Constraint_Error'Identity,
+                              "hazard_pointers.adb: " &
+                              "Dereferenced a node with the bad MM_Magic " &
+                              Primitives.Unsigned_32'Image (State) &
+                              "! " & Image (Node));
+                        end if;
+                     end;
                   end if;
                end;
             else
@@ -423,49 +432,23 @@ package body NBAda.Hazard_Pointers is
          Primitives.Membar;
          --  Complete all preceding memory operations before releasing
          --  the hazard pointer.
-         if "+" (Node) /= null then
+         if Deref (Node) /= null then
             if Integrity_Checking then
-               if Node.HP < 1 or Node.HP > Max_Number_Of_Dereferences then
-                  Ada.Exceptions.Raise_Exception
-                    (Constraint_Error'Identity,
-                     "hazard_pointers.adb: " &
-                     "Attempt to release an invalid private reference, " &
-                     Image (Node));
-               end if;
-
-               if PS.Hazard_Pointer (HP_Index (Node.HP)) =
-                 Managed_Node_Access (Deref (Node))
-               then
-                  PS.Hazard_Pointer (HP_Index (Node.HP)) := null;
-               else
-                  Ada.Exceptions.Raise_Exception
-                    (Constraint_Error'Identity,
-                     "hazard_pointers.adb: " &
-                     "Released a private references that had not " &
-                     "been dereferenced! " &
-                     Image (Node));
-               end if;
-            else
-               PS.Hazard_Pointer (HP_Index (Node.HP)) := null;
+               Validate (Node, "Attempting to release");
             end if;
+            PS.Hazard_Pointer (HP_Index (Node.HP)) := null;
          end if;
       end Release;
 
       ----------------------------------------------------------------------
       function  "+"     (Node : in Private_Reference)
-                        return Node_Access renames Deref;
-
-      ----------------------------------------------------------------------
-      function  Deref   (Node : in Private_Reference)
                         return Node_Access is
-
-         function To_Node_Access is
-            new Ada.Unchecked_Conversion (Private_Reference_Impl,
-                                          Node_Access);
-
       begin
-         return To_Node_Access (Node.Ref and Ref_Mask);
-      end Deref;
+         if Integrity_Checking then
+            Validate (Node, "Attempting to use");
+         end if;
+         return Deref (Node);
+      end "+";
 
       ----------------------------------------------------------------------
       function Compare_And_Swap (Link      : access Shared_Reference;
@@ -474,6 +457,8 @@ package body NBAda.Hazard_Pointers is
                                 return Boolean is
       begin
          if Integrity_Checking then
+            Validate (Old_Value, "Attempting a CAS where Old_Value is");
+            Validate (New_Value, "Attempting a CAS where New_Value is");
             if New_Value.Ref = 16#ffffffff# then
                Ada.Exceptions.Raise_Exception
                  (Constraint_Error'Identity,
@@ -494,6 +479,8 @@ package body NBAda.Hazard_Pointers is
                                   New_Value : in Private_Reference) is
       begin
          if Integrity_Checking then
+            Validate (Old_Value, "Attempting a CAS where Old_Value is");
+            Validate (New_Value, "Attempting a CAS where New_Value is");
             if New_Value.Ref = 16#ffffffff# then
                Ada.Exceptions.Raise_Exception
                  (Constraint_Error'Identity,
@@ -519,6 +506,7 @@ package body NBAda.Hazard_Pointers is
          end if;
 
          if Integrity_Checking then
+            Validate (Node, "Attempting to delete");
             if Deleted.MM_Magic /= MM_Live then
                Ada.Exceptions.Raise_Exception
                  (Constraint_Error'Identity,
@@ -542,6 +530,19 @@ package body NBAda.Hazard_Pointers is
       end Delete;
 
       ----------------------------------------------------------------------
+      procedure Rescan  (Node : in Private_Reference) is
+         Deleted : constant Node_Access := Deref (Node);
+      begin
+         if Deref (Node) = null then
+            return;
+         end if;
+         if Integrity_Checking then
+            Validate (Node, "Attempting to rescan");
+         end if;
+         Managed_Node_Base (Deleted.all).MM_Rescan := True;
+      end Rescan;
+
+      ----------------------------------------------------------------------
       procedure Store   (Link : access Shared_Reference;
                          Node : in Private_Reference) is
 
@@ -552,6 +553,7 @@ package body NBAda.Hazard_Pointers is
                                           Private_Reference_Access);
       begin
          if Integrity_Checking then
+            Validate (Node, "Attempting to store");
             if Node.Ref = 16#ffffffff# then
                Ada.Exceptions.Raise_Exception
               (Constraint_Error'Identity,
@@ -612,14 +614,14 @@ package body NBAda.Hazard_Pointers is
       ----------------------------------------------------------------------
       procedure Mark      (Node : in out Private_Reference) is
       begin
-         Node.Ref := Node.Ref or 1;
+         Node.Ref := Node.Ref or Mark_Mask (A);
       end Mark;
 
       ----------------------------------------------------------------------
       function  Mark      (Node : in     Private_Reference)
                           return Private_Reference is
       begin
-         return (Ref => Node.Ref or 1, HP => Node.HP);
+         return (Ref => Node.Ref or Mark_Mask (A), HP => Node.HP);
       end Mark;
 
       ----------------------------------------------------------------------
@@ -639,15 +641,65 @@ package body NBAda.Hazard_Pointers is
       function  Is_Marked (Node : in     Private_Reference)
                           return Boolean is
       begin
-         return (Node.Ref and Mark_Mask) = 1;
+         return (Node.Ref and Mark_Mask (A)) = 1;
       end Is_Marked;
 
       ----------------------------------------------------------------------
       function  Is_Marked (Node : in     Shared_Reference)
                           return Boolean is
       begin
-         return (To_Private_Reference (Node) and Mark_Mask) = 1;
+         return (To_Private_Reference (Node) and Mark_Mask (A)) = 1;
       end Is_Marked;
+
+      ----------------------------------------------------------------------
+      procedure Mark      (Node : in out Private_Reference;
+                           Mark : in     Reference_Mark) is
+      begin
+         Node.Ref := Node.Ref or Mark_Mask (Mark);
+      end Mark;
+
+      ----------------------------------------------------------------------
+      function  Mark      (Node : in     Private_Reference;
+                           Mark : in     Reference_Mark)
+                          return Private_Reference is
+      begin
+         return (Ref => Node.Ref or Mark_Mask (Mark), HP => Node.HP);
+      end Mark;
+
+      ----------------------------------------------------------------------
+      procedure Unmark    (Node : in out Private_Reference;
+                           Mark : in     Reference_Mark) is
+      begin
+         Node.Ref := Node.Ref - (Node.Ref and Mark_Mask (Mark));
+      end Unmark;
+
+      ----------------------------------------------------------------------
+      function  Unmark    (Node : in     Private_Reference;
+                           Mark : in     Reference_Mark)
+                          return Private_Reference is
+      begin
+         return (Ref => Node.Ref - (Node.Ref and Mark_Mask (Mark)),
+                 HP => Node.HP);
+      end Unmark;
+
+      ----------------------------------------------------------------------
+      function  Is_Marked (Node : in     Private_Reference;
+                           Mark : in     Reference_Mark)
+                          return Boolean is
+      begin
+         return (Node.Ref and Mark_Mask (Mark)) = Mark_Mask (Mark);
+      end Is_Marked;
+
+      ----------------------------------------------------------------------
+      function  Is_Marked (Node : in     Shared_Reference;
+                           Mark : in     Reference_Mark)
+                          return Boolean is
+      begin
+         return
+           (To_Private_Reference (Node) and Mark_Mask (Mark)) =
+           Mark_Mask (Mark);
+      end Is_Marked;
+
 
       ----------------------------------------------------------------------
       function "=" (Left, Right : in     Private_Reference) return Boolean is
@@ -668,6 +720,43 @@ package body NBAda.Hazard_Pointers is
       begin
          return To_Private_Reference (Link) = Ref.Ref;
       end "=";
+
+      ----------------------------------------------------------------------
+      function  Deref   (Node : in Private_Reference)
+                        return Node_Access is
+
+         function To_Node_Access is
+            new Ada.Unchecked_Conversion (Private_Reference_Impl,
+                                          Node_Access);
+
+      begin
+         return To_Node_Access (Node.Ref and Ref_Mask);
+      end Deref;
+
+      ----------------------------------------------------------------------
+      procedure Validate (Node  : in Private_Reference;
+                          Where : in String) is
+         ID     : constant Processes  := Process_Ids.Process_ID;
+         PS     : Persistent_Shared renames
+           Persistent_Shared_Variables (ID).all;
+         Testee : Managed_Node_Access := Managed_Node_Access (Deref (Node));
+      begin
+         if Testee /= null then
+            if Node.HP < 1 or Node.HP > Max_Number_Of_Dereferences then
+               Ada.Exceptions.Raise_Exception
+                 (Constraint_Error'Identity,
+                  "hazard_pointers.adb: " &
+                  Where &
+                  " an invalid private reference, " & Image (Node));
+            elsif PS.Hazard_Pointer (HP_Index (Node.HP)) /= Testee then
+               Ada.Exceptions.Raise_Exception
+                 (Constraint_Error'Identity,
+                  "hazard_pointers.adb: " &
+                  Where &
+                  " a released private reference, " & Image (Node));
+            end if;
+         end if;
+      end Validate;
 
    end Reference_Operations;
 
@@ -723,6 +812,21 @@ package body NBAda.Hazard_Pointers is
                             Integer'Image (Count_HPs_Set));
    end Print_Statistics;
 
+   ----------------------------------------------------------------------
+   function Number_Of_HPs_Held return Natural is
+      ID    : constant Processes        := Process_Ids.Process_ID;
+      PS    : Persistent_Shared renames
+        Persistent_Shared_Variables (ID).all;
+      Count : Natural := 0;
+   begin
+      for I in PS.Hazard_Pointer'Range loop
+         if PS.Hazard_Pointer (I) /= null then
+            Count := Count + 1;
+         end if;
+      end loop;
+      return Count;
+   end Number_Of_HPs_Held;
+
    ----------------------------------------------------------------------------
    --  Private operations.
    ----------------------------------------------------------------------------
@@ -776,10 +880,11 @@ package body NBAda.Hazard_Pointers is
          end if;
 
          D_List (ID) := Managed_Node_Access (Node.MM_Next);
-         if Member (Node, P_Set (ID).all) then
-            Node.MM_Next := New_D_List;
-            New_D_List   := Node;
-            New_D_Count  := New_D_Count + 1;
+         if Node.MM_Rescan or Member (Node, P_Set (ID).all) then
+            Node.MM_Rescan := False;
+            Node.MM_Next   := New_D_List;
+            New_D_List     := Node;
+            New_D_Count    := New_D_Count + 1;
          else
             --  Reclaim node storage.
             if Integrity_Checking then

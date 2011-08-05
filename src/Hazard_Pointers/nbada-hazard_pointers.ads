@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Hazard Pointers - An implementation of Maged Michael's hazard pointers.
---  Copyright (C) 2004 - 2008  Anders Gidenstam
+--  Copyright (C) 2004 - 2011  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -27,7 +27,6 @@
 --                    June 2004.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Nov 25 18:10:15 2004
---  $Id: nbada-hazard_pointers.ads,v 1.22 2008/09/09 09:40:05 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -118,13 +117,13 @@ package NBAda.Hazard_Pointers is
 
    private
 
+      pragma No_Strict_Aliasing (Node_Access);
+
       type Shared_Reference is new Node_Access;
       --   pragma Atomic (Shared_Reference);
       --   pragma Volatile (Shared_Reference);
       --  Note: All shared variables of type Shared_Reference MUST be
       --        declared atomic by 'pragma Atomic (Variable_Name);' .
-
-      pragma No_Strict_Aliasing (Node_Access);
 
    end Operations;
 
@@ -176,8 +175,6 @@ package NBAda.Hazard_Pointers is
       function  "+"     (Node : in Private_Reference)
                         return Node_Access;
       pragma Inline_Always ("+");
-      function  Deref   (Node : in Private_Reference)
-                        return Node_Access;
 
       function  Compare_And_Swap (Link      : access Shared_Reference;
                                   Old_Value : in Private_Reference;
@@ -189,6 +186,11 @@ package NBAda.Hazard_Pointers is
                                   New_Value : in Private_Reference);
 
       procedure Delete  (Node : in Private_Reference);
+
+      procedure Rescan  (Node : in Private_Reference);
+      --  Tag the node for rescanning to make sure that hazard pointers to
+      --  it that have moved are detected. This is an extension over the
+      --  original algorithm.
 
       procedure Store   (Link : access Shared_Reference;
                          Node : in Private_Reference);
@@ -224,9 +226,39 @@ package NBAda.Hazard_Pointers is
                           return Boolean;
       pragma Inline_Always (Is_Marked);
 
+      --  Operations for two marks. Mark A is the mark above.
+      --  The Unmark operation above removes all marks.
+      type Reference_Mark is (A, B, AB);
+
+      procedure Mark      (Node : in out Private_Reference;
+                           Mark : in     Reference_Mark);
+      pragma Inline_Always (Mark);
+      function  Mark      (Node : in     Private_Reference;
+                           Mark : in     Reference_Mark)
+                          return Private_Reference;
+      pragma Inline_Always (Mark);
+      procedure Unmark    (Node : in out Private_Reference;
+                           Mark : in     Reference_Mark);
+      pragma Inline_Always (Unmark);
+      function  Unmark    (Node : in     Private_Reference;
+                           Mark : in     Reference_Mark)
+                          return Private_Reference;
+      pragma Inline_Always (Unmark);
+      function  Is_Marked (Node : in     Private_Reference;
+                           Mark : in     Reference_Mark)
+                          return Boolean;
+      pragma Inline_Always (Is_Marked);
+
+      function  Is_Marked (Node : in     Shared_Reference;
+                           Mark : in     Reference_Mark)
+                          return Boolean;
+      pragma Inline_Always (Is_Marked);
+
+
       function "=" (Left, Right : in     Private_Reference) return Boolean;
       pragma Inline_Always ("=");
-      --  Private references are equal when they reference the same node.
+      --  Private references are equal when they reference the same node and
+      --  have the same marks.
       function "=" (Link : in     Shared_Reference;
                     Ref  : in     Private_Reference) return Boolean;
       pragma Inline_Always ("=");
@@ -236,6 +268,8 @@ package NBAda.Hazard_Pointers is
       --  It is possible to compare a reference to the current value of a link.
 
    private
+
+      pragma No_Strict_Aliasing (Node_Access);
 
       type Private_Reference_Impl is new Primitives.Standard_Unsigned;
       subtype Index is Natural range 0 .. Max_Number_Of_Dereferences;
@@ -250,7 +284,10 @@ package NBAda.Hazard_Pointers is
       Mark_Bits  : constant := 2;
       --  Note: Reference_Counted_Node_Base'Alignment >= 2 ** Mark_Bits
       --        MUST hold.
-      Mark_Mask  : constant Private_Reference_Impl := 2 ** Mark_Bits - 1;
+      Mark_Mask  : constant array (Reference_Mark) of Private_Reference_Impl
+        := (A =>  1,
+            B =>  2,
+            AB => 3);
       Ref_Mask   : constant Private_Reference_Impl := -(2 ** Mark_Bits);
 
    end Reference_Operations;
@@ -258,6 +295,8 @@ package NBAda.Hazard_Pointers is
 
    procedure Print_Statistics;
    --  NOTE: Not thread-safe.
+
+   function Number_Of_HPs_Held return Natural;
 
 --  private
 
@@ -289,9 +328,11 @@ private
 
    type Managed_Node_Base is abstract tagged limited
       record
-         MM_Next : aliased Managed_Node_Access;
+         MM_Next   : aliased Managed_Node_Access;
          pragma Atomic (MM_Next);
-         MM_Magic : Primitives.Unsigned_32 := MM_Live;
+         MM_Rescan : Boolean := False;
+         pragma Atomic (MM_Rescan);
+         MM_Magic  : Primitives.Unsigned_32 := MM_Live;
          pragma Atomic (MM_Magic);
          --  NOTE: MM_Magic is only used when Integrity_Checking is set.
       end record;
