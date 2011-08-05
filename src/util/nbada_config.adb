@@ -56,6 +56,7 @@ procedure NBAda_Config is
       --  Algorithms and data structures.
       --    Released.
       SW_LL_SC,
+      LF_BAGS_HPMR,
       LF_STACKS_EBMR,
       LF_STACKS_HPMR,
       LF_QUEUES_BOUNDED,
@@ -119,6 +120,9 @@ procedure NBAda_Config is
       --  Algorithms and data structures.
       SW_LL_SC =>
         "+" ("-I" & Install_Base & "/Lock-Free_LL_SC"),
+      LF_BAGS_HPMR =>
+        "+" ("-I" & Install_Base & "/Lock-Free_Bag " &
+             "-I" & Install_Base & "/Lock-Free_Bag/HPMR"),
       LF_STACKS_EBMR =>
         "+" ("-I" & Install_Base & "/Lock-Free_Stack " &
              "-I" & Install_Base & "/Lock-Free_Stack/EBMR"),
@@ -194,6 +198,9 @@ procedure NBAda_Config is
                           LF_POOLS   => True, others => False),
       --  Algorithms and data structures.
       SW_LL_SC        => (PRIMITIVES      => True,
+                          LF_POOLS        => True,
+                          HPMR            => True, others => False),
+      LF_BAGS_HPMR    => (PRIMITIVES      => True,
                           LF_POOLS        => True,
                           HPMR            => True, others => False),
       LF_STACKS_EBMR  => (PRIMITIVES      => True,
