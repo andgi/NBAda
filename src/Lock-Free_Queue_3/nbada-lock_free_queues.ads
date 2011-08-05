@@ -37,7 +37,7 @@ pragma Style_Checks (All_Checks);
 pragma License (GPL);
 
 with NBAda.Process_Identification;
-with NBAda.Per_Thread_Storage.Local;
+with NBAda.Per_Task_Storage.Local;
 with NBAda.Lock_Free_Queues_Memory_Reclamation_Adapter;
 
 generic
@@ -130,8 +130,8 @@ private
    type Thread_Local_Access is access all Thread_Local;
 
    package TLS is
-      new NBAda.Per_Thread_Storage.Local (Thread_Local,
-                                          Process_Ids);
+      new NBAda.Per_Task_Storage.Local (Thread_Local,
+                                        Process_Ids);
 
    type Queue_Type is
      limited record

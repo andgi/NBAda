@@ -1,5 +1,6 @@
 -------------------------------------------------------------------------------
---  Per-object thread local storage.
+--  NBAda - A library of non-blocking algorithms and data structures.
+--
 --  Copyright (C) 2011  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
@@ -17,27 +18,18 @@
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 -------------------------------------------------------------------------------
-pragma Style_Checks (Off);
--------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
---  Filename        : nbada-per_thread_storage-local.adb
---  Description     : A simple implementation of thread local storage.
+--  Filename        : nbada-per_task_storage.ads
+--  Description     : NBAda - A library of non-blocking algorithms and
+--                    data structures.
 --  Author          : Anders Gidenstam
---  Created On      : Thu Jun 07 19:55:00 2011
+--  Created On      : Thu Aug 01 19:01:08 2011
 -------------------------------------------------------------------------------
-pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
-package body NBAda.Per_Thread_Storage.Local is
+package NBAda.Per_Task_Storage is
 
-   function Get (Source : Storage) return Element_Access is
-      ID : constant Process_Ids.Process_ID_Type := Process_Ids.Process_ID;
-   begin
-      if Source.Element (ID) = null then
-         Source.Mutable.Self.Element (ID) := new Element_Type;
-      end if;
-      return Source.Element (ID);
-   end Get;
+   pragma Pure (NBAda.Per_Task_Storage);
 
-end NBAda.Per_Thread_Storage.Local;
+end NBAda.Per_Task_Storage;

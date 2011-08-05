@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
---  Per-object thread local storage.
+--  Per-object task local storage.
 --  Copyright (C) 2011  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
@@ -20,8 +20,8 @@
 pragma Style_Checks (Off);
 -------------------------------------------------------------------------------
 --                              -*- Mode: Ada -*-
---  Filename        : nbada-per_thread_storage-local.ads
---  Description     : A simple implementation of thread local storage.
+--  Filename        : nbada-per_task_storage-local.adb
+--  Description     : A simple implementation of task local storage.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Jun 07 19:55:00 2011
 -------------------------------------------------------------------------------
@@ -29,36 +29,15 @@ pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
-with NBAda.Process_Identification;
+package body NBAda.Per_Task_Storage.Local is
 
-generic
+   function Get (Source : Storage) return Element_Access is
+      ID : constant Process_Ids.Process_ID_Type := Process_Ids.Process_ID;
+   begin
+      if Source.Element (ID) = null then
+         Source.Mutable.Self.Element (ID) := new Element_Type;
+      end if;
+      return Source.Element (ID);
+   end Get;
 
-   type Element_Type is limited private;
-   --  Element type.
-
-   with package Process_Ids is
-     new Process_Identification (<>);
-   --  Process identification.
-
-package NBAda.Per_Thread_Storage.Local is
-
-   type Element_Access is access Element_Type;
-
-   type Storage is limited private;
-
-   function Get (Source : in Storage) return Element_Access;
-
-private
-
-   type Element_Array is array (Process_Ids.Process_ID_Type) of Element_Access;
-
-   type Mutable_View (Self : access Storage) is
-      limited null record;
-
-   type Storage is
-      limited record
-         Element : Element_Array;
-         Mutable : Mutable_View (Storage'Access);
-      end record;
-
-end NBAda.Per_Thread_Storage.Local;
+end NBAda.Per_Task_Storage.Local;
