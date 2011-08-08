@@ -8,7 +8,7 @@
 %  Stuhlsatzenhausweg 85
 %  66123 Saarbrücken, Germany
 %
-% $Id: reference_manual.tex,v 1.10 2008/05/08 11:45:27 andersg Exp $
+% $Id: reference_manual.tex,v 1.15 2008/09/16 15:52:02 andersg Exp $
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -100,7 +100,7 @@
     \vspace{5mm}
     \huge Reference Manual\\
     \ifreleaseA
-    \Large version 0.1.0
+    \Large version 0.1.0-pre0
     \vspace{5mm}
     \fi
   }
@@ -147,7 +147,9 @@ is distributed as free software under the terms of the GNU Public License
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% From my thesis. Reduce the blabla.
 \section{Concurrent data access in shared memory systems}%
-\label{background:sec:shared-memory_coordination}
+\label{background:sec:shared-memory_coordination}%
+\footnote{This introduction is based on the introduction
+  in~\cite{Gidenstam:2006:PhD}}
 
 In a shared memory system the processes\footnote{We will use the term
   process and thread interchangeably in the context of general shared
@@ -332,8 +334,8 @@ developing efficient wait-free algorithms.
 
 Installation of \nbada\ is simple: just extract the distribution
 archive anywhere you want. To make it convenient to compile programs
-which use componets from \nbada\ there is a utility, \cmd{nbada\_config},
-that outputs suitable commandline options for use with \cmd{gnatmake}.
+which use components from \nbada\ there is a utility, \cmd{nbada\_config},
+that outputs suitable command-line options for use with \cmd{gnatmake}.
 
 The utility \cmd{nbada\_config}, located in \cmd{src/util}, is written
 in \ada, so it needs to be compiled and the binary installed somewhere
@@ -390,20 +392,26 @@ The \cmd{nbada\_config.adb} can be compiled, e.g. with the command
       & \ref{chpt:Primitives}\\
       \cmd{LF\_POOLS}            & Lock-free storage pools.
       & \ref{chpt:Memory-allocation}\\
-      \cmd{EBMR}                 & Epoch-based memory reclamation.
+      \cmd{EBMR}                 & Epoch-based memory reclamation
+                                   \cite{Fraser:2004:PLF}.
       & \ref{chpt:Memory-reclamation}\\
-      \cmd{HPMR}                 & Hazard pointers memory reclamation.
+      \cmd{HPMR}                 & Hazard pointers memory reclamation
+                                   \cite{Michael:2004:SMR,Michael:2002:SMR}.
       & \ref{chpt:Memory-reclamation}\\
-      \cmd{PTB}                  & Pass the buck memory reclamation.
+      \cmd{PTB}                  & Pass the buck memory reclamation
+                                   \cite{Herlihy:2002:ROP,HerlihyLuMaMo:2005:NBMM}.
       & \ref{chpt:Memory-reclamation}\\
       \cmd{LFRC}                 & Lock-free reference counting memory
-                                   reclamation.
+                                   reclamation
+                                   \cite{HerlihyLuMaMo:2005:NBMM}.
       & \ref{chpt:Memory-reclamation}\\
       \cmd{LFMR}                 & Lock-free reference counting memory
-                                   reclamation.
+                                   reclamation
+                                   \cite{GiPaSuTs:2005:LFGC,GiPaSuTs:2008:LFMR}.
       & \ref{chpt:Memory-reclamation}\\
       \cmd{SW\_LL\_SC}           & Lock-free load-linked/store-conditional
-                                   primitive.
+                                   primitive
+                                   \cite{Michael:2004:PLFLL}.
       & \ref{chpt:LFLLSC}\\
       \cmd{LF\_STACKS\_EBMR}     & Lock-free dynamic stack
                                    \cite{IBM:1983,Michael:2004:SMR}.
@@ -442,10 +450,10 @@ The \cmd{nbada\_config.adb} can be compiled, e.g. with the command
       \cmd{LF\_SETS\_HPMR}       & Lock-free dynamic set
                                    \cite{Michael:2002:HPDLF}.
       & \ref{chpt:LFSETS}\\
-      \cmd{LF\_QUEUES\_DICTIONARY\_EBMR} & Lock-free dynamic dictionary
+      \cmd{LF\_DICTIONARIES\_EBMR} & Lock-free dynamic dictionary
                                            \cite{Michael:2002:HPDLF}.
       & \ref{chpt:LFMAPS}\\
-      \cmd{LF\_QUEUES\_DICTIONARY\_HPMR} & Lock-free dynamic dictionary
+      \cmd{LF\_DICTIONARIES\_HPMR} & Lock-free dynamic dictionary
                                            \cite{Michael:2002:HPDLF}.
       & \ref{chpt:LFMAPS}\\
       \hline
@@ -581,7 +589,7 @@ a \emph{readers-writers lock}, respectively, both suffer from the
 drawbacks of mutual exclusion which are further discussed in
 Section~\ref{background:subsec:lock-based}.
 
-In \cite{Lam77} Lamport introduced a solution to the readers/writers
+In~\cite{Lam77} Lamport introduced a solution to the readers/writers
 problem with one writer which did not use mutual exclusion.  Lamport's
 algorithm allows the writer unimpeded access to the register
 regardless of what the readers do, while the readers will never
@@ -601,7 +609,7 @@ construction of e.g.:\\
 \cite{Lam86,Simpson90,Chen97};\\
 (ii)~single-writer $n$-reader registers
 \cite{Pet83,BurP87,KirKV87,New87,Kopetz93,SinAG94,HalV95,LaGiHaPaTs:ESA04};\\
-(iii)~$2$-writer $n$-reader registers \cite{Blo88}; and\\
+(iii)~$2$-writer $n$-reader registers~\cite{Blo88}; and\\
 (iv)~$m$-writer $n$-reader registers
 \cite{VitA86,PetB87,IsrS92,LiV92,LiTV96,HalV96}.
 
@@ -612,7 +620,7 @@ provided by the hardware in a system.  This has been very significant,
 providing fundamental results in the area of wait-free
 synchronization, in particular considering the nowadays well-known
 and well-studied hierarchy of shared data objects and their
-synchronization power \cite{Herlihy91}. Many of these solutions also
+synchronization power~\cite{Herlihy91}. Many of these solutions also
 involve elegant and symmetric ideas and have formed the basis for
 further results in the area of non-blocking synchronization.
 }%% end-remove
@@ -623,8 +631,8 @@ further results in the area of non-blocking synchronization.
 \nbada\ provides two implementations of linearizable single writer multiple
 reader multi-word registers:
 \begin{itemize}
-\item Peterson's register algorithm \cite{Pet83}; and
-\item the ReaderField algorithm by Larsson et al \cite{LaGiHaPaTs:ESA04}.
+\item Peterson's register algorithm~\cite{Pet83}; and
+\item the ReaderField algorithm by Larsson et al.~\cite{LaGiHaPaTs:ESA04}.
 \end{itemize}
 
 The atomic register implementations in \nbada\ have the same public
@@ -636,8 +644,6 @@ of them without source code changes.
 generic
    type Element_Type is private;
 package NBAda.Atomic_Single_Writer_Registers is
-
-   pragma Preelaborate (NBAda.Atomic_Single_Writer_Registers);
 
    type Atomic_1_M_Register (No_Of_Readers : Positive) is limited private;
 
@@ -694,7 +700,7 @@ of the composite can be read atomically.
 The \nbada\ package \code{NBAda.Atomic\_Multiwriter\_Snapshots}
 implements the multiple writer per
 component multiple scanner lock-free linearizable snapshot
-algorithm by Jayanti \cite{Jayanti:2005:MWS}. 
+algorithm by Jayanti~\cite{Jayanti:2005:MWS}. 
 
 
 \begin{AdaCode}
@@ -706,8 +712,6 @@ generic
      new Process_Identification (<>);
    --  Process identification.
 package NBAda.Atomic_Multiwriter_Snapshots is
-
-   pragma Elaborate_Body;
 
    type Snapshot (<>) is private;
 
@@ -764,7 +768,7 @@ end NBAda.Atomic_Multiwriter_Snapshots;
 \subsubsection*{The package NBAda.Large\_Primitives}
 
 The package \code{NBAda.Large\_Primitives} implements the lock-free
-load-linked store-conditional algorithm by Michael \cite{Michael:2004:PLFLL}.
+load-linked store-conditional algorithm by Michael~\cite{Michael:2004:PLFLL}.
 
 The algorithm relies on lock-free memory reclamation and the
 implementation uses the \code{NBAda.Hazard\_Pointers} memory
@@ -903,7 +907,9 @@ end NBAda.Lock_Free_Stack;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsubsection*{The package NBAda.Lock\_Free\_Bounded\_Queues}
 
-\cite{TsigasZhang2001:SPAA}
+\nbada\ contains a lock-free bounded size queue data structure based on
+the algorithm by Tsigas and Zhang~\cite{TsigasZhang2001:SPAA}.
+
 The include flag for \cmd{nbada\_config} is
 \cmd{LF\_QUEUES\_BOUNDED}.
 
@@ -918,8 +924,6 @@ generic
    --  NOTE: These two values MUST be different and MUST NOT appear as
    --        data values in the queue.
 package NBAda.Lock_Free_Bounded_Queues is
-
-   pragma Preelaborate (Lock_Free_Bounded_Queues);
 
    type Queue_Size is mod 2**32;
 
@@ -965,11 +969,11 @@ end NBAda.Lock_Free_Bounded_Queues;
 \subsubsection*{The package NBAda.Lock\_Free\_Queues}
 
 \nbada\ contains two lock-free implementations of dynamic queues, one based on
-the algorithm by Michael \cite{Michael:1996:PODC} and one on the algorithm by
-Hoffman et. al. \cite{HoffmanShSh:2007:TBQ}.
+the algorithm by Michael~\cite{Michael:1996:PODC} and one on the algorithm by
+Hoffman et al.~\cite{HoffmanShSh:2007:TBQ}.
 
 The include flag for \cmd{nbada\_config} is for Michael's queue algorithm
-\cmd{LF\_QUEUES\_HPMR} or \cmd{LF\_QUEUES\_EBMR} and for Hoffman et al's queue
+\cmd{LF\_QUEUES\_HPMR} or \cmd{LF\_QUEUES\_EBMR} and for Hoffman et al.'s queue
 algorithm \cmd{LF\_QUEUES\_LFMR} or \cmd{LF\_QUEUES\_LFRC}.
 
 \begin{AdaCode}
@@ -1017,7 +1021,7 @@ end NBAda.Lock_Free_Queues;
 
 The package \code{NBAda.Lock\_Free\_Deques} implements a lock-free
 unbounded double ended queue data structure based on the algorithm by
-Sundell and Tsigas \cite{SunT04c}.
+Sundell and Tsigas~\cite{SunT04c}.
 
 The include flag for \cmd{nbada\_config} is 
 \cmd{LF\_DEQUES\_LFMR} or \cmd{LF\_DEQUES\_LFRC}.
@@ -1133,33 +1137,230 @@ end NBAda.Lock_Free_Priority_Queues;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Dictionaries and Sets}\label{chpt:LFMAPS}\label{chpt:LFSETS}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection*{The package NBAda.Lock\_Free\_Sets}
+
+\nbada\ contains a lock-free dynamic set data structure based on the
+list-based lock-free set algorithm by Michael~\cite{Michael:2002:HPDLF}.
+
+The include flag for \cmd{nbada\_config} is
+\cmd{LF\_SETS\_EBMR} or \cmd{LF\_SETS\_HPMR}.
+
+
 \begin{AdaCode}
 \begin{lstlisting}
+generic
+
+   type Value_Type is private;
+   type Key_Type is private;
+
+   with function "<" (Left, Right : Key_Type) return Boolean is <>;
+   --  Note: Key_Type must be totally ordered.
+
+   with package Process_Ids is
+     new Process_Identification (<>);
+   --  Process identification.
+
+package NBAda.Lock_Free_Sets is
+   type Set_Type is limited private;
+
+   Not_Found       : exception;
+   Already_Present : exception;
+
+   procedure Init    (Set : in out Set_Type);
+
+   procedure Insert  (Into  : in out Set_Type;
+                      Key   : in     Key_Type;
+                      Value : in     Value_Type);
+
+   procedure Delete  (From : in out Set_Type;
+                      Key  : in     Key_Type);
+
+   function  Find    (In_Set : in Set_Type;
+                      Key    : in Key_Type) return Value_Type;
+
+private
+
+      ...  --  Implementation specific
+
+end NBAda.Lock_Free_Sets;
 \end{lstlisting}
 \end{AdaCode}
+
+\paragraph{Application constraints:}
+\begin{itemize}
+\item Any task that calls an operation in
+  \code{NBAda.Lock\_Free\_Sets} must have registered an
+  identity by calling the operation \code{Register} of the appropriate
+  instance of \code{NBAda.Process\_Identification}.
+\item The function \code{"$<$"} on \code{Element\_Type} MUST define a total
+  order.
+\item The operation \code{Init} SHOULD NOT be used when concurrent
+  access to the set object is possible.
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection*{The package NBAda.Lock\_Free\_Dictionaries}
+
+\nbada\ contains a lock-free dynamic dictionary data structure based on the
+lock-free hash table and set algorithms by Michael~\cite{Michael:2002:HPDLF}.
+
+The include flag for \cmd{nbada\_config} is
+\cmd{LF\_DICTIONARIES\_EBMR} or \cmd{LF\_DICTIONARIES\_HPMR}.
+
+
+\begin{AdaCode}
+\begin{lstlisting}
+generic
+
+   type Value_Type is private;
+   type Key_Type is private;
+
+   with function Hash (Key        : Key_Type;
+                       Table_Size : Positive) return Natural;
+
+   with function "<" (Left, Right : Key_Type) return Boolean is <>;
+   --  Note: Key_Type must be totally ordered.
+
+   with package Process_Ids is
+     new NBAda.Process_Identification (<>);
+   --  Process identification.
+
+package NBAda.Lock_Free_Dictionaries is
+
+   type Dictionary_Type (No_Buckets : Natural) is limited private;
+
+   Not_Found       : exception;
+   Already_Present : exception;
+
+   procedure Init    (Dictionary : in out Dictionary_Type);
+
+   procedure Insert  (Into  : in out Dictionary_Type;
+                      Key   : in     Key_Type;
+                      Value : in     Value_Type);
+
+   procedure Delete  (From  : in out Dictionary_Type;
+                      Key   : in     Key_Type);
+
+   function  Lookup  (From  : in Dictionary_Type;
+                      Key   : in Key_Type)
+                     return Value_Type;
+
+private
+
+      ...  --  Implementation specific
+
+end NBAda.Lock_Free_Dictionaries;
+\end{lstlisting}
+\end{AdaCode}
+
+\paragraph{Application constraints:}
+\begin{itemize}
+\item Any task that calls an operation in
+  \code{NBAda.Lock\_Free\_Dictionaries} must have registered an
+  identity by calling the operation \code{Register} of the appropriate
+  instance of \code{NBAda.Process\_Identification}.
+\item The function \code{"$<$"} on \code{Element\_Type} MUST define a total
+  order.
+\item The function \code{Hash} MUST return a value in the
+  range 0 .. \code{Table\_Size} for every value of \code{Key\_Type}.
+\item The operation \code{Init} SHOULD NOT be used when concurrent
+  access to the set object is possible.
+\end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Support Packages}\label{chpt:Support-pkgs}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Memory Reclamation Schemes}\label{chpt:Memory-reclamation}
+\section{Memory Reclamation Algorithms}\label{chpt:Memory-reclamation}
 
+In a concurrent program it is often not obvious when it is safe to
+free a dynamically allocated block of memory (consider e.g. the case
+when another thread holds a local pointer to the object). In the
+absence of a concurrency safe (and lock-free) general garbage
+collector there are efficient lock-free memory reclamation algorithms
+that can solve this problem, provided that the application or data
+structure use them to manage dynamically allocated nodes and the
+references to them.
+
+The memory reclamation algorithms distinguish the managed nodes into
+\emph{live} nodes that are part of the logical state of the user data
+structure and \emph{logically deleted} nodes that are not part of the
+logical state of the user data structure. In some memory reclamation
+algorithms the user data structure is expected to notify the memory
+reclamation algorithm when a node changes state to logically deleted,
+in others in can be deduced from reachability. The memory reclamation
+algorithm will delay the actual reclamation of a logically deleted
+until there cannot be any potentially accesses to the node form any
+thread (using the memory reclamation API).
+
+There are two different levels of service or``protection'' offered by
+memory reclamation algorithms, I define them as follows:
+\begin{itemize}
+\item {\bf Reclamation safe private references}. The
+  memory reclamation algorithm only safeguards nodes referenced by
+  private (task local) references, i.e. does not safeguard shared
+  references. The application needs to take care that the shared
+  references it uses cannot reference logically deleted nodes.  E.g.
+  applications can usually only follow (dereference) references in
+  nodes it \emph{knows} are alive.
+
+\item {\bf Reclamation safe private and shared references}.  The
+  memory reclamation algorithm safeguards all private and shared
+  references. The application can safely dereference any shared
+  reference.
+\end{itemize}
+See~\cite{GiPaSuTs:2008:LFMR} for a more thorough treatment of
+lock-free memory reclamation algorithms and their properties.
+
+\nbada\ includes implementations of several memory reclamation
+algorithms of both service levels.
+
+ 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Safe reclamation of statically linked shared blocks}
+\subsection{Reclamation safe private references}
 
-Dereference of shared reference value, a.k.a link, contained in a
-dereferenced \emph{statically linked} shared block is not guaranteed
-to yield a valid reference value, the obtained value can point to
-a block that has already been reclaimed.
+\nbada\ includes implementations of the Hazard Pointers lock-free
+memory reclamation algorithm by
+Michael~\cite{Michael:2002:SMR,Michael:2004:SMR}
+(\code{NBAda.Hazard\_Pointers}) and the epoch based
+concurrent memory reclamation algorithm described
+in~\cite{Fraser:2004:PLF,Hart:2005:CPMR}
+(\code{NBAda.Epoch\_Based\_Memory\_Reclamation}).
+
+The intention is that the two packages should be API compatible.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsubsection*{The package NBAda.Hazard\_Pointers}
+\subsubsection*{The package NBAda.Hazard\_Pointers and\\
+  the package NBAda.Epoch\_Based\_Memory\_Reclamation}
 
-\cite{Michael:2002:SMR,Michael:2004:SMR}
+\paragraph{Application constraints:}
+\begin{itemize}
+\item Any task that calls an memory reclamation operation must have
+  registered an identity by calling the operation \code{Register} of
+  the appropriate instance of \code{NBAda.Process\_Identification}.
+\remove{
+\item Dereference of shared reference value, a.k.a link, contained in
+  a dereferenced \emph{statically linked} shared block is not
+  guaranteed to yield a valid reference value, the obtained value can
+  point to a block that has already been reclaimed.
+}
+\end{itemize}
 
 \begin{AdaCode}
 \begin{lstlisting}
+generic
+   Max_Number_Of_Dereferences : Natural;
+   --  Maximum number of simultaneously dereferenced links per thread.
+   with package Process_Ids is
+     new Process_Identification (<>);
+   --  Process identification.
+
+   Integrity_Checking : Boolean := False;
+   --  Enable strong integrity checking.
+   Verbose_Debug : Boolean := False;
+   --  Enable verbose debug output.
 package NBAda.Hazard_Pointers is
 
    type Managed_Node_Base is abstract tagged limited private;
@@ -1216,8 +1417,6 @@ package NBAda.Hazard_Pointers is
    private
 
       type Shared_Reference is new Node_Access;
-      --   pragma Atomic (Shared_Reference);
-      --   pragma Volatile (Shared_Reference);
       --  Note: All shared variables of type Shared_Reference MUST be
       --        declared atomic by 'pragma Atomic (Variable_Name);' .
 
@@ -1320,45 +1519,263 @@ end NBAda.Hazard_Pointers;
 \end{lstlisting}
 \end{AdaCode}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsubsection*{The package NBAda.Epoch\_Based\_Memory\_Reclamation}
-
-\cite{Fraser:2004:PLF,Hart:2005:CPMR}
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Safe reclamation of dynamically linked shared blocks}
+\subsection{Reclamation safe private and shared references}
 
-Dereference of a shared reference value, a.k.a link, contained in a
-dereferenced \emph{dynamically linked} shared block is guaranteed
-to yield a valid reference value.
-
+\nbada\ contains implementations of two memory reclamation algorithms
+that safeguards all private and shared references. The two algorithms
+are the lock-free reference counting algorithm SLFRC by Herlihy et
+al.~\cite{Herlihy:2002:ROP,HerlihyLuMaMo:2002:DSLF,HerlihyLuMaMo:2005:NBMM}
+(\code{NBAda.Lock\_Free\_Reference\_Counting}) and the lock-free
+reclamation algorithm Beware \& Cleanup by Gidenstam et
+al.~\cite{GiPaSuTs:2005:LFGC}
+(\code{NBAda.Lock\_Free\_Memory\_Reclamation}).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsubsection*{The package NBAda.Lock\_Free\_Reference\_Counting}
-\cite{Herlihy:2002:ROP,HerlihyLuMaMo:2002:DSLF,HerlihyLuMaMo:2005:NBMM}
+\subsubsection*{The package NBAda.Lock\_Free\_Reference\_Counting and\\
+  the package NBAda.Lock\_Free\_Memory\_Reclamation}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsubsection*{The package NBAda.Lock\_Free\_Memory\_Reclamation}
-\cite{GiPaSuTs:2005:LFGC}
+\paragraph{Application constraints:}
+\begin{itemize}
+\item Any task that calls an memory reclamation operation must have
+  registered an identity by calling the operation \code{Register} of
+  the appropriate instance of \code{NBAda.Process\_Identification}.
+\end{itemize}
+
+\begin{AdaCode}
+\begin{lstlisting}
+generic
+
+   Max_Number_Of_Dereferences : Natural;
+   --  Maximum number of simultaneously dereferenced links per thread.
+
+   Max_Number_Of_Links_Per_Node : Natural;
+   --  Maximum number of links in a shared node.
+
+   with package Process_Ids is
+     new NBAda.Process_Identification (<>);
+   --  Process identification.
+
+   Max_Delete_List_Size         : Natural :=
+     Process_Ids.Max_Number_Of_Processes ** 2 *
+       (Max_Number_Of_Dereferences + Max_Number_Of_Links_Per_Node +
+        Max_Number_Of_Links_Per_Node + 1);
+
+   Clean_Up_Threshold           : Natural := Max_Delete_List_Size;
+   --  The threshold on the delete list size for Clean_Up to be done.
+
+   Scan_Threshold               : Natural := Clean_Up_Threshold;
+   --  The threshold on the delete list size for Scan to be done.
+
+   Collect_Statistics           : Boolean := True;
+   --  Enable some statics gathering.
+
+package NBAda.Lock_Free_Memory_Reclamation is
+
+   type Managed_Node_Base is abstract tagged limited private;
+   --  Inherit from this base type to create your own managed types.
+
+   procedure Dispose  (Node       : access Managed_Node_Base;
+                       Concurrent : in     Boolean) is abstract;
+   --  Dispose should set all shared references inside the node to null.
+
+   procedure Clean_Up (Node : access Managed_Node_Base) is abstract;
+   --  Clean_Up should make sure that none of the shared references
+   --  inside the node points to a node that was deleted at the point
+   --  in time when Clean_Up was called.
+
+   function Is_Deleted (Node : access Managed_Node_Base)
+                       return Boolean;
+   --  Returns true if Delete (see below) has been called on the node.
+
+   procedure Free (Object : access Managed_Node_Base) is abstract;
+   --  Note: Due to some peculiarities of the Ada storage pool
+   --        management managed nodes need to have a dispatching primitive
+   --        operation that calls the instance of Unchecked_Deallocation
+   --        appropriate for the specific node type at hand. Without
+   --        this the wrong instance of Unchecked_Deallocation might get
+   --        called - often with disastrous consequences as it tries return
+   --        the memory to the wrong storage pool.
+
+   type Shared_Reference_Base is limited private;
+   --  For type separation between shared references to different
+   --  managed types derive your own shared reference types from
+   --  Shared_Reference_Base and instantiate the memory management
+   --  operation package below for each of them.
+
+   type Shared_Reference_Base_Access is access all Shared_Reference_Base;
+   type Reference_Set is array (Integer range <>) of
+     Shared_Reference_Base_Access;
+   --  These two types are defined for compatibility with the
+   --  Lock_Free_Reference_Counting package.
+
+   generic
+
+      type Managed_Node is
+        new Managed_Node_Base with private;
+
+      type Shared_Reference is new Shared_Reference_Base;
+      --  All shared variables of type Shared_Reference MUST be declared
+      --  atomic by 'pragma Atomic (Variable_Name);' .
+
+   package Operations is
+
+      type Node_Access is access all Managed_Node;
+      --  Note: There SHOULD NOT be any shared variables of type
+      --        Node_Access.
+
+      type Private_Reference is private;
+      --  Note: There SHOULD NOT be any shared variables of type
+      --        Private_Reference.
+      Null_Reference : constant Private_Reference;
+      function Image (R : Private_Reference) return String;
+
+      function  Dereference (Link : access Shared_Reference)
+                            return Private_Reference;
+
+      procedure Release (Node : in Private_Reference);
+
+      function  "+"     (Node : in Private_Reference)
+                        return Node_Access;
+      function  Deref   (Node : in Private_Reference)
+                        return Node_Access;
+
+      function  Copy (Node : in Private_Reference) return Private_Reference;
+      --  Creates a new Private Reference to Node. Both will need to be
+      --  released.
+
+      function  Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in Private_Reference;
+                                  New_Value : in Private_Reference)
+                                 return Boolean;
+
+      procedure Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in     Private_Reference;
+                                  New_Value : in     Private_Reference);
+
+      procedure Delete  (Node : in Private_Reference);
+
+
+      procedure Store   (Link : access Shared_Reference;
+                         Node : in Private_Reference);
+
+      generic
+         type User_Node_Access is access Managed_Node;
+         --  Select an appropriate (preferably non-blocking) storage
+         --  pool by the "for User_Node_Access'Storage_Pool use ..."
+         --  construct.
+         --  Note: The nodes allocated in this way must have an
+         --        implementation of Free that use the same storage pool.
+      function Create return Private_Reference;
+      --  Creates a new User_Node and returns a safe reference to it.
+
+      --  Private (and shared) references can be tagged with a mark.
+      --  NOTE: A marked Null_Reference is not equal (=) to an unmarked.
+      procedure Mark      (Node : in out Private_Reference);
+
+      function  Mark      (Node : in     Private_Reference)
+                          return Private_Reference;
+      procedure Unmark    (Node : in out Private_Reference);
+      function  Unmark    (Node : in     Private_Reference)
+                          return Private_Reference;
+      function  Is_Marked (Node : in     Private_Reference)
+                          return Boolean;
+
+      function  Is_Marked (Node : in     Shared_Reference)
+                          return Boolean;
+
+      function "=" (Left  : in     Private_Reference;
+                    Right : in     Private_Reference) return Boolean;
+      function "=" (Link : in     Shared_Reference;
+                    Ref  : in     Private_Reference) return Boolean;
+      function "=" (Ref  : in     Private_Reference;
+                    Link : in     Shared_Reference) return Boolean;
+      --  It is possible to compare a reference to the current value of a link.
+
+      ------------------------------------------------------------------------
+      --  Unsafe operations.
+      --  These SHOULD only be use when the user algorithm guarantees
+      --  the absence of ABA-problems.
+      --  In such algorithms the use of these operations in some particular
+      --  situations could allow some performance improving optimizations.
+      ------------------------------------------------------------------------
+
+      type Unsafe_Reference_Value is private;
+      --  Note: An Unsafe_Reference_Value does not keep a claim to any
+      --        node and can therefore only be used where ABA safety is
+      --        ensured by other means. It cannot be dereferenced.
+
+      function  Unsafe_Read (Link : access Shared_Reference)
+                            return Unsafe_Reference_Value;
+
+      function  Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in Unsafe_Reference_Value;
+                                  New_Value : in Private_Reference)
+                                 return Boolean;
+      function  Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in Unsafe_Reference_Value;
+                                  New_Value : in Unsafe_Reference_Value)
+                                 return Boolean;
+      procedure Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in     Unsafe_Reference_Value;
+                                  New_Value : in     Private_Reference);
+      procedure Compare_And_Swap (Link      : access Shared_Reference;
+                                  Old_Value : in     Unsafe_Reference_Value;
+                                  New_Value : in     Unsafe_Reference_Value);
+
+      function  Is_Marked (Node : in     Unsafe_Reference_Value)
+                          return Boolean;
+
+      function  Mark      (Node : in     Unsafe_Reference_Value)
+                          return Unsafe_Reference_Value;
+
+      function "=" (Val : in     Unsafe_Reference_Value;
+                    Ref : in     Private_Reference) return Boolean;
+      function "=" (Ref : in     Private_Reference;
+                    Val : in     Unsafe_Reference_Value) return Boolean;
+
+      function "=" (Link : in     Shared_Reference;
+                    Ref  : in     Unsafe_Reference_Value) return Boolean;
+      function "=" (Ref  : in     Unsafe_Reference_Value;
+                    Link : in     Shared_Reference) return Boolean;
+
+   private
+
+      ...  --  Implementation details.
+
+   end Operations;
+
+   procedure Print_Statistics;
+
+private
+
+   ...  --  Implementation details.
+
+end NBAda.Lock_Free_Memory_Reclamation;
+\end{lstlisting}
+\end{AdaCode}
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Memory Allocation Pools}\label{chpt:Memory-allocation}
 
-\cite{Dice:2002:MLFM,Michael:2004:SLFDMA,GiPaTs:2005:AMLF,SchneiderAnNi:2006:SLCMMA}
+%\cite{Dice:2002:MLFM,Michael:2004:SLFDMA,GiPaTs:2005:AMLF,SchneiderAnNi:2006:SLCMMA}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsubsection*{The package NBAda.Lock\_Free\_Fixed\_Size\_Storage\_Pools}
-\cite{IBM:1983}
+
+\nbada\ contains a generic fixed size lock-free storage pool based on the 
+lock-free free-list algorithm in~\cite{IBM:1983}.
+
+\paragraph{Application constraints:}
+\begin{itemize}
+\item A pool instance MUST NOT be used for object that have storage
+  size larger than \code{Block\_Size}.
+\end{itemize}
 
 \begin{AdaCode}
 \begin{lstlisting}
-with System.Storage_Elements;
-with System.Storage_Pools;
-
 package NBAda.Lock_Free_Fixed_Size_Storage_Pools is
-
-   pragma Preelaborate (NBAda.Lock_Free_Fixed_Size_Storage_Pools);
 
    type Block_Count is range 0 .. 2**16 - 1;
 
@@ -1403,6 +1820,52 @@ end NBAda.Lock_Free_Fixed_Size_Storage_Pools;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsubsection*{The package NBAda.Lock\_Free\_Growing\_Storage\_Pools}
 
+The growing storage pool in \nbada\ automatically grows in size when
+the memory demand warrants it. It never shirks, however.
+
+\paragraph{Application constraints:}
+\begin{itemize}
+\item A pool instance MUST NOT be used for object that have storage
+  size larger than \code{Block\_Size}.
+\end{itemize}
+
+\begin{AdaCode}
+\begin{lstlisting}
+package NBAda.Lock_Free_Growing_Storage_Pools is
+
+   type Lock_Free_Storage_Pool
+     (Block_Size : System.Storage_Elements.Storage_Count) is
+     new System.Storage_Pools.Root_Storage_Pool with private;
+
+   procedure Allocate
+     (Pool                     : in out Lock_Free_Storage_Pool;
+      Storage_Address          :    out System.Address;
+      Size_In_Storage_Elements : in     System.Storage_Elements.Storage_Count;
+      Alignment                : in     System.Storage_Elements.Storage_Count);
+
+   procedure Deallocate
+     (Pool                     : in out Lock_Free_Storage_Pool;
+      Storage_Address          : in     System.Address;
+      Size_In_Storage_Elements : in     System.Storage_Elements.Storage_Count;
+      Alignment                : in     System.Storage_Elements.Storage_Count);
+
+   function Storage_Size (Pool : Lock_Free_Storage_Pool)
+                         return System.Storage_Elements.Storage_Count;
+
+   function Validate (Pool : Lock_Free_Storage_Pool)
+                     return Natural;
+
+   Storage_Exhausted : exception;
+   Implementation_Error : exception;
+
+private
+
+   ...  --  Implementation details.
+
+end NBAda.Lock_Free_Growing_Storage_Pools;
+\end{lstlisting}
+\end{AdaCode}
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1413,11 +1876,7 @@ end NBAda.Lock_Free_Fixed_Size_Storage_Pools;
 
 \begin{AdaCode}
 \begin{lstlisting}
-with System;
-
 package NBAda.Primitives is
-
-   pragma Preelaborate (Primitives);
 
    Not_Implemented : exception;
 
