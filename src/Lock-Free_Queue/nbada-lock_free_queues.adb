@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Lock-free Queue - An implementation of Michael and Scott's lock-free queue.
---  Copyright (C) 2006 - 2007  Anders Gidenstam
+--  Copyright (C) 2006 - 2011  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -17,13 +17,17 @@
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 -------------------------------------------------------------------------------
---                              -*- Mode: Ada -*-
---  Filename        : lock_free_queues.adb
+--  Filename        : nbada-lock_free_queues.adb
 --  Description     : An Ada implementation of Michael and Scott's
---                    lock-free queue algorithm.
+--                    lock-free queue algorithm. Based on
+--                    M. Michael and M. Scott,
+--                    "Simple, fast, and practical non-blocking and
+--                     blocking concurrent queue algorithms",
+--                    Proceedings of the 15th Annual ACM Symposium on
+--                    Principles of Distributed Computing (PODC 1996),
+--                    pages 267 - 275, ACM, 1996.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Nov 28 14:35:35 2006
---  $Id: nbada-lock_free_queues.adb,v 1.5 2008/02/20 14:13:16 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -55,7 +59,7 @@ package body NBAda.Lock_Free_Queues is
    ----------------------------------------------------------------------------
    procedure Init    (Queue : in out Queue_Type) is
       use MR_Ops;
-      Node :  constant Private_Reference := New_Node;
+      Node :  constant Private_Reference := New_Node (Queue.MM);
    begin
       Store (Queue.Head'Access, Node);
       Store (Queue.Tail'Access, Node);
@@ -69,11 +73,14 @@ package body NBAda.Lock_Free_Queues is
       loop
          declare
             Head : constant Private_Reference :=
-              Dereference (From.Head'Access);
+              Dereference (MM   => From.MM,
+                           Link => From.Head'Access);
             Tail : constant Private_Reference :=
-              Dereference (From.Tail'Access);
+              Dereference (MM   => From.MM,
+                           Link => From.Tail'Access);
             Next : constant Private_Reference :=
-              Dereference ("+" (Head).Next'Access);
+              Dereference (MM   => From.MM,
+                           Link => "+" (Head).Next'Access);
          begin
             if Head = From.Head then
                if Head = Tail then
@@ -96,6 +103,7 @@ package body NBAda.Lock_Free_Queues is
                                          Old_Value => Head,
                                          New_Value => Next)
                      then
+                        Rescan  (Next);
                         Release (Next);
                         Release (Tail);
                         Delete  (Head);
@@ -116,16 +124,18 @@ package body NBAda.Lock_Free_Queues is
    procedure Enqueue (On      : in out Queue_Type;
                       Element : in     Element_Type) is
       use MR_Ops;
-      Node :  constant Private_Reference := New_Node;
+      Node :  constant Private_Reference := New_Node (On.MM);
    begin
       "+" (Node).Element := Element;
 
       loop
          declare
             Tail : constant Private_Reference :=
-              Dereference (On.Tail'Access);
+              Dereference (MM   => On.MM,
+                           Link => On.Tail'Access);
             Next : constant Private_Reference :=
-              Dereference ("+" (Tail).Next'Access);
+              Dereference (MM   => On.MM,
+                           Link => "+" (Tail).Next'Access);
          begin
             if Tail = On.Tail then
                if Next = Null_Reference then

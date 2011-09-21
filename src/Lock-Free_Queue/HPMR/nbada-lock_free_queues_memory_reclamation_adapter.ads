@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Lock-free Queue - An implementation of Michael and Scott's lock-free queue.
---  Copyright (C) 2007  Anders Gidenstam
+--  Copyright (C) 2007 - 2011  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -19,19 +19,17 @@
 -------------------------------------------------------------------------------
 pragma Style_Checks (Off);
 -------------------------------------------------------------------------------
---                              -*- Mode: Ada -*-
 --  Filename        : nbada-lock_free_queues_memory_reclamation_adapter.ads
 --  Description     : An Ada implementation of Michael and Scott's
 --                    lock-free queue algorithm.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Sep  5 13:50:28 2007
---  $Id: nbada-lock_free_queues_memory_reclamation_adapter.ads,v 1.1 2007/09/05 12:19:47 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
-with NBAda.Hazard_Pointers;
+with NBAda.Memory_Reclamation.Hazard_Pointers;
 with NBAda.Process_Identification;
 
 generic
@@ -42,8 +40,9 @@ generic
 
 package NBAda.Lock_Free_Queues_Memory_Reclamation_Adapter is
 
-   package Memory_Reclamation is new NBAda.Hazard_Pointers
+   package Memory_Reclamation is new NBAda.Memory_Reclamation.Hazard_Pointers
      (Max_Number_Of_Dereferences => 3,
-      Process_Ids                => Process_Ids);
+      Process_Ids                => Process_Ids,
+      Integrity_Checking         => True);
 
 end NBAda.Lock_Free_Queues_Memory_Reclamation_Adapter;

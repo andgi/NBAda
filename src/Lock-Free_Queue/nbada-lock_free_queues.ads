@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Lock-free Queue - An implementation of Michael and Scott's lock-free queue.
---  Copyright (C) 2006 - 2007  Anders Gidenstam
+--  Copyright (C) 2006 - 2011  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -17,18 +17,23 @@
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 -------------------------------------------------------------------------------
---                              -*- Mode: Ada -*-
---  Filename        : lock_free_queues.ads
+--  Filename        : nbada-lock_free_queues.ads
 --  Description     : An Ada implementation of Michael and Scott's
---                    lock-free queue algorithm.
+--                    lock-free queue algorithm. Based on
+--                    M. Michael and M. Scott,
+--                    "Simple, fast, and practical non-blocking and
+--                     blocking concurrent queue algorithms",
+--                    Proceedings of the 15th Annual ACM Symposium on
+--                    Principles of Distributed Computing (PODC 1996),
+--                    pages 267 - 275, ACM, 1996.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Nov 28 10:55:38 2006
---  $Id: nbada-lock_free_queues.ads,v 1.6 2007/09/05 12:19:47 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
 with NBAda.Process_Identification;
+with NBAda.Interfaces.Exceptions;
 with NBAda.Lock_Free_Queues_Memory_Reclamation_Adapter;
 
 generic
@@ -47,7 +52,8 @@ package NBAda.Lock_Free_Queues is
    ----------------------------------------------------------------------------
    type Queue_Type is limited private;
 
-   Queue_Empty : exception;
+   Queue_Empty : exception
+     renames NBAda.Interfaces.Exceptions.Empty;
 
    procedure Init    (Queue : in out Queue_Type);
    function  Dequeue (From : access Queue_Type) return Element_Type;
@@ -60,7 +66,7 @@ private
       new Lock_Free_Queues_Memory_Reclamation_Adapter (Process_Ids);
    package MR renames MR_Adapter.Memory_Reclamation;
 
-   type Queue_Node_Reference is new MR.Shared_Reference_Base;
+   type Queue_Node_Reference is new Memory_Reclamation.Shared_Reference_Base;
 
    type Queue_Node is
      new MR.Managed_Node_Base with
@@ -77,11 +83,12 @@ private
       Shared_Reference => Queue_Node_Reference);
 
    type Queue_Type is
-     limited record
-        Head : aliased Queue_Node_Reference;
-        pragma Atomic (Head);
-        Tail : aliased Queue_Node_Reference;
-        pragma Atomic (Tail);
-     end record;
+      limited record
+         MM   : MR_Ops.Memory_Manager;
+         Head : aliased Queue_Node_Reference;
+         pragma Atomic (Head);
+         Tail : aliased Queue_Node_Reference;
+         pragma Atomic (Tail);
+      end record;
 
 end NBAda.Lock_Free_Queues;
