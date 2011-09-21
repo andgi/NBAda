@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Lock-free Stack - A lock-free stack using lock-free memory reclamation.
---  Copyright (C) 2005 - 2007  Anders Gidenstam
+--  Copyright (C) 2005 - 2011  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -17,13 +17,11 @@
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 -------------------------------------------------------------------------------
---                              -*- Mode: Ada -*-
 --  Filename        : lock_free_stack.adb
 --  Description     : A lock-free stack using hazard pointers for
 --                    memory management and ABA prevention.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Sep 23 18:15:38 2005
---  $Id: nbada-lock_free_stack.adb,v 1.6 2007/09/07 11:45:42 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -45,25 +43,30 @@ package body NBAda.Lock_Free_Stack is
    type New_Stack_Node_Access is access Stack_Node;
    for New_Stack_Node_Access'Storage_Pool use Node_Pool;
 
+   function Create_Node is new MR_Ops.Create
+     (User_Node_Access => New_Stack_Node_Access);
+
    ----------------------------------------------------------------------------
    procedure Push (On      : in out Stack_Type;
                    Element : in     Element_Type) is
       use MR_Ops;
-      New_Node : constant New_Stack_Node_Access := new Stack_Node;
+      New_Node : Private_Reference := Create_Node (On.MM);
    begin
-      New_Node.Element := Element;
+      "+" (New_Node).Element := Element;
       loop
          declare
-            Old_Head : constant Node_Access := Dereference (On.Head'Access);
+            Old_Head : constant Private_Reference :=
+              Dereference (On.MM,
+                           On.Head'Access);
          begin
-            New_Node.Next := Stack_Node_No_Access (Old_Head);
-
+            Store ("+" (New_Node).Next'Access, Old_Head);
             if
-              Boolean_Compare_And_Swap (Shared    => On.Head'Access,
-                                        Old_Value => Old_Head,
-                                        New_Value => Node_Access (New_Node))
+              Compare_And_Swap (Link      => On.Head'Access,
+                                Old_Value => Old_Head,
+                                New_Value => New_Node)
             then
                Release (Old_Head);
+               Release (New_Node);
                return;
             end if;
 
@@ -76,34 +79,34 @@ package body NBAda.Lock_Free_Stack is
    procedure Pop  (From    : in out Stack_Type;
                    Element :    out Element_Type) is
       use MR_Ops;
+      use MR_Ops.Basic_Reference_Operations;
    begin
       loop
          declare
-            use type Node_Access;
-            Old_Head : constant Node_Access := Dereference (From.Head'Access);
+            Old_Head : constant Private_Reference :=
+              Dereference (From.MM, From.Head'Access);
          begin
-            if Old_Head /= null then
-
+            if Old_Head /= Null_Reference then
                if
-                 Boolean_Compare_And_Swap (Shared    => From.Head'Access,
-                                           Old_Value => Old_Head,
-                                           New_Value =>
-                                             Node_Access (Old_Head.Next))
+                 Compare_And_Swap
+                 (Link      => From.Head'Access,
+                  Old_Value => Old_Head,
+                  New_Value => Unsafe_Read ("+" (Old_Head).Next'Access))
                then
                   --  NOTE: Old_Head.Next is guaranteed to be up-to-date when
                   --  the CAS succeeds because the only way for concurrent
                   --  operations to update Old_Head.Next is to pop the node
                   --  Old_Head and then push it(/a new node at the same memory
-                  --  address) on the stack again. The hazard pointer scheme
-                  --  guarantees that this cannot happen before we Release our
-                  --  reference to Old_Head.
+                  --  address) on the stack again. The memroy reclamation
+                  --  scheme guarantees that this cannot happen before we
+                  --  Release our reference to Old_Head.
 
-                  Element := Old_Head.Element;
+                  Element := "+" (Old_Head).Element;
                   Delete (Old_Head);
                   return;
+               else
+                  Release (Old_Head);
                end if;
-
-               Release (Old_Head);
             else
                Release (Old_Head);
                raise Stack_Empty;
@@ -130,11 +133,12 @@ package body NBAda.Lock_Free_Stack is
       Result : Element_Type;
    begin
       declare
-         use type Node_Access;
-         Head : constant Node_Access := Dereference (From.Head'Access);
+         Head : constant Private_Reference :=
+           Dereference (From.MM,
+                        From.Head'Access);
       begin
-         if Head /= null then
-            Result := Head.Element;
+         if Head /= Null_Reference then
+            Result := "+" (Head).Element;
             Release (Head);
             return Result;
          else
