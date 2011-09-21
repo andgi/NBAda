@@ -20,8 +20,7 @@
 -------------------------------------------------------------------------------
 pragma Style_Checks (Off);
 -------------------------------------------------------------------------------
---                              -*- Mode: Ada -*-
---  Filename        : nbada-lock_free_queues.ads
+--  Filename        : nbada-lock_free_bags.ads
 --  Description     : A lock-free bag algorithm based on
 --                    H. Sundell, A. Gidenstam, M. Papatriantafilou and
 --                    P. Tsigas,
@@ -80,7 +79,8 @@ private
      array (Element_Index range 0 .. Block_Size - 1) of aliased Element_Type;
    --  pragma Atomic_Components(Atomic_Element_Array);
 
-   type Bag_Node_Reference is new MR.Shared_Reference_Base;
+   type Bag_Node_Reference is
+     new NBAda.Memory_Reclamation.Shared_Reference_Base;
    type Bitfield is new Primitives.Standard_Unsigned;
 
    type Bag_Node is
@@ -102,6 +102,7 @@ private
    type Thread_Shared is
       limited record
          Head : aliased Bag_Node_Reference;
+         pragma Atomic (Head);
       end record;
    type Thread_Shared_Access is access all Thread_Shared;
 
@@ -126,9 +127,10 @@ private
                                         Process_Ids);
 
    type Bag_Type is
-     limited record
-        Thread_Shared : TSS.Storage;
-        Thread_Local  : TLS.Storage;
-     end record;
+      limited record
+         MM            : MR_Ops.Memory_Manager;
+         Thread_Shared : TSS.Storage;
+         Thread_Local  : TLS.Storage;
+      end record;
 
 end NBAda.Lock_Free_Bags;

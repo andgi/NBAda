@@ -28,13 +28,13 @@ pragma Style_Checks (Off);
 --                    in Algorithms and Architectures (SPAA 2011),
 --                    pages 335 - 344, ACM, 2011. 
 --  Author          : Anders Gidenstam
---  Created On      : Thu Aug 02 16:25:00 2011
+--  Created On      : Thu Sep 21 11:30:00 2011
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
-with NBAda.Memory_Reclamation.Hazard_Pointers;
+with NBAda.Memory_Reclamation.Epoch_Based_Memory_Reclamation;
 with NBAda.Process_Identification;
 
 generic
@@ -45,10 +45,11 @@ generic
 
 package NBAda.Lock_Free_Bags_Memory_Reclamation_Adapter is
 
-   package Memory_Reclamation is new NBAda.Memory_Reclamation.Hazard_Pointers
-     (Max_Number_Of_Dereferences => 6,
+   package Memory_Reclamation is
+      new NBAda.Memory_Reclamation.Epoch_Based_Memory_Reclamation
+     (Epoch_Update_Threshold     => 100,
+      --  Suitable number for epoch-based reclamation.
       Process_Ids                => Process_Ids,
-      Integrity_Checking         => False,
-      Verbose_Debug              => False);
+      Integrity_Checking         => False);
 
 end NBAda.Lock_Free_Bags_Memory_Reclamation_Adapter;

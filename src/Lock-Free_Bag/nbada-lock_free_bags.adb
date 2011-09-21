@@ -20,8 +20,7 @@
 -------------------------------------------------------------------------------
 pragma Style_Checks (Off);
 -------------------------------------------------------------------------------
---                              -*- Mode: Ada -*-
---  Filename        : nbada-lock_free_queues.adb
+--  Filename        : nbada-lock_free_bags.adb
 --  Description     : A lock-free bag algorithm based on
 --                    H. Sundell, A. Gidenstam, M. Papatriantafilou and
 --                    P. Tsigas,
@@ -58,6 +57,12 @@ package body NBAda.Lock_Free_Bags is
    function New_Node is new MR_Ops.Create
      (User_Node_Access => New_Bag_Node_Access);
 
+   ----------------------------------------------------------------------------
+   package Reference_Marks is
+      new MR_Ops.Basic_Reference_Operations.Reference_Mark_Operations
+          (MR_Ops.Private_Reference);
+   use Reference_Marks;
+
    function Compare_And_Swap is
       new Primitives.Standard_Boolean_Compare_And_Swap
       (Element => Element_Type);
@@ -84,7 +89,8 @@ package body NBAda.Lock_Free_Bags is
    function  Notify_Check (Block : in MR_Ops.Private_Reference)
                           return Boolean;
 
-   procedure Set_Mark_A (Block : in MR_Ops.Private_Reference);
+   procedure Set_Mark_A (Bag   : access Bag_Type;
+                         Block : in     MR_Ops.Private_Reference);
 
    ----------------------------------------------------------------------------
    --  Public operations
@@ -95,13 +101,13 @@ package body NBAda.Lock_Free_Bags is
                              Result : access Element_Type) return Boolean is
       use MR_Ops;
       Local : constant TLS.Element_Access := TLS.Get (From.Thread_Local);
-      Block : Private_Reference := Local.Own_Block;
+      Block : MR_Ops.Private_Reference := Local.Own_Block;
       Head  : Element_Index     := Local.Own_Index - 1;
    begin
       loop
          if
            Block = Null_Reference or else
-           (Head < 0 and then "+" (Block).Next = Mark (Null_Reference, A))
+           (Head < 0 and then Mark (Null_Reference, A) = "+" (Block).Next)
          then
             --  Attempt to steal an element from another thread.
             declare
@@ -141,22 +147,23 @@ package body NBAda.Lock_Free_Bags is
                Shared : constant TSS.Element_Access :=
                  TSS.Get (From.Thread_Shared);
             begin
-               Set_Mark_A (Block);
+               Set_Mark_A (From, Block);
                loop
                   declare
-                     Next : constant Private_Reference :=
-                       Dereference ("+" (Block).Next'Access);
+                     Next : constant MR_Ops.Private_Reference :=
+                       Dereference (MM   => From.MM,
+                                    Link => "+" (Block).Next'Access);
                   begin
                      if Is_Marked (Next, B) then
                         --  Help setting mark1 on the block Next.
-                        Set_Mark_A (Next);
+                        Set_Mark_A (From, Next);
                      end if;
                      if Is_Marked (Next, A) then
                         Notify_All (Next);
                         if
-                          Compare_And_Swap (Shared.Head'Access,
-                                            Old_Value => Block,
-                                            New_Value => Unmark (Next))
+                          MR_Ops.Compare_And_Swap (Shared.Head'Access,
+                                                   Old_Value => Block,
+                                                   New_Value => Unmark (Next))
                         then
                            Store ("+" (Block).Next'Access,
                                   Mark (Null_Reference, A));
@@ -164,7 +171,8 @@ package body NBAda.Lock_Free_Bags is
                            Rescan (Next);
                            Block := Unmark (Next);
                         else
-                           Block := Dereference (Shared.Head'Access);
+                           Block := Dereference (MM   => From.MM,
+                                                 Link => Shared.Head'Access);
                         end if;
                      else
                         exit;
@@ -205,7 +213,7 @@ package body NBAda.Lock_Free_Bags is
          declare
             Shared : constant TSS.Element_Access := TSS.Get (On.Thread_Shared);
          begin
-            Local.Own_Block := New_Node;
+            Local.Own_Block := New_Node (On.MM);
             Store (Shared.Head'Access, Local.Own_Block);
          end;
       end if;
@@ -221,7 +229,7 @@ package body NBAda.Lock_Free_Bags is
                     TSS.Get (On.Thread_Shared);
                   Old_Block : Private_Reference        := Block;
                begin
-                  Block := New_Node;
+                  Block := New_Node (On.MM);
                   Store ("+" (Block).Next'Access, Old_Block);
                   Store (Shared.Head'Access, Block);
                   Local.Own_Block := Block;
@@ -278,12 +286,12 @@ package body NBAda.Lock_Free_Bags is
       Validate (Local.Own_Block,
                 "nbada-lock_free_bags.adb " & Message &
                 "the reference Local.Prev_Steal_Block is invalid.");
-      if MR.Number_Of_HPs_Held > 3 then
-         Ada.Text_IO.Put_Line
-           ("nbada-lock_free_bags.adb " & Message &
-            "Too many HPs held, " &
-            Natural'Image (MR.Number_Of_HPs_Held) & ".");
-      end if;
+      --  if MR.Number_Of_HPs_Held > 3 then
+      --     Ada.Text_IO.Put_Line
+      --       ("nbada-lock_free_bags.adb " & Message &
+      --        "Too many HPs held, " &
+      --        Natural'Image (MR.Number_Of_HPs_Held) & ".");
+      --  end if;
    end Verify_HP;
 
    ----------------------------------------------------------------------------
@@ -305,7 +313,8 @@ package body NBAda.Lock_Free_Bags is
               TSS.Get (From.Thread_Shared, Local.Steal_Thread);
          begin
             if Shared /= null then
-               Block             := Dereference (Shared.Head'Access);
+               Block             := Dereference (MM   => From.MM,
+                                                 Link => Shared.Head'Access);
                Local.Steal_Block := Block;
                Local.Steal_Index := 0;
                Head              := 0;
@@ -382,7 +391,8 @@ package body NBAda.Lock_Free_Bags is
          Release (Local.Prev_Steal_Block);
          Local.Prev_Steal_Block := Null_Reference;
          Release (Block);
-         Block := Dereference (Shared.Head'Access);
+         Block := Dereference (MM   => From.MM,
+                               Link => Shared.Head'Access);
       end Reset;
 
       Old    : MR_Ops.Private_Reference    := Block;
@@ -390,7 +400,8 @@ package body NBAda.Lock_Free_Bags is
       loop
          if Old = Null_Reference then
             if Shared /= null then
-               return Dereference (Shared.Head'Access);
+               return Dereference (MM   => From.MM,
+                                   Link => Shared.Head'Access);
             else
                return Null_Reference;
             end if;
@@ -398,11 +409,12 @@ package body NBAda.Lock_Free_Bags is
          else
             declare
                Next         : constant Private_Reference :=
-                 Dereference ("+" (Old).Next'Access);
+                 Dereference (MM   => From.MM,
+                              Link => "+" (Old).Next'Access);
                Move_Forward : Boolean := True;
             begin
                if Is_Marked (Next, B) then
-                  Set_Mark_A (Next);
+                  Set_Mark_A (From, Next);
                end if;
                if
                  Local.Prev_Steal_Block = Null_Reference or
@@ -438,7 +450,8 @@ package body NBAda.Lock_Free_Bags is
                         Prev_Next : Private_Reference := Old;
                      begin
                         if
-                          Is_Marked ("+" (Local.Prev_Steal_Block).Next, B)
+                          Is_Marked ("+" (Local.Prev_Steal_Block).Next'Access,
+                                     B)
                         then
                            Mark (Prev_Next, B);
                         end if;
@@ -466,7 +479,7 @@ package body NBAda.Lock_Free_Bags is
                         Old_Value => Old,
                         New_Value => Mark (Old, B))
                      then
-                        Set_Mark_A (Old);
+                        Set_Mark_A (From, Old);
                      else
                         Reset (Old);
                      end if;
@@ -517,6 +530,7 @@ package body NBAda.Lock_Free_Bags is
       end loop;
    end Notify_Start;
 
+   ----------------------------------------------------------------------------
    function Notify_Check (Block : in MR_Ops.Private_Reference)
                          return Boolean is
       use MR_Ops;
@@ -526,13 +540,15 @@ package body NBAda.Lock_Free_Bags is
    end Notify_Check;
 
    ----------------------------------------------------------------------------
-   procedure Set_Mark_A (Block : in MR_Ops.Private_Reference) is
+   procedure Set_Mark_A (Bag   : access Bag_Type;
+                         Block : in     MR_Ops.Private_Reference) is
       use MR_Ops;
    begin
       loop
          declare
             Next : constant Private_Reference :=
-              Dereference ("+" (Block).Next'Access);
+              Dereference (MM   => Bag.MM,
+                           Link => "+" (Block).Next'Access);
          begin
             if
               Unmark (Next) = Null_Reference or else
@@ -562,7 +578,7 @@ package body NBAda.Lock_Free_Bags is
         To_New_Bag_Node_Access (MR_Ops.Node_Access (Node));
       --  This is dangerous in the general case but here we know
       --  for sure that we have allocated all the nodes of the
-      --  Queue_Node type from the New_Queue_Node_Access pool.
+      --  Bag_Node type from the New_Bag_Node_Access pool.
    begin
       Reclaim (X);
    end Free;
