@@ -2,7 +2,7 @@
 --  Lock-Free Sets - An implementation of the lock-free set algorithm by
 --                   M. Michael.
 --
---  Copyright (C) 2006 - 2007  Anders Gidenstam
+--  Copyright (C) 2006 - 2011  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -21,8 +21,7 @@
 -------------------------------------------------------------------------------
 pragma Style_Checks (Off);
 -------------------------------------------------------------------------------
---                              -*- Mode: Ada -*-
---  Filename        : lock_free_sets.adb
+--  Filename        : nbada-lock_free_sets.adb
 --  Description     : Lock-free list-based sets based on Maged Michael,
 --                    "High Performance Dynamic Lock-Free Hash Tables and
 --                    List-Based Sets", The 14th Annual ACM Symposium on
@@ -30,7 +29,6 @@ pragma Style_Checks (Off);
 --                    pages 73-82, August 2002.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Mar 10 12:23:47 2006
---  $Id: nbada-lock_free_sets.adb,v 1.7 2008/02/20 20:03:45 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -55,12 +53,20 @@ package body NBAda.Lock_Free_Sets is
    type New_List_Node_Access is access List_Node;
    for New_List_Node_Access'Storage_Pool use Node_Pool;
 
-   function Create_List_Node is new MRS_Ops.Create (New_List_Node_Access);
+   function Create_List_Node is new MR_Ops.Create (New_List_Node_Access);
+
+   ----------------------------------------------------------------------------
+   package Reference_Marks is
+      new MR_Ops.Basic_Reference_Operations.Reference_Mark_Operations
+     (MR_Ops.Private_Reference);
+   use Reference_Marks;
+
+   subtype Private_Reference is MR_Ops.Private_Reference;
 
    procedure Find (Set             : in     Set_Type;
                    Key             : in     Key_Type;
                    Found           :    out Boolean;
-                   Prev, Cur, Next :    out List_Node_Access);
+                   Prev, Cur, Next :    out Private_Reference);
    --  Note: Prev, Cur, Next are Null_Reference or valid references that
    --        must be released. It is safe to Release a Null_Reference.
 
@@ -70,8 +76,8 @@ package body NBAda.Lock_Free_Sets is
 
    ----------------------------------------------------------------------------
    procedure Init    (Set : in out Set_Type) is
-      use MRS_Ops;
-      Node : constant List_Node_Access := Create_List_Node;
+      use MR_Ops;
+      Node : constant Private_Reference := Create_List_Node (Set.MM);
    begin
       Store (Set.Head'Access, Node);
       Release (Node);
@@ -81,14 +87,14 @@ package body NBAda.Lock_Free_Sets is
    procedure Insert  (Into  : in out Set_Type;
                       Key   : in     Key_Type;
                       Value : in     Value_Type) is
-      use MRS_Ops;
-      Node : constant List_Node_Access := Create_List_Node;
+      use MR_Ops;
+      Node : constant Private_Reference := Create_List_Node (Into.MM);
    begin
       "+"(Node).Key   := Key;
       "+"(Node).Value := Value;
       loop
          declare
-            Prev, Cur, Next : List_Node_Access;
+            Prev, Cur, Next : Private_Reference;
             Found           : Boolean;
          begin
             begin
@@ -172,11 +178,11 @@ package body NBAda.Lock_Free_Sets is
    ----------------------------------------------------------------------------
    procedure Delete  (From : in out Set_Type;
                       Key  : in     Key_Type) is
-      use MRS_Ops;
+      use MR_Ops;
    begin
       loop
          declare
-            Prev, Cur, Next : List_Node_Access;
+            Prev, Cur, Next : Private_Reference;
             Found           : Boolean;
          begin
             Find (From, Key,
@@ -213,8 +219,8 @@ package body NBAda.Lock_Free_Sets is
    ----------------------------------------------------------------------------
    function  Find    (In_Set : in Set_Type;
                       Key    : in Key_Type) return Value_Type is
-      use MRS_Ops;
-      Prev, Cur, Next : List_Node_Access;
+      use MR_Ops;
+      Prev, Cur, Next : Private_Reference;
       Found           : Boolean;
    begin
       Find (In_Set, Key,
@@ -248,11 +254,11 @@ package body NBAda.Lock_Free_Sets is
         Ada.Unchecked_Deallocation (List_Node,
                                     New_List_Node_Access);
       function To_New_List_Node_Access is new
-        Ada.Unchecked_Conversion (MRS_Ops.Node_Access,
+        Ada.Unchecked_Conversion (MR_Ops.Node_Access,
                                   New_List_Node_Access);
 
       X : New_List_Node_Access :=
-        To_New_List_Node_Access (MRS_Ops.Node_Access (Node));
+        To_New_List_Node_Access (MR_Ops.Node_Access (Node));
       --  This is dangerous in the general case but here we know
       --  for sure that we have allocated all the nodes of the
       --  List_Node type from the New_List_Node_Access pool.
@@ -264,8 +270,8 @@ package body NBAda.Lock_Free_Sets is
    procedure Find (Set             : in     Set_Type;
                    Key             : in     Key_Type;
                    Found           :    out Boolean;
-                   Prev, Cur, Next :    out List_Node_Access) is
-      use MRS_Ops;
+                   Prev, Cur, Next :    out Private_Reference) is
+      use MR_Ops;
 
       type Mutable_Access is access all List_Node_Reference;
       type Immutable_Access is access constant List_Node_Reference;
@@ -281,8 +287,9 @@ package body NBAda.Lock_Free_Sets is
       loop
 
          declare
-            Previous : List_Node_Access := Dereference (Mutable_Set_Head);
-            Current  : List_Node_Access := Null_Reference;
+            Previous : Private_Reference := Dereference (Set.MM,
+                                                         Mutable_Set_Head);
+            Current  : Private_Reference := Null_Reference;
          begin
             --  Previous is a dummy node always present at the head of the
             --  list.
@@ -290,7 +297,8 @@ package body NBAda.Lock_Free_Sets is
                --  This should not happen!
                raise Constraint_Error;
             end if;
-            Current  := Dereference ("+"(Previous).Next'Access);
+            Current  := Dereference (Set.MM,
+                                     "+"(Previous).Next'Access);
 
             Traverse :
             loop
@@ -303,7 +311,8 @@ package body NBAda.Lock_Free_Sets is
                   return;
                end if;
 
-               Next := Dereference ("+"(Current).Next'Access);
+               Next := Dereference (Set.MM,
+                                    "+"(Current).Next'Access);
                if "+"(Previous).Next /= Unmark (Current) then
                   --  Retry from the list head.
                   exit Traverse;

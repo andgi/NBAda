@@ -2,7 +2,7 @@
 --  Lock-Free Sets - An implementation of the lock-free set algorithm by
 --                   M. Michael.
 --
---  Copyright (C) 2007  Anders Gidenstam
+--  Copyright (C) 2007 - 2011  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,6 @@
 -------------------------------------------------------------------------------
 pragma Style_Checks (Off);
 -------------------------------------------------------------------------------
---                              -*- Mode: Ada -*-
 --  Filename        : nbada-lock_free_sets_memory_reclamation_adapter.ads
 --  Description     : Lock-free list-based sets based on Maged Michael,
 --                    "High Performance Dynamic Lock-Free Hash Tables and
@@ -30,13 +29,12 @@ pragma Style_Checks (Off);
 --                    pages 73-82, August 2002.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Sep  5 17:01:01 2007
---  $Id: nbada-lock_free_sets_memory_reclamation_adapter.ads,v 1.1 2007/09/05 15:24:58 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
-with NBAda.Epoch_Based_Memory_Reclamation;
+with NBAda.Memory_Reclamation.Epoch_Based_Memory_Reclamation;
 with NBAda.Process_Identification;
 
 generic
@@ -47,9 +45,11 @@ generic
 
 package NBAda.Lock_Free_Sets_Memory_Reclamation_Adapter is
 
-   package Memory_Reclamation is new NBAda.Epoch_Based_Memory_Reclamation
+   package Memory_Reclamation is
+      new NBAda.Memory_Reclamation.Epoch_Based_Memory_Reclamation
      (Epoch_Update_Threshold     => 100,
       --  Suitable number for epoch-based reclamation.
-      Process_Ids                => Process_Ids);
+      Process_Ids                => Process_Ids,
+      Integrity_Checking         => False);
 
 end NBAda.Lock_Free_Sets_Memory_Reclamation_Adapter;

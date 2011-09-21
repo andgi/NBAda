@@ -2,7 +2,7 @@
 --  Lock-Free Sets - An implementation of the lock-free set algorithm by
 --                   M. Michael.
 --
---  Copyright (C) 2006 - 2007  Anders Gidenstam
+--  Copyright (C) 2006 - 2011  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -21,8 +21,7 @@
 -------------------------------------------------------------------------------
 pragma Style_Checks (Off);
 -------------------------------------------------------------------------------
---                              -*- Mode: Ada -*-
---  Filename        : lock_free_sets.ads
+--  Filename        : nbada-lock_free_sets.ads
 --  Description     : Lock-free list-based sets based on Maged Michael,
 --                    "High Performance Dynamic Lock-Free Hash Tables and
 --                    List-Based Sets", The 14th Annual ACM Symposium on
@@ -30,7 +29,6 @@ pragma Style_Checks (Off);
 --                    pages 73-82, August 2002.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Mar 10 11:54:37 2006
---  $Id: nbada-lock_free_sets.ads,v 1.6 2007/09/05 15:24:58 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
@@ -82,7 +80,8 @@ package NBAda.Lock_Free_Sets is
 
 private
 
-   type List_Node_Reference is new MRS.Shared_Reference_Base;
+   type List_Node_Reference is
+     new NBAda.Memory_Reclamation.Shared_Reference_Base;
 
    type List_Node is new MRS.Managed_Node_Base with
       record
@@ -94,13 +93,12 @@ private
 
    procedure Free     (Node : access List_Node);
 
-   package MRS_Ops is new MRS.Reference_Operations (List_Node,
-                                                    List_Node_Reference);
-
-   subtype List_Node_Access is MRS_Ops.Private_Reference;
+   package MR_Ops is new MRS.Reference_Operations (List_Node,
+                                                   List_Node_Reference);
 
    type Set_Type is limited
       record
+         MM   : MR_Ops.Memory_Manager;
          Head : aliased List_Node_Reference;
          pragma Atomic (Head);
       end record;
