@@ -63,7 +63,7 @@ package body NBAda.Primitives is
    --        Note that the IA32 cmpxchg instruction effectively behaves as a
    --        memory barrier too and is cheaper (it may not synchronize with
    --        old string instructions and similar, though).
-   
+
    PAUSE : constant String := "pause";
    --  NOTE: The "pause" instruction in the machine code below is
    --        important to lower the impact of spinning on
