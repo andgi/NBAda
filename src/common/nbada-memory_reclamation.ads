@@ -61,4 +61,10 @@ private
          AB => 3);
    Ref_Mask   : constant Reference_Impl := -(2 ** Mark_Bits);
 
+   type MM_Magic_Type is new Primitives.Unsigned_32;
+   MM_Live        : constant := 12121212;
+   MM_Deleted     : constant := 21212121;
+   MM_Reclaimable : constant := 44444444;
+   MM_Reclaimed   : constant := 88888888;
+
 end NBAda.Memory_Reclamation;

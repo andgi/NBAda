@@ -91,8 +91,8 @@ package NBAda.Memory_Reclamation.Reference_Operations is
 
    ------------------------------------------------------------------------
    --  Unsafe operations.
-   --  These SHOULD only be use when the user algorithm guarantees
-   --  the absence of ABA-problems.
+   --  These SHOULD only be used when the user algorithm guarantees
+   --  that the absence of premature reclamation or ABA-problems.
    --  In such algorithms the use of these operations in some particular
    --  situations could allow some performance improving optimizations.
    ------------------------------------------------------------------------
@@ -192,7 +192,7 @@ package NBAda.Memory_Reclamation.Reference_Operations is
 
       ----------------------------------------------------------------------
       function  Is_Marked (Value : in     Unsafe_Reference_Value)
-                       return Boolean;
+                          return Boolean;
       pragma Inline_Always (Is_Marked);
       function  Is_Marked (Value : in     Unsafe_Reference_Value;
                            Mark  : in     Reference_Mark)

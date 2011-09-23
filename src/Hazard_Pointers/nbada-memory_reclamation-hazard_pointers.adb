@@ -164,7 +164,7 @@ package body NBAda.Memory_Reclamation.Hazard_Pointers is
                   end loop;
                   if Deref (Ref) /= null then
                      declare
-                        State : constant Primitives.Unsigned_32 :=
+                        State : constant MM_Magic_Type :=
                           Deref (Ref).MM_Magic;
                      begin
                         if not (State = MM_Live or State = MM_Deleted) then
@@ -172,7 +172,7 @@ package body NBAda.Memory_Reclamation.Hazard_Pointers is
                              (Constraint_Error'Identity,
                               "nbada-memory_reclamation-hazard_pointers.adb: "&
                               "Dereferenced a node with the bad MM_Magic " &
-                              Primitives.Unsigned_32'Image (State) &
+                              MM_Magic_Type'Image (State) &
                               "! " & Reference_Impl'Image (Ref));
                         end if;
                      end;

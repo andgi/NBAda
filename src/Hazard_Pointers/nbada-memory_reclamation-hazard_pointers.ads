@@ -235,9 +235,7 @@ private
    --  Note: There SHOULD NOT be any shared variables of type
    --        Managed_Node_Access.
 
-   MM_Live      : constant := 12121212;
-   MM_Deleted   : constant := 21212121;
-   MM_Reclaimed : constant := 88888888;
+   subtype MM_Magic_Type   is NBAda.Memory_Reclamation.MM_Magic_Type;
 
    type Managed_Node_Base is abstract tagged limited
       record
@@ -245,7 +243,7 @@ private
          pragma Atomic (MM_Next);
          MM_Rescan : Boolean := False;
          pragma Atomic (MM_Rescan);
-         MM_Magic  : Primitives.Unsigned_32 := MM_Live;
+         MM_Magic  : MM_Magic_Type := MM_Live;
          pragma Atomic (MM_Magic);
          --  NOTE: MM_Magic is only used when Integrity_Checking is set.
       end record;
