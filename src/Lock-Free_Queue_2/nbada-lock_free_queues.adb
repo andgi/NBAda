@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --  Lock-free Queue - An implementation of  M. Hoffman, O. Shalev and
 --                    N. Shavit's lock-free queue algorithm.
---  Copyright (C) 2008  Anders Gidenstam
+--  Copyright (C) 2008 - 2011  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 -------------------------------------------------------------------------------
---                              -*- Mode: Ada -*-
 --  Filename        : nbada-lock_free_queues.adb
 --  Description     : A lock-free queue algorithm based on
 --                    M. Hoffman, O. Shalev and N. Shavit,
@@ -27,7 +26,6 @@
 --                    LNCS 4878, pp. 401-414, 2007.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Jan 10 17:16:33 2008
---  $Id: nbada-lock_free_queues.adb,v 1.2 2008/01/11 15:44:08 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -65,13 +63,19 @@ package body NBAda.Lock_Free_Queues is
      (User_Node_Access => New_Queue_Node_Access);
 
    ----------------------------------------------------------------------------
+   package Reference_Marks is
+      new MR_Ops.Basic_Reference_Operations.Reference_Mark_Operations
+          (MR_Ops.Private_Reference);
+   use Reference_Marks;
+
+   ----------------------------------------------------------------------------
    --  Public operations.
    ----------------------------------------------------------------------------
 
    ----------------------------------------------------------------------------
    procedure Init    (Queue : in out Queue_Type) is
       use MR_Ops;
-      Node :  constant Private_Reference := New_Node;
+      Node :  constant Private_Reference := New_Node (Queue.MM);
    begin
       Store ("+" (Node).Next'Access, Mark (Null_Reference));
       Store (Queue.Head'Access, Node);
@@ -86,11 +90,14 @@ package body NBAda.Lock_Free_Queues is
       loop
          declare
             Head : constant Private_Reference :=
-              Dereference (From.Head'Access);
+              Dereference (From.MM,
+                           From.Head'Access);
             Tail : constant Private_Reference :=
-              Dereference (From.Tail'Access);
+              Dereference (From.MM,
+                           From.Tail'Access);
             Next : Private_Reference :=
-              Dereference ("+" (Head).Next'Access);
+              Dereference (From.MM,
+                           "+" (Head).Next'Access);
          begin
             if Head = From.Head then
                if Head = Tail then
@@ -104,7 +111,8 @@ package body NBAda.Lock_Free_Queues is
                   while Tail = From.Tail loop
                      declare
                         Next_Next : constant Private_Reference :=
-                          Dereference ("+" (Next).Next'Access);
+                          Dereference (From.MM,
+                                       "+" (Next).Next'Access);
                      begin
                         if "+" (Next_Next) /= null then
                            Release (Next);
@@ -135,7 +143,8 @@ package body NBAda.Lock_Free_Queues is
                      loop
                         Release (Node);
                         Node := Next;
-                        Next := Dereference ("+" (Node).Next'Access);
+                        Next := Dereference (From.MM,
+                                             "+" (Node).Next'Access);
                      end loop;
 
                      if Head = From.Head then
@@ -185,16 +194,18 @@ package body NBAda.Lock_Free_Queues is
    procedure Enqueue (On      : in out Queue_Type;
                       Element : in     Element_Type) is
       use MR_Ops;
-      Node :  constant Private_Reference := New_Node;
+      Node :  constant Private_Reference := New_Node (On.MM);
    begin
       "+" (Node).Element := Element;
 
       loop
          declare
             Tail : constant Private_Reference :=
-              Dereference (On.Tail'Access);
+              Dereference (On.MM,
+                           On.Tail'Access);
             Next : Private_Reference :=
-              Dereference ("+" (Tail).Next'Access);
+              Dereference (On.MM,
+                           "+" (Tail).Next'Access);
          begin
             if Tail = On.Tail then
                if "+" (Next) = null then
@@ -225,7 +236,7 @@ package body NBAda.Lock_Free_Queues is
                      else
                         --  Foiled by concurrent operation. Attempt to go
                         --  into the basket.
-                        while not Is_Marked ("+" (Tail).Next) loop
+                        while not Is_Marked ("+" (Tail).Next'Access) loop
                            --  Back-off.
 
                            Store ("+" (Node).Next'Access, Next);
@@ -241,7 +252,8 @@ package body NBAda.Lock_Free_Queues is
                            end if;
 
                            Release (Next);
-                           Next := Dereference ("+" (Tail).Next'Access);
+                           Next := Dereference (On.MM,
+                                                "+" (Tail).Next'Access);
                         end loop;
                         --  The basket got dequeued. Retry from start.
                      end if;
@@ -251,7 +263,8 @@ package body NBAda.Lock_Free_Queues is
                   while  Tail = On.Tail loop
                      declare
                         Next_Next : constant Private_Reference :=
-                          Dereference ("+" (Next).Next'Access);
+                          Dereference (On.MM,
+                                       "+" (Next).Next'Access);
                      begin
                         if "+" (Next_Next) /= null then
                            Release (Next);
@@ -316,7 +329,8 @@ package body NBAda.Lock_Free_Queues is
       end Image;
 
 
-      Node : Private_Reference := Dereference (Queue.Head'Access);
+      Node : Private_Reference := Dereference (Queue.MM,
+                                               Queue.Head'Access);
    begin
       if Print then
          Ada.Text_IO.Put_Line ("Head = " & Image (Queue.Head));
@@ -328,7 +342,8 @@ package body NBAda.Lock_Free_Queues is
          end if;
          declare
             Next : constant Private_Reference :=
-              Dereference ("+" (Node).Next'Access);
+              Dereference (Queue.MM,
+                           "+" (Node).Next'Access);
          begin
             exit when "+" (Next) = null;
 
@@ -346,16 +361,17 @@ package body NBAda.Lock_Free_Queues is
    ----------------------------------------------------------------------------
    procedure Dispose  (Node       : access Queue_Node;
                        Concurrent : in     Boolean) is
+      package BRO renames MR_Ops.Basic_Reference_Operations;
       use MR_Ops;
    begin
       if not Concurrent then
          Store (Node.Next'Access, Null_Reference);
       else
          declare
-            Tmp : MR_Ops.Unsafe_Reference_Value;
+            Tmp : BRO.Unsafe_Reference_Value;
          begin
             loop
-               Tmp := Unsafe_Read (Node.Next'Access);
+               Tmp := BRO.Unsafe_Read (Node.Next'Access);
                exit when Compare_And_Swap (Link      => Node.Next'Access,
                                            Old_Value => Tmp,
                                            New_Value => Null_Reference);
@@ -365,14 +381,19 @@ package body NBAda.Lock_Free_Queues is
    end Dispose;
 
    ----------------------------------------------------------------------------
-   procedure Clean_Up (Node : access Queue_Node) is
+   procedure Clean_Up (MM   : in     MR.Memory_Manager_Base'Class;
+                       Node : access Queue_Node) is
       use MR_Ops;
+      RMM             : MR_Ops.Memory_Manager
+        renames MR_Ops.Memory_Manager (MM);
       Next, Next_Next : Private_Reference;
    begin
       loop
-         Next := Dereference (Node.Next'Access);
-         if "+" (Next) /= null and then Is_Deleted (+Next) then
-            Next_Next := Dereference ("+"(Next).Next'Access);
+         Next := Dereference (RMM,
+                              Node.Next'Access);
+         if "+" (Next) /= null and then Is_Deleted ("+" (Next)) then
+            Next_Next := Dereference (RMM,
+                                      "+" (Next).Next'Access);
             if Compare_And_Swap (Link      => Node.Next'Access,
                                  Old_Value => Next,
                                  New_Value => Mark (Next_Next))
