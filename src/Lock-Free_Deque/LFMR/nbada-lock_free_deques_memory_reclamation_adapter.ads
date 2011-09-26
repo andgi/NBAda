@@ -2,7 +2,7 @@
 --  Lock-Free Deques - An Ada implementation of the lock-free deque algorithm
 --                     by H. Sundell and P. Tsigas.
 --
---  Copyright (C) 2007  Anders Gidenstam
+--  Copyright (C) 2007 - 2011  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -21,19 +21,17 @@
 -------------------------------------------------------------------------------
 pragma Style_Checks (Off);
 -------------------------------------------------------------------------------
---                              -*- Mode: Ada -*-
---  Filename        : nbada-lock_free_deques_memory_reclamation_adapter.ads<2>
+--  Filename        : nbada-lock_free_deques_memory_reclamation_adapter.ads
 --  Description     : An Ada implementation of the lock-free deque algorithm
 --                    by H. Sundell and P. Tsigas.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Sep  6 12:05:42 2007
---  $Id: nbada-lock_free_deques_memory_reclamation_adapter.ads,v 1.2 2007/10/30 15:11:24 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
-with NBAda.Lock_Free_Memory_Reclamation;
+with NBAda.Memory_Reclamation.Beware_And_Cleanup;
 with NBAda.Process_Identification;
 
 generic
@@ -44,7 +42,8 @@ generic
 
 package NBAda.Lock_Free_Deques_Memory_Reclamation_Adapter is
 
-   package Memory_Reclamation is new Lock_Free_Memory_Reclamation
+   package Memory_Reclamation is
+      new NBAda.Memory_Reclamation.Beware_And_Cleanup
      (Max_Number_Of_Dereferences   => 10,
       --  Remember to account for the dereferences in the
       --  callbacks Clean_Up and Dispose (which are invoked by Delete).
@@ -57,9 +56,11 @@ package NBAda.Lock_Free_Deques_Memory_Reclamation_Adapter is
       --  Delete is called from Pop* on a dereferenced node so the
       --  maximum number of simultaneous dereferences is ?.
       Max_Number_Of_Links_Per_Node => 2,
-      Clean_Up_Threshold           => 256,
+      Clean_Up_Threshold           =>
+        2 * Natural (Process_Ids.Max_Number_Of_Processes),
       --  Clean up and scan often.
-      Process_Ids                  => Process_Ids);
+      Process_Ids                  => Process_Ids,
+      Integrity_Checking           => False);
 
 end NBAda.Lock_Free_Deques_Memory_Reclamation_Adapter;
 

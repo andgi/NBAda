@@ -2,7 +2,7 @@
 --  Lock-Free Deques - An Ada implementation of the lock-free deque algorithm
 --                     by H. Sundell and P. Tsigas.
 --
---  Copyright (C) 2006 - 2008  Anders Gidenstam
+--  Copyright (C) 2006 - 2011  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -19,19 +19,18 @@
 --  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 --
 -------------------------------------------------------------------------------
---                              -*- Mode: Ada -*-
---  Filename        : lock_free_deques.ads
+--  Filename        : nbada-lock_free_deques.ads
 --  Description     : An Ada implementation of the lock-free deque algorithm
 --                    by H. Sundell and P. Tsigas.
 --  Author          : Anders Gidenstam
 --  Created On      : Wed Feb 15 18:46:02 2006
---  $Id: nbada-lock_free_deques.ads,v 1.9 2008/02/11 16:59:45 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
 
 with NBAda.Lock_Free_Deques_Memory_Reclamation_Adapter;
 with NBAda.Process_Identification;
+with NBAda.Interfaces.Exceptions;
 
 generic
 
@@ -48,7 +47,8 @@ package NBAda.Lock_Free_Deques is
    ----------------------------------------------------------------------------
    type Deque_Type is limited private;
 
-   Deque_Empty : exception;
+   Deque_Empty : exception
+     renames NBAda.Interfaces.Exceptions.Empty;
 
    procedure Init    (Deque : in out Deque_Type);
 
@@ -60,19 +60,20 @@ package NBAda.Lock_Free_Deques is
    procedure Push_Left (Deque   : in out Deque_Type;
                         Element : in     Element_Type);
 
-   package MR_Adapter is
-      new Lock_Free_Deques_Memory_Reclamation_Adapter (Process_Ids);
-   package LFRC renames MR_Adapter.Memory_Reclamation;
-
    procedure Verify (Deque : in out Deque_Type;
                      Print : in     Boolean := False);
    --  Should only be called when the deque is idle.
 
 private
 
-   type Deque_Node_Reference is new LFRC.Shared_Reference_Base;
+   package MR_Adapter is
+      new Lock_Free_Deques_Memory_Reclamation_Adapter (Process_Ids);
+   package MR renames MR_Adapter.Memory_Reclamation;
 
-   type Deque_Node is new LFRC.Managed_Node_Base with
+   type Deque_Node_Reference is
+     new NBAda.Memory_Reclamation.Shared_Reference_Base;
+
+   type Deque_Node is new MR.Managed_Node_Base with
       record
          Next     : aliased Deque_Node_Reference;
          pragma Atomic (Next);
@@ -84,22 +85,23 @@ private
          Value    : Element_Type;
       end record;
 
+   procedure Free     (Node : access Deque_Node);
    procedure Dispose  (Node       : access Deque_Node;
                        Concurrent : in     Boolean);
-   procedure Clean_Up (Node : access Deque_Node);
-   procedure Free     (Node : access Deque_Node);
+   procedure Clean_Up (MM   : in     MR.Memory_Manager_Base'Class;
+                       Node : access Deque_Node);
    function  All_References (Node : access Deque_Node)
-                            return LFRC.Reference_Set;
+                            return MR.Reference_Set;
 
-   package LFRC_Ops is new LFRC.Operations (Deque_Node,
-                                            Deque_Node_Reference);
+   package MR_Ops is new MR.Reference_Operations
+     (Managed_Node     => Deque_Node,
+      Shared_Reference => Deque_Node_Reference);
 
-   procedure Delete (X : LFRC_Ops.Private_Reference) renames LFRC_Ops.Release;
+   subtype Private_Reference is MR_Ops.Private_Reference;
 
-   subtype Deque_Node_Access is LFRC_Ops.Private_Reference;
-
-   type Deque_Type is limited
-      record
+   type Deque_Type is
+      limited record
+         MM   : MR_Ops.Memory_Manager;
          Head : aliased Deque_Node_Reference;
          pragma Atomic (Head);
          Tail : aliased Deque_Node_Reference;
