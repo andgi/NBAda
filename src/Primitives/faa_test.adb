@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Fetch and Add test.
---  Copyright (C) 2004 - 2008  Anders Gidenstam
+--  Copyright (C) 2004 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -42,7 +42,7 @@ procedure FAA_Test is
    end Counter;
 
    function CAS is
-      new NBAda.Primitives.Boolean_Compare_And_Swap_32
+      new NBAda.Primitives.Standard_Boolean_Compare_And_Swap
      (NBAda.Primitives.Standard_Unsigned);
 
    task body Counter is

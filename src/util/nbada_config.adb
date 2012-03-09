@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --  NBAda - A library of non-blocking algorithms and data structures.
 --
---  Copyright (C) 2007 - 2011  Anders Gidenstam
+--  Copyright (C) 2007 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -78,7 +78,7 @@ procedure NBAda_Config is
       LF_UBTREES_LFMR,
       LF_UBTREES_LFRC
       );
-   type Architecture is (IA32, SPARCV8PLUS, SPARCV9, MIPSN32);
+   type Architecture is (IA32, X86_64, SPARCV8PLUS, SPARCV9, MIPSN32);
    type Target_Array is array (Target) of Boolean;
 
    ----------------------------------------------------------------------
@@ -93,6 +93,7 @@ procedure NBAda_Config is
    --  Architecture dependent compiler flags.
    Compiler_Flags : constant array (Architecture) of Unbounded_String :=
      (IA32        => "+" ("-I" & Install_Base & "/Primitives/IA32"),
+      X86_64      => "+" ("-I" & Install_Base & "/Primitives/x86_64"),
       SPARCV8PLUS => "+" ("-I" & Install_Base & "/Primitives/SPARCv8plus " &
                           "-cargs -Wa,-xarch=v8plus"),
       SPARCV9     => "+" ("-I" & Install_Base & "/Primitives/SPARCv9 " &
