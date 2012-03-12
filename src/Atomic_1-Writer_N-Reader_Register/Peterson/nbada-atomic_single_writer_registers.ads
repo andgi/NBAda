@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --  Ada implementation of atomic multi-word register based on the algorithm
 --  by G. Peterson.
---  Copyright (C) 2001 - 2007  Anders Gidenstam
+--  Copyright (C) 2001 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -34,12 +34,12 @@ pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
+with NBAda.Primitives;
+
 generic
    type Element_Type is private;
 
 package NBAda.Atomic_Single_Writer_Registers is
-
-   pragma Preelaborate (NBAda.Atomic_Single_Writer_Registers);
 
    type Atomic_1_M_Register (No_Of_Readers : Positive) is limited private;
 
@@ -64,7 +64,8 @@ private
    pragma Atomic_Components (Boolean_Array);
    type Element_Array is array (Positive range <>) of aliased Element_Type;
    pragma Volatile_Components (Element_Array);
-   type Natural_Array is array (Positive range <>) of aliased Natural;
+   type Natural_Array is array (Positive range <>) of
+     aliased NBAda.Primitives.Unsigned_32;
    pragma Atomic_Components (Natural_Array);
 
    type Atomic_1_M_Register (No_Of_Readers : Positive) is

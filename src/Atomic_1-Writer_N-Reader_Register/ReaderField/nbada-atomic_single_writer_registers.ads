@@ -4,7 +4,7 @@
 --  P. Tsigas, "Multi-word Atomic Read/Write Registers on Multiprocessor
 --  Systems", European Symposium on Algorithms, 2004].
 --
---  Copyright (C) 2007  Anders Gidenstam
+--  Copyright (C) 2007 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -46,8 +46,6 @@ generic
 
 package NBAda.Atomic_Single_Writer_Registers is
 
-   pragma Preelaborate (NBAda.Atomic_Single_Writer_Registers);
-
    type Atomic_1_M_Register (No_Of_Readers : Positive) is limited private;
 
    type Reader_Id is private;
@@ -74,7 +72,8 @@ private
 
    type Trace_Array is array (Positive range <>) of Index;
 
-   type Natural_Array is array (Positive range <>) of aliased Natural;
+   type Natural_Array is array (Positive range <>) of
+     aliased NBAda.Primitives.Unsigned_32;
    pragma Atomic_Components (Natural_Array);
 
 

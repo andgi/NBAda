@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --  Ada implementation of atomic multi-word register based on the algorithm
 --  by G. Peterson.
---  Copyright (C) 2001 - 2007  Anders Gidenstam
+--  Copyright (C) 2001 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -34,14 +34,12 @@ pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
-with NBAda.Primitives;
-
 with Ada.Exceptions;
 
 package body NBAda.Atomic_Single_Writer_Registers is
 
-   function CAS is
-      new NBAda.Primitives.Standard_Boolean_Compare_And_Swap (Natural);
+   function CAS is new NBAda.Primitives.Boolean_Compare_And_Swap_32
+     (NBAda.Primitives.Unsigned_32);
 
    ----------------------------------------------------------------------------
    procedure Write (Register : in out Atomic_1_M_Register;
@@ -117,6 +115,7 @@ package body NBAda.Atomic_Single_Writer_Registers is
    ----------------------------------------------------------------------------
    function  Register_Reader (Register : in Atomic_1_M_Register)
                              return Reader_Id is
+      use type NBAda.Primitives.Unsigned_32;
    begin
       for I in Register.Reader'Range loop
          if Register.Reader (I) = 0 and

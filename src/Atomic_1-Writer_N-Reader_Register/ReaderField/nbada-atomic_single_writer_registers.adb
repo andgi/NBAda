@@ -4,7 +4,7 @@
 --  P. Tsigas, "Multi-word Atomic Read/Write Registers on Multiprocessor
 --  Systems", European Symposium on Algorithms, 2004].
 --
---  Copyright (C) 2007  Anders Gidenstam
+--  Copyright (C) 2007 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -50,8 +50,8 @@ package body NBAda.Atomic_Single_Writer_Registers is
    function CAS is new Primitives.Standard_Boolean_Compare_And_Swap
      (Element => Standard_Unsigned);
 
-   function CAS is new NBAda.Primitives.Standard_Boolean_Compare_And_Swap
-     (Element => Natural);
+   function CAS is new NBAda.Primitives.Boolean_Compare_And_Swap_32
+     (Element => NBAda.Primitives.Unsigned_32);
 
 
    function Swap (Target : access Standard_Unsigned;
@@ -186,6 +186,7 @@ package body NBAda.Atomic_Single_Writer_Registers is
    ----------------------------------------------------------------------------
    function  Register_Reader (Register : in Atomic_1_M_Register)
                              return Reader_Id is
+      use type NBAda.Primitives.Unsigned_32;
    begin
       for I in Register.Reader'Range loop
          if Register.Reader (I) = 0 and
