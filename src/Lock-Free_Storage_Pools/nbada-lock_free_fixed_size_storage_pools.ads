@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Lock-free fixed size storage pool.
---  Copyright (C) 2003 - 2007  Anders Gidenstam
+--  Copyright (C) 2003 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -90,7 +90,6 @@ private
          Version : Version_Number := 0;
       end record;
    for Pool_Block_Ref'Size use 32;
-   pragma Atomic (Pool_Block_Ref);
 
    Null_Ref : constant Pool_Block_Ref := (Block_Index'Last, 0);
 
