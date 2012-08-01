@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --  Lock-free Queue - An implementation of  the cache-aware lock-free queue
 --  algorithm by A. Gidenstam, H. Sundell and P. Tsigas.
---  Copyright (C) 2011  Anders Gidenstam
+--  Copyright (C) 2011 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -67,7 +67,7 @@ package body NBAda.Lock_Free_Queues is
       (Element => Element_Type);
 
    function Compare_And_Swap is
-      new Primitives.Standard_Boolean_Compare_And_Swap
+      new Primitives.Boolean_Compare_And_Swap_32
       (Element => Atomic_Boolean);
 
    ----------------------------------------------------------------------------
@@ -103,7 +103,6 @@ package body NBAda.Lock_Free_Queues is
                declare
                   Old_Block : constant Private_Reference := Block;
                begin
-                  "+"(Old_Block).Tail := Tail;
                   Block := Dereference ("+"(Old_Block).Next'Access);
 
                   if "+"(Block) = null then
@@ -152,7 +151,11 @@ package body NBAda.Lock_Free_Queues is
                      Block := Dereference (From.Tail_Block'Access);
                   end if;
                   Thread.Tail_Block := Block;
-                  Tail              := "+"(Block).Tail;
+                  if "+"(Block).Element (Block_Size - 1) /= Null_1 then
+                     Tail := 0;
+                  else
+                     Tail := Block_Size;
+                  end if;
                end;
             else
                declare
@@ -202,7 +205,6 @@ package body NBAda.Lock_Free_Queues is
                declare
                   Old_Block : constant Private_Reference := Block;
                begin
-                  "+"(Old_Block).Head := Head;
                   Block := Dereference ("+"(Old_Block).Next'Access);
                   if "+"(Block) = null then
                      Release (Block);
@@ -241,14 +243,12 @@ package body NBAda.Lock_Free_Queues is
                         Delete (Block);
                         Block := Dereference ("+"(Old_Block).Next'Access);
                      end if;
-                  elsif "+"(Block).Head = Block_Size and
-                        "+"(Block).Next /= Null_Reference
-                  then
+                  elsif "+"(Block).Next /= Null_Reference then
                      Release (Block);
                      Block := Dereference (On.Head_Block'Access);
                   end if;
                   Release (Old_Block);
-                  Head              := "+"(Block).Head;
+                  Head := 0;
                   Thread.Head_Block := Block;
                end;
             elsif "+"(Block).Element (Head) = Null_0 then
@@ -341,9 +341,9 @@ package body NBAda.Lock_Free_Queues is
       Release (Local.Head_Block);
       Release (Local.Tail_Block);
       Local.Head_Block := Dereference (Queue.Head_Block'Access);
-      Local.Head       := "+"(Local.Head_Block).Head;
+      Local.Head       := 0;
       Local.Tail_Block := Dereference (Queue.Tail_Block'Access);
-      Local.Tail       := "+"(Local.Tail_Block).Tail;
+      Local.Tail       := 0;
    end Init_Thread;
 
    ----------------------------------------------------------------------------

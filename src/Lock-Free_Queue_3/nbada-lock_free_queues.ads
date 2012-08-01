@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --  Lock-free Queue - An implementation of  the cache-aware lock-free queue
 --  algorithm by A. Gidenstam, H. Sundell and P. Tsigas.
---  Copyright (C) 2011  Anders Gidenstam
+--  Copyright (C) 2011 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -97,10 +97,6 @@ private
      new MR.Managed_Node_Base with
       record
          Element : Atomic_Element_Array := (others => Null_0);
-         Head    : Element_Index := 0;
-         pragma Atomic (Head);
-         Tail    : Element_Index := 0;
-         pragma Atomic (Tail);
          Deleted : aliased Atomic_Boolean := False;
          pragma Atomic (Deleted);
          Next    : aliased Queue_Node_Reference;
