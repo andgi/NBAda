@@ -36,6 +36,7 @@ pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
+with NBAda.Interfaces.Exceptions;
 with NBAda.Process_Identification;
 with NBAda.Per_Task_Storage.Local;
 with NBAda.Lock_Free_Queues_Memory_Reclamation_Adapter;
@@ -62,7 +63,8 @@ package NBAda.Lock_Free_Queues is
    ----------------------------------------------------------------------------
    type Queue_Type is limited private;
 
-   Queue_Empty : exception;
+   Queue_Empty : exception
+     renames NBAda.Interfaces.Exceptions.Empty;
 
    procedure Init    (Queue : in out Queue_Type);
    function  Dequeue (From : access Queue_Type) return Element_Type;
@@ -81,7 +83,7 @@ private
       new Lock_Free_Queues_Memory_Reclamation_Adapter (Process_Ids);
    package MR renames MR_Adapter.Memory_Reclamation;
 
-   Block_Size : constant := 32;
+   Block_Size : constant := 26;
    type Element_Index is new Natural range 0 .. Block_Size;
 
    type Atomic_Element_Array is
@@ -91,7 +93,8 @@ private
    type Atomic_Boolean is new Boolean;
    for Atomic_Boolean'Object_Size use 32;
 
-   type Queue_Node_Reference is new MR.Shared_Reference_Base;
+   type Queue_Node_Reference is
+     new NBAda.Memory_Reclamation.Shared_Reference_Base;
 
    type Queue_Node is
      new MR.Managed_Node_Base with
@@ -102,17 +105,20 @@ private
          Next    : aliased Queue_Node_Reference;
          pragma Atomic (Next);
       end record;
+   for Queue_Node'Object_Size use 128*8;
+   for Queue_Node'Alignment   use 64;
 
    procedure Free (Node : access Queue_Node);
 
    procedure Dispose  (Node       : access Queue_Node;
                        Concurrent : in     Boolean);
-   procedure Clean_Up (Node : access Queue_Node);
+   procedure Clean_Up (MM   : in     MR.Memory_Manager_Base'Class;
+                       Node : access Queue_Node);
 
    function All_References (Node : access Queue_Node)
                            return MR.Reference_Set;
 
-   package MR_Ops is new MR.Operations
+   package MR_Ops is new MR.Reference_Operations
      (Managed_Node     => Queue_Node,
       Shared_Reference => Queue_Node_Reference);
 
@@ -130,12 +136,13 @@ private
                                         Process_Ids);
 
    type Queue_Type is
-     limited record
-        Head_Block   : aliased Queue_Node_Reference;
-        pragma Atomic (Head_Block);
-        Tail_Block   : aliased Queue_Node_Reference;
-        pragma Atomic (Tail_Block);
-        Thread_Local : TLS.Storage;
-     end record;
+      limited record
+         MM           : MR_Ops.Memory_Manager;
+         Head_Block   : aliased Queue_Node_Reference;
+         pragma Atomic (Head_Block);
+         Tail_Block   : aliased Queue_Node_Reference;
+         pragma Atomic (Tail_Block);
+         Thread_Local : TLS.Storage;
+      end record;
 
 end NBAda.Lock_Free_Queues;

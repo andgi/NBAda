@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --  Lock-free Queue - An implementation of  the cache-aware lock-free queue
 --  algorithm by A. Gidenstam, H. Sundell and P. Tsigas.
---  Copyright (C) 2011  Anders Gidenstam
+--  Copyright (C) 2011 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ pragma Style_Checks (All_Checks);
 
 pragma License (GPL);
 
-with NBAda.Lock_Free_Memory_Reclamation;
+with NBAda.Memory_Reclamation.Beware_And_Cleanup;
 with NBAda.Process_Identification;
 
 generic
@@ -45,7 +45,8 @@ generic
 
 package NBAda.Lock_Free_Queues_Memory_Reclamation_Adapter is
 
-   package Memory_Reclamation is new Lock_Free_Memory_Reclamation
+   package Memory_Reclamation is
+      new NBAda.Memory_Reclamation.Beware_And_Cleanup
      (Max_Number_Of_Dereferences   => 10,
       --  Remember to account for the dereferences in the
       --  callbacks Clean_Up and Dispose (which are invoked by Delete).
@@ -62,6 +63,7 @@ package NBAda.Lock_Free_Queues_Memory_Reclamation_Adapter is
 --        2 * Natural (Process_Ids.Max_Number_Of_Processes * 10) + 1,
       --  Clean up and scan often.
       Process_Ids                  => Process_Ids,
+      Integrity_Checking           => True,
       Collect_Statistics           => True);
 
 end NBAda.Lock_Free_Queues_Memory_Reclamation_Adapter;
