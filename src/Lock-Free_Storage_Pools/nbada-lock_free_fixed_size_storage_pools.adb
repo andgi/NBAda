@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Lock-free fixed size storage pool.
---  Copyright (C) 2003 - 2007  Anders Gidenstam
+--  Copyright (C) 2003 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@ pragma Style_Checks (OFF);
 --  Description     : A lock-free fixed size storage pool implementation.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Apr  3 17:50:52 2003
---  $Id: nbada-lock_free_fixed_size_storage_pools.adb,v 1.10 2007/08/30 15:13:13 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (ALL_CHECKS);
 
@@ -34,19 +33,17 @@ with Ada.Unchecked_Deallocation;
 with System.Address_To_Access_Conversions;
 with NBAda.Primitives;
 
---  with Ada.Text_IO;
-
 package body NBAda.Lock_Free_Fixed_Size_Storage_Pools is
 
    ----------------------------------------------------------------------------
    type Pool_Block_Access is access all Pool_Block;
 
    function To_Block_Access (X    : Pool_Block_Ref;
-                             Pool : Lock_Free_Storage_Pool)
+                             Pool : Lock_Free_Aligned_Storage_Pool)
                             return Pool_Block_Access;
    function To_Block_Ref    (X    : Pool_Block_Access;
                              Ver  : Version_Number;
-                             Pool : Lock_Free_Storage_Pool)
+                             Pool : Lock_Free_Aligned_Storage_Pool)
                             return Pool_Block_Ref;
    function Is_Null (X : Pool_Block_Ref) return Boolean;
 
@@ -62,7 +59,7 @@ package body NBAda.Lock_Free_Fixed_Size_Storage_Pools is
 
    ----------------------------------------------------------------------------
    procedure Allocate
-     (Pool                     : in out Lock_Free_Storage_Pool;
+     (Pool                     : in out Lock_Free_Aligned_Storage_Pool;
       Storage_Address          :    out System.Address;
       Size_In_Storage_Elements : in     System.Storage_Elements.Storage_Count;
       Alignment                : in     System.Storage_Elements.Storage_Count)
@@ -71,7 +68,6 @@ package body NBAda.Lock_Free_Fixed_Size_Storage_Pools is
 
       Block : Pool_Block_Access;
    begin
---      Ada.Text_IO.Put ('A');
       if Size_In_Storage_Elements > Pool.Block_Size then
          --  The requested block is too large.
          raise Storage_Error;
@@ -96,32 +92,37 @@ package body NBAda.Lock_Free_Fixed_Size_Storage_Pools is
       end loop;
 
       --  Safety check.
-      declare
-         Head : constant Pool_Block_Access :=
-           To_Block_Access (Pool.Free_List, Pool);
-         pragma Unreferenced (Head);
-      begin
-         null;
-      end;
+      if Integrity_Checking then
+         declare
+            Head : constant Pool_Block_Access :=
+              To_Block_Access (Pool.Free_List, Pool);
+            pragma Unreferenced (Head);
+         begin
+            null;
+         end;
+      end if;
 
       Storage_Address :=
         Pool_Blocks.To_Address (Pool_Blocks.Object_Pointer (Block));
 
       --  Safety check.
-      declare
-         use type System.Address;
-      begin
-         if Storage_Address /= Block.all'Address or
-            Storage_Address mod Alignment /= 0
-         then
-            raise Implementation_Error;
-         end if;
-      end;
+      if Integrity_Checking then
+         declare
+            use type System.Address;
+         begin
+            if
+              Storage_Address /= Block.all'Address or
+              Storage_Address mod Alignment /= 0
+            then
+               raise Implementation_Error;
+            end if;
+         end;
+      end if;
    end Allocate;
 
    ----------------------------------------------------------------------------
    procedure Deallocate
-     (Pool                     : in out Lock_Free_Storage_Pool;
+     (Pool                     : in out Lock_Free_Aligned_Storage_Pool;
       Storage_Address          : in     System.Address;
       Size_In_Storage_Elements : in     System.Storage_Elements.Storage_Count;
       Alignment                : in     System.Storage_Elements.Storage_Count)
@@ -132,21 +133,24 @@ package body NBAda.Lock_Free_Fixed_Size_Storage_Pools is
 
       Block : Pool_Block_Access;
    begin
---      Ada.Text_IO.Put ('D');
       --  Safety check.
-      if
-        Storage_Address < Pool.Storage (Pool.Storage'First)'Address or
-        Storage_Address > Pool.Storage (Pool.Storage'Last)'Address
-      then
-         raise Storage_Error;
+      if Integrity_Checking then
+         if
+           Storage_Address < Pool.Storage (Pool.Storage'First)'Address or
+           Storage_Address > Pool.Storage (Pool.Storage'Last)'Address
+         then
+            raise Storage_Error;
+         end if;
       end if;
 
       Block :=
         Pool_Block_Access (Pool_Blocks.To_Pointer (Storage_Address));
 
       --  Safety check.
-      if Block.all'Address /= Storage_Address then
-         raise Implementation_Error;
+      if Integrity_Checking then
+         if Block.all'Address /= Storage_Address then
+            raise Implementation_Error;
+         end if;
       end if;
 
       loop
@@ -164,17 +168,19 @@ package body NBAda.Lock_Free_Fixed_Size_Storage_Pools is
       end loop;
 
       --  Safety check.
-      declare
-         Head : constant Pool_Block_Access :=
-           To_Block_Access (Pool.Free_List, Pool);
-         pragma Unreferenced (Head);
-      begin
-         null;
-      end;
+      if Integrity_Checking then
+         declare
+            Head : constant Pool_Block_Access :=
+              To_Block_Access (Pool.Free_List, Pool);
+            pragma Unreferenced (Head);
+         begin
+            null;
+         end;
+      end if;
    end Deallocate;
 
    ----------------------------------------------------------------------------
-   function Storage_Size (Pool : Lock_Free_Storage_Pool)
+   function Storage_Size (Pool : Lock_Free_Aligned_Storage_Pool)
                          return System.Storage_Elements.Storage_Count is
       use type System.Storage_Elements.Storage_Count;
    begin
@@ -183,7 +189,7 @@ package body NBAda.Lock_Free_Fixed_Size_Storage_Pools is
    end Storage_Size;
 
    ----------------------------------------------------------------------------
-   function Validate (Pool : Lock_Free_Storage_Pool)
+   function Validate (Pool : Lock_Free_Aligned_Storage_Pool)
                      return Block_Count is
       use type System.Address;
       Block : Pool_Block_Access := To_Block_Access (Pool.Free_List, Pool);
@@ -202,7 +208,7 @@ package body NBAda.Lock_Free_Fixed_Size_Storage_Pools is
    end Validate;
 
    ----------------------------------------------------------------------------
-   function Belongs_To (Pool            : Lock_Free_Storage_Pool;
+   function Belongs_To (Pool            : Lock_Free_Aligned_Storage_Pool;
                         Storage_Address : System.Address)
                        return Boolean is
       use type System.Address;
@@ -217,7 +223,7 @@ package body NBAda.Lock_Free_Fixed_Size_Storage_Pools is
    ----------------------------------------------------------------------------
 
    ----------------------------------------------------------------------------
-   procedure Initialize (Pool : in out Lock_Free_Storage_Pool) is
+   procedure Initialize (Pool : in out Lock_Free_Aligned_Storage_Pool) is
       use System.Storage_Elements;
    begin
       --  Reset free list.
@@ -228,22 +234,38 @@ package body NBAda.Lock_Free_Fixed_Size_Storage_Pools is
         Storage_Count'Max (Pool.Block_Size,
                            Pool_Block'Max_Size_In_Storage_Elements);
       --  Pad to correct alignment if necessary.
-      if Pool.Real_Block_Size mod Pool_Block'Alignment /= 0 then
+      if Pool.Real_Block_Size mod Pool.Alignment /= 0 then
          Pool.Real_Block_Size :=
-           (Pool.Real_Block_Size / Pool_Block'Alignment + 1) *
-           Pool_Block'Alignment;
+           (Pool.Real_Block_Size / Pool.Alignment + 1) *
+           Pool.Alignment;
       end if;
       --  Safety check.
-      if Pool.Real_Block_Size mod Pool_Block'Alignment /= 0 then
-         raise Implementation_Error;
+      if Integrity_Checking then
+         if Pool.Real_Block_Size mod Pool.Alignment /= 0 then
+            raise Implementation_Error;
+         end if;
       end if;
 
       --  Preallocate storage for the pool.
       Pool.Storage := new Atomic_Storage_Array
-        (0 .. Storage_Count (Pool.Pool_Size) * Pool.Real_Block_Size);
+        (0 .. Storage_Count (Pool.Pool_Size) * Pool.Real_Block_Size +
+              Pool.Alignment);
+      --  Ensure that the blocks will be aligned.
+      Pool.Storage_Offset :=
+        Pool.Alignment - Pool.Storage (0)'Address mod Pool.Alignment;
+
       --  Safety check.
-      if Pool.Storage (0)'Address mod Pool_Block'Alignment /= 0 then
-         raise Implementation_Error;
+      if Integrity_Checking then
+         if
+           Pool.Storage (Pool.Storage_Offset)'Address mod Pool.Alignment /= 0
+         then
+            declare
+               Address : System.Address :=
+                 Pool.Storage (Pool.Storage_Offset)'Address;
+            begin
+               raise Implementation_Error;
+            end;
+         end if;
       end if;
 
       Primitives.Membar;
@@ -257,11 +279,14 @@ package body NBAda.Lock_Free_Fixed_Size_Storage_Pools is
             use type System.Address;
          begin
             --  Safety check.
-            if Block.all'Address /=
-               Pool.Storage (I * Pool.Real_Block_Size)'Address or
-               Block.all'Address mod Pool_Block'Alignment /= 0
-            then
-               raise Implementation_Error;
+            if Integrity_Checking then
+               if Block.all'Address /=
+                 Pool.Storage (Pool.Storage_Offset +
+                               I * Pool.Real_Block_Size)'Address or
+                 Block.all'Address mod Pool.Alignment /= 0
+               then
+                  raise Implementation_Error;
+               end if;
             end if;
 
             --  Add block to free list.
@@ -276,13 +301,15 @@ package body NBAda.Lock_Free_Fixed_Size_Storage_Pools is
       end loop;
 
       --  Safety check.
-      if Validate (Pool) /= Pool.Pool_Size then
-         raise Implementation_Error;
+      if Integrity_Checking then
+         if Validate (Pool) /= Pool.Pool_Size then
+            raise Implementation_Error;
+         end if;
       end if;
    end Initialize;
 
    ----------------------------------------------------------------------------
-   procedure Finalize (Pool : in out Lock_Free_Storage_Pool) is
+   procedure Finalize (Pool : in out Lock_Free_Aligned_Storage_Pool) is
    begin
       Primitives.Membar;
       Pool.Free_List := Null_Ref;
@@ -292,7 +319,7 @@ package body NBAda.Lock_Free_Fixed_Size_Storage_Pools is
 
    ----------------------------------------------------------------------------
    function To_Block_Access (X    : Pool_Block_Ref;
-                             Pool : Lock_Free_Storage_Pool)
+                             Pool : Lock_Free_Aligned_Storage_Pool)
                             return Pool_Block_Access is
    begin
       if Is_Null (X) then
@@ -303,24 +330,29 @@ package body NBAda.Lock_Free_Fixed_Size_Storage_Pools is
             Block : constant Pool_Block_Access :=
               Pool_Block_Access
               (Pool_Blocks.To_Pointer
-               (Pool.Storage (Storage_Count (X.Index) *
-                              Pool.Real_Block_Size)'Address));
+                 (Pool.Storage (Pool.Storage_Offset +
+                                Storage_Count (X.Index) *
+                                Pool.Real_Block_Size)'Address));
             --  Compute storage index where this block starts.  The
             --  selection of Real_Block_Size at initializtion time
             --  guarantees that the Pool_Block is properly aligned.
          begin
             --  Safety check.
-            declare
-               use type System.Address;
-            begin
-               if
-                 Block.all'Address < Pool.Storage (Pool.Storage'First)'Address
-                 or
-                 Block.all'Address > Pool.Storage (Pool.Storage'Last)'Address
-               then
-                  raise Implementation_Error;
-               end if;
-            end;
+            if Integrity_Checking then
+               declare
+                  use type System.Address;
+               begin
+                  if
+                    Block.all'Address <
+                    Pool.Storage (Pool.Storage'First)'Address
+                    or
+                    Block.all'Address >
+                    Pool.Storage (Pool.Storage'Last)'Address
+                  then
+                     raise Implementation_Error;
+                  end if;
+               end;
+            end if;
 
             return Block;
          end;
@@ -333,22 +365,27 @@ package body NBAda.Lock_Free_Fixed_Size_Storage_Pools is
    ----------------------------------------------------------------------------
    function To_Block_Ref (X    : Pool_Block_Access;
                           Ver  : Version_Number;
-                          Pool : Lock_Free_Storage_Pool)
+                          Pool : Lock_Free_Aligned_Storage_Pool)
                          return Pool_Block_Ref is
       use System.Storage_Elements;
 
       Block_Ref : constant Pool_Block_Ref :=
-        (Block_Index (Storage_Count ((To_Integer (X.all'Address) -
-                                      To_Integer (Pool.Storage (0)'Address))) /
-                      Pool.Real_Block_Size),
+        (Block_Index
+           (Storage_Count
+              ((To_Integer (X.all'Address) -
+                To_Integer (Pool.Storage (Pool.Storage_Offset)'Address))) /
+            Pool.Real_Block_Size),
          Ver);
    begin
       --  Safety check.
-      if
-        To_Integer (X.all'Address) - To_Integer (Pool.Storage (0)'Address) >
-        Integer_Address (Pool.Storage'Length)
-      then
-         raise Implementation_Error;
+      if Integrity_Checking then
+         if
+           To_Integer (X.all'Address) -
+           To_Integer (Pool.Storage (Pool.Storage_Offset)'Address) >
+           Integer_Address (Pool.Storage'Length)
+         then
+            raise Implementation_Error;
+         end if;
       end if;
 
       return Block_Ref;

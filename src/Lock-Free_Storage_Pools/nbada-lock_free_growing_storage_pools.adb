@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Lock-free growing storage pool for fixed sized blocks.
---  Copyright (C) 2005 - 2007  Anders Gidenstam
+--  Copyright (C) 2005 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -48,8 +48,55 @@ package body NBAda.Lock_Free_Growing_Storage_Pools is
       Size_In_Storage_Elements : in     System.Storage_Elements.Storage_Count;
       Alignment                : in     System.Storage_Elements.Storage_Count)
    is
+
+      function Allocate_Pool return Element_Pool_Access;
+      procedure Add_Pool (New_Pool : Element_Pool_Access;
+                          After    : Element_Pool_Access);
+
+      function Allocate_Pool return Element_Pool_Access is
+         subtype My_Element_Pool is
+           Element_Pool (Pool_Size  => LFFSSP.Block_Count'Last,
+                         Block_Size => Pool.Block_Size,
+                         Alignment  => Alignment);
+         New_Pool : constant Element_Pool_Access :=
+           new My_Element_Pool;
+      begin
+         return New_Pool;
+      end Allocate_Pool;
+
+      procedure Add_Pool (New_Pool : Element_Pool_Access;
+                          After    : Element_Pool_Access) is
+         Current_Pool : Element_Pool_Access := After;
+      begin
+         loop
+            declare
+               Old_Next : constant Element_Pool_Access :=
+                 Current_Pool.Next;
+            begin
+               if Old_Next = null then
+                  exit when CAS (Current_Pool.Next'Access,
+                                 Old_Value => Old_Next,
+                                 New_Value => New_Pool);
+               else
+                  --  There is a new pool already.
+                  --  Attatch this one behind it.
+                  Current_Pool := Current_Pool.Next;
+               end if;
+            end;
+         end loop;
+      end Add_Pool;
+
       Current_Pool : Element_Pool_Access := Pool.Pool_List;
    begin
+      if Current_Pool = null then
+         Current_Pool := Allocate_Pool;
+         if not CAS (Pool.Pool_List'Access,
+                     Old_Value => null,
+                     New_Value => Current_Pool)
+         then
+            Add_Pool (Current_Pool, Pool.Pool_List);
+         end if;
+      end if;
       loop
          begin
             Allocate (Current_Pool.all,
@@ -64,30 +111,7 @@ package body NBAda.Lock_Free_Growing_Storage_Pools is
 
                if Current_Pool.Next = null then
                   --  Allocate a new pool.
-                  declare
-                     subtype My_Element_Pool is
-                       Element_Pool (Pool_Size => LFFSSP.Block_Count'Last,
-                                     Block_Size => Pool.Block_Size);
-                     New_Pool : constant Element_Pool_Access :=
-                       new My_Element_Pool;
-                  begin
-                     loop
-                        declare
-                           Old_Next : constant Element_Pool_Access :=
-                             Current_Pool.Next;
-                        begin
-                           if Old_Next = null then
-                              exit when CAS (Current_Pool.Next'Access,
-                                             Old_Value => Old_Next,
-                                             New_Value => New_Pool);
-                           else
-                              --  There is a new pool already.
-                              --  Attatch this one behind it.
-                              Current_Pool := Current_Pool.Next;
-                           end if;
-                        end;
-                     end loop;
-                  end;
+                  Add_Pool (Allocate_Pool, Current_Pool);
                end if;
          end;
 
@@ -138,11 +162,8 @@ package body NBAda.Lock_Free_Growing_Storage_Pools is
 
    ----------------------------------------------------------------------------
    procedure Initialize (Pool : in out Lock_Free_Storage_Pool) is
-      subtype My_Element_Pool is
-        Element_Pool (Pool_Size  => LFFSSP.Block_Count'Last,
-                      Block_Size => Pool.Block_Size);
    begin
-      Pool.Pool_List := new My_Element_Pool;
+      Pool.Pool_List := null;
    end Initialize;
 
    ----------------------------------------------------------------------------

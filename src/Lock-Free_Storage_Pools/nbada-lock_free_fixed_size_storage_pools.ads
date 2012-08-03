@@ -24,7 +24,6 @@ pragma Style_Checks (OFF);
 --  Description     : A lock-free fixed size storage pool implementation.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Apr  3 17:06:17 2003
---  $Id: nbada-lock_free_fixed_size_storage_pools.ads,v 1.9 2007/08/30 15:13:13 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (ALL_CHECKS);
 
@@ -41,35 +40,36 @@ package NBAda.Lock_Free_Fixed_Size_Storage_Pools is
    --  The pool size is in blocks.
    type Block_Count is range 0 .. 2**16 - 1;
 
-   type Lock_Free_Storage_Pool
+   type Lock_Free_Aligned_Storage_Pool
      (Pool_Size  : Block_Count;
-      Block_Size : System.Storage_Elements.Storage_Count) is
+      Block_Size : System.Storage_Elements.Storage_Count;
+      Alignment  : System.Storage_Elements.Storage_Count) is
      new System.Storage_Pools.Root_Storage_Pool with private;
 
    ----------------------------------------------------------------------------
    procedure Allocate
-     (Pool                     : in out Lock_Free_Storage_Pool;
+     (Pool                     : in out Lock_Free_Aligned_Storage_Pool;
       Storage_Address          :    out System.Address;
       Size_In_Storage_Elements : in     System.Storage_Elements.Storage_Count;
       Alignment                : in     System.Storage_Elements.Storage_Count);
 
    ----------------------------------------------------------------------------
    procedure Deallocate
-     (Pool                     : in out Lock_Free_Storage_Pool;
+     (Pool                     : in out Lock_Free_Aligned_Storage_Pool;
       Storage_Address          : in     System.Address;
       Size_In_Storage_Elements : in     System.Storage_Elements.Storage_Count;
       Alignment                : in     System.Storage_Elements.Storage_Count);
 
    ----------------------------------------------------------------------------
-   function Storage_Size (Pool : Lock_Free_Storage_Pool)
+   function Storage_Size (Pool : Lock_Free_Aligned_Storage_Pool)
                          return System.Storage_Elements.Storage_Count;
 
    ----------------------------------------------------------------------------
-   function Validate (Pool : Lock_Free_Storage_Pool)
+   function Validate (Pool : Lock_Free_Aligned_Storage_Pool)
                      return Block_Count;
 
    ----------------------------------------------------------------------------
-   function Belongs_To (Pool            : Lock_Free_Storage_Pool;
+   function Belongs_To (Pool            : Lock_Free_Aligned_Storage_Pool;
                         Storage_Address : System.Address)
                        return Boolean;
 
@@ -77,7 +77,16 @@ package NBAda.Lock_Free_Fixed_Size_Storage_Pools is
    Storage_Exhausted    : exception;
    Implementation_Error : exception;
 
+   ----------------------------------------------------------------------------
+   type Lock_Free_Storage_Pool
+     (Pool_Size  : Block_Count;
+      Block_Size : System.Storage_Elements.Storage_Count) is
+     new Lock_Free_Aligned_Storage_Pool with private;
+
 private
+
+   Integrity_Checking : constant Boolean := True;
+   --  Enable integrity checking.
 
    --  The storage pool free-list uses 16-bit version tags to avoid
    --  ABA-problems.
@@ -105,19 +114,29 @@ private
 
    type Storage_Array_Access is access Atomic_Storage_Array;
 
-   type Lock_Free_Storage_Pool
+   type Lock_Free_Aligned_Storage_Pool
      (Pool_Size  : Block_Count;
-      Block_Size : System.Storage_Elements.Storage_Count) is
+      Block_Size : System.Storage_Elements.Storage_Count;
+      Alignment  : System.Storage_Elements.Storage_Count) is
      new System.Storage_Pools.Root_Storage_Pool with
       record
          Real_Block_Size : System.Storage_Elements.Storage_Count;
+         Storage_Offset  : System.Storage_Elements.Storage_Count;
          Storage         : Storage_Array_Access;
          pragma Atomic (Storage);
          Free_List       : aliased Pool_Block_Ref;
          pragma Atomic (Free_List);
       end record;
 
-   procedure Initialize (Pool : in out Lock_Free_Storage_Pool);
-   procedure Finalize   (Pool : in out Lock_Free_Storage_Pool);
+   procedure Initialize (Pool : in out Lock_Free_Aligned_Storage_Pool);
+   procedure Finalize   (Pool : in out Lock_Free_Aligned_Storage_Pool);
+
+   type Lock_Free_Storage_Pool
+     (Pool_Size  : Block_Count;
+      Block_Size : System.Storage_Elements.Storage_Count) is
+     new Lock_Free_Aligned_Storage_Pool (Pool_Size,
+                                         Block_Size,
+                                         Pool_Block'Alignment)
+     with null record;
 
 end NBAda.Lock_Free_Fixed_Size_Storage_Pools;

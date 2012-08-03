@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Lock-free growing storage pool for fixed sized blocks.
---  Copyright (C) 2005 - 2007  Anders Gidenstam
+--  Copyright (C) 2005 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@ pragma Style_Checks (OFF);
 --  Description     : A lock-free fixed storage pool implementation.
 --  Author          : Anders Gidenstam
 --  Created On      : Tue Jun 14 17:00:17 2005
---  $Id: nbada-lock_free_growing_storage_pools.ads,v 1.4 2007/08/30 15:13:13 andersg Exp $
 -------------------------------------------------------------------------------
 pragma Style_Checks (ALL_CHECKS);
 
@@ -75,7 +74,7 @@ private
    type Element_Pool_Access is access Element_Pool;
 
    type Element_Pool is new
-     Lock_Free_Fixed_Size_Storage_Pools.Lock_Free_Storage_Pool with
+     Lock_Free_Fixed_Size_Storage_Pools.Lock_Free_Aligned_Storage_Pool with
       record
          Next : aliased Element_Pool_Access;
          pragma Atomic (Next);
