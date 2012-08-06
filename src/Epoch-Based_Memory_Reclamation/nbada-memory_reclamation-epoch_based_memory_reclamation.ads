@@ -35,6 +35,7 @@ with NBAda.Primitives;
 with NBAda.Memory_Reclamation.Reference_Operations;
 with NBAda.Per_Task_Storage.Shared;
 with NBAda.Per_Task_Storage.Local;
+with NBAda.Configuration;
 
 generic
 
@@ -46,7 +47,7 @@ generic
    --  The number of critical sections entered between attempts to update
    --  the global epoch.
 
-   Integrity_Checking : Boolean := False;
+   Integrity_Checking : Boolean := NBAda.Configuration.Integrity_Checking;
    --  Enable strong integrity checking.
 
 package NBAda.Memory_Reclamation.Epoch_Based_Memory_Reclamation is

@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Hazard Pointers - An implementation of Maged Michael's hazard pointers.
---  Copyright (C) 2011  Anders Gidenstam
+--  Copyright (C) 2011 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@ with NBAda.Memory_Reclamation.Reference_Operations;
 with NBAda.Per_Task_Storage.Shared;
 with NBAda.Per_Task_Storage.Local;
 with NBAda.Internals.Hash_Tables;
+with NBAda.Configuration;
 
 generic
    Max_Number_Of_Dereferences : Natural;
@@ -42,7 +43,7 @@ generic
      new Process_Identification (<>);
    --  Process identification.
 
-   Integrity_Checking : Boolean := False;
+   Integrity_Checking : Boolean := NBAda.Configuration.Integrity_Checking;
    --  Enable strong integrity checking.
    Verbose_Debug : Boolean := False;
    --  Enable verbose debug output.

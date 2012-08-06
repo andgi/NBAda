@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --  Lock-Free Reference Counting - Lock-Free Reference Counting based on the
 --  algorithm by Herlihy et al.
---  Copyright (C) 2006 - 2011  Anders Gidenstam
+--  Copyright (C) 2006 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@ pragma License (GPL);
 with NBAda.Process_Identification;
 with NBAda.Primitives;
 with NBAda.Memory_Reclamation.Reference_Operations;
+with NBAda.Configuration;
 
 generic
 
@@ -42,10 +43,10 @@ generic
      new Process_Identification (<>);
    --  Process identification.
 
-   Integrity_Checking : Boolean := False;
+   Integrity_Checking : Boolean := NBAda.Configuration.Integrity_Checking;
    --  Enable strong integrity checking.
 
-   Collect_Statistics : Boolean := False;
+   Collect_Statistics : Boolean := NBAda.Configuration.Collect_Statistics;
    --  Enable some statics gathering.
 
 package NBAda.Memory_Reclamation.Lock_Free_Reference_Counting is

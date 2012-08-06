@@ -3,7 +3,7 @@
 --  garbage reclamation scheme by A. Gidenstam, M. Papatriantafilou, H. Sundell
 --  and P. Tsigas.
 --
---  Copyright (C) 2004 - 2011  Anders Gidenstam
+--  Copyright (C) 2004 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -43,6 +43,7 @@ with NBAda.Memory_Reclamation.Reference_Operations;
 with NBAda.Per_Task_Storage.Shared;
 with NBAda.Per_Task_Storage.Local;
 with NBAda.Internals.Hash_Tables;
+with NBAda.Configuration;
 
 generic
 
@@ -69,10 +70,10 @@ generic
    Scan_Threshold               : Natural := Clean_Up_Threshold;
    --  The threshold on the delete list size for Scan to be done.
 
-   Integrity_Checking : Boolean := False;
+   Integrity_Checking : Boolean := NBAda.Configuration.Integrity_Checking;
    --  Enable strong integrity checking.
 
-   Collect_Statistics : Boolean := True;
+   Collect_Statistics : Boolean := NBAda.Configuration.Collect_Statistics;
    --  Enable some statics gathering.
 
 package NBAda.Memory_Reclamation.Beware_And_Cleanup is
