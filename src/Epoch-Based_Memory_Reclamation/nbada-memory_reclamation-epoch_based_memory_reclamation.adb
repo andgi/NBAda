@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Epoch-based memory reclamation.
---  Copyright (C) 2011  Anders Gidenstam
+--  Copyright (C) 2011 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -245,8 +245,11 @@ package body NBAda.Memory_Reclamation.Epoch_Based_Memory_Reclamation is
       ----------------------------------------------------------------------
       procedure Store   (Link : access Shared_Reference;
                          Node : in Private_Reference) is
+         package BRO renames Basic_Reference_Operations;
+         package ID  renames BRO.Implementation_Details;
       begin
-         Link.all := To_Shared_Reference (Node);
+         Link.all :=
+           ID.To_Shared_Reference (BRO.Private_Reference_Base (Node));
       end Store;
 
       ----------------------------------------------------------------------
@@ -425,10 +428,11 @@ package body NBAda.Memory_Reclamation.Epoch_Based_Memory_Reclamation is
                                          MM   : in Memory_Manager_Access)
                                         return Private_Reference is
          package BRO renames Basic_Reference_Operations;
+         package ID  renames BRO.Implementation_Details;
       begin
          return
            Private_Reference'(BRO.Private_Reference_Base
-                                (BRO.From_Shared_Reference
+                                (ID.From_Shared_Reference
                                    (Shared_Reference
                                       (Shared_Reference_Base'(Ref => Ref))))
                               with MM => MM);
@@ -461,8 +465,13 @@ package body NBAda.Memory_Reclamation.Epoch_Based_Memory_Reclamation is
       ----------------------------------------------------------------------
       function Get_Ref (Node : in Private_Reference)
                        return Reference_Impl is
+         package BRO renames Basic_Reference_Operations;
+         package ID  renames BRO.Implementation_Details;
       begin
-         return Shared_Reference_Base (To_Shared_Reference (Node)).Ref;
+         return
+           Shared_Reference_Base
+           (ID.To_Shared_Reference
+              (BRO.Private_Reference_Base (Node))).Ref;
       end Get_Ref;
 
    end Reference_Operations;

@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --  NBAda - A library of non-blocking algorithms and data structures.
 --
---  Copyright (C) 2011  Anders Gidenstam
+--  Copyright (C) 2011 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -210,11 +210,15 @@ package NBAda.Memory_Reclamation.Reference_Operations is
    ------------------------------------------------------------------------
 
    ------------------------------------------------------------------------
-   function To_Shared_Reference (R : in     Private_Reference_Base)
-                                return Shared_Reference;
+   package Implementation_Details is
 
-   function From_Shared_Reference (R : Shared_Reference)
-                                  return Private_Reference_Base'Class;
+      function To_Shared_Reference (R : in     Private_Reference_Base)
+                                   return Shared_Reference;
+
+      function From_Shared_Reference (R : Shared_Reference)
+                                     return Private_Reference_Base'Class;
+
+   end Implementation_Details;
 
 private
 

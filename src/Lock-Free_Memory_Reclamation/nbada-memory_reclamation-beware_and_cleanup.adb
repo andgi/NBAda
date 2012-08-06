@@ -3,7 +3,7 @@
 --  garbage reclamation scheme by A. Gidenstam, M. Papatriantafilou, H. Sundell
 --  and P. Tsigas.
 --
---  Copyright (C) 2004 - 2011  Anders Gidenstam
+--  Copyright (C) 2004 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -430,6 +430,8 @@ package body NBAda.Memory_Reclamation.Beware_And_Cleanup is
       ----------------------------------------------------------------------
       procedure Store   (Link : access Shared_Reference;
                          Node : in Private_Reference) is
+         package BRO renames Basic_Reference_Operations;
+         package ID  renames BRO.Implementation_Details;
          use type Reference_Count;
          Old : constant Node_Access :=
            Deref (Shared_Reference_Base (Link.all).Ref);
@@ -437,7 +439,8 @@ package body NBAda.Memory_Reclamation.Beware_And_Cleanup is
          if Integrity_Checking then
             Validate (Node, "Attempting to store");
          end if;
-         Link.all := To_Shared_Reference (Node);
+         Link.all :=
+           ID.To_Shared_Reference (BRO.Private_Reference_Base (Node));
 
          if Deref (Node) /= null then
             declare
@@ -758,18 +761,64 @@ package body NBAda.Memory_Reclamation.Beware_And_Cleanup is
          Index  : Node_Index := Local.D_List;
          Node   : Atomic_Node_Access;
       begin
-         while Index /= 0 loop
-            Node  := Shared.DL_Nodes (Index);
-            Clean_Up (MM, Managed_Node_Access (Node));
-            Index := Local.DL_Nexts (Index);
-         end loop;
+         if Only_Clean_Up_HPs then
+            for I in Shared.Hazard_Pointer'Range loop
+               if Shared.Hazard_Pointer (I) /= null then
+                  Clean_Up (MM, Shared.Hazard_Pointer (I));
+               end if;
+            end loop;
+         else
+            while Index /= 0 loop
+               Node  := Shared.DL_Nodes (Index);
+               Clean_Up (MM, Managed_Node_Access (Node));
+               Index := Local.DL_Nexts (Index);
+            end loop;
+         end if;
       end Clean_Up_Local;
 
       ----------------------------------------------------------------------
       procedure Clean_Up_All (MM : in Memory_Manager) is
          use type Process_Ids.Process_ID_Type;
          use type TSS.Element_Access;
-         Node : Atomic_Node_Access;
+
+         procedure Clean_Up_DList (Shared : in TSS.Element_Access);
+         procedure Clean_Up_HPs   (Shared : in TSS.Element_Access);
+
+         procedure Clean_Up_DList (Shared : in TSS.Element_Access) is
+            Node : Atomic_Node_Access;
+         begin
+            for Index in Valid_Node_Index loop
+               Node := Shared.DL_Nodes (Index);
+               if
+                 Node /= null and then
+                 not Shared.DL_Done (Index)
+               then
+                  Fetch_And_Add
+                    (Target    => Shared.DL_Claims (Index)'Access,
+                     Increment => 1);
+                  if
+                    Node = Shared.DL_Nodes (Index)
+                  then
+                     Clean_Up (MM, Managed_Node_Access (Node));
+                  end if;
+                  Fetch_And_Add
+                    (Target    => Shared.DL_Claims (Index)'Access,
+                     Increment => -1);
+               end if;
+            end loop;
+         end Clean_Up_DList;
+
+         procedure Clean_Up_HPs (Shared : in TSS.Element_Access) is
+            Node : Atomic_Node_Access;
+         begin
+            for I in Shared.Hazard_Pointer'Range loop
+               Node := Shared.Hazard_Pointer (I);
+               if Node /= null then
+                  Clean_Up (MM, Node);
+               end if;
+            end loop;
+         end Clean_Up_HPs;
+
       begin
          for P in Process_Ids.Process_ID_Type'Range loop
             if P /= Process_Ids.Process_ID then
@@ -777,25 +826,11 @@ package body NBAda.Memory_Reclamation.Beware_And_Cleanup is
                   Shared_P : TSS.Element_Access := TSS.Get (MM.Shared, P);
                begin
                   if Shared_P /= null then
-                     for Index in Valid_Node_Index loop
-                        Node := Shared_P.DL_Nodes (Index);
-                        if
-                          Node /= null and then
-                          not Shared_P.DL_Done (Index)
-                        then
-                           Fetch_And_Add
-                             (Target    => Shared_P.DL_Claims (Index)'Access,
-                              Increment => 1);
-                           if
-                             Node = Shared_P.DL_Nodes (Index)
-                           then
-                              Clean_Up (MM, Managed_Node_Access (Node));
-                           end if;
-                           Fetch_And_Add
-                             (Target    => Shared_P.DL_Claims (Index)'Access,
-                              Increment => -1);
-                        end if;
-                     end loop;
+                     if Only_Clean_Up_HPs then
+                        Clean_Up_HPs (Shared_P);
+                     else
+                        Clean_Up_DList (Shared_P);
+                     end if;
                   end if;
                end;
             end if;
@@ -839,8 +874,12 @@ package body NBAda.Memory_Reclamation.Beware_And_Cleanup is
       ----------------------------------------------------------------------
       function Get_Ref (Node : in Private_Reference)
                        return Reference_Impl is
+         package BRO renames Basic_Reference_Operations;
+         package ID  renames BRO.Implementation_Details;
       begin
-         return Shared_Reference_Base (To_Shared_Reference (Node)).Ref;
+         return Shared_Reference_Base
+           (ID.To_Shared_Reference
+              (BRO.Private_Reference_Base (Node))).Ref;
       end Get_Ref;
 
       ----------------------------------------------------------------------
@@ -849,10 +888,11 @@ package body NBAda.Memory_Reclamation.Beware_And_Cleanup is
                                          MM   : in Memory_Manager_Access)
                                         return Private_Reference is
          package BRO renames Basic_Reference_Operations;
+         package ID  renames BRO.Implementation_Details;
       begin
          return
            Private_Reference'(BRO.Private_Reference_Base
-                                (BRO.From_Shared_Reference
+                                (ID.From_Shared_Reference
                                    (Shared_Reference
                                       (Shared_Reference_Base'(Ref => Ref))))
                               with

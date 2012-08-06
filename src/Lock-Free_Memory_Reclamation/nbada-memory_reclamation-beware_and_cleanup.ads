@@ -259,6 +259,8 @@ package NBAda.Memory_Reclamation.Beware_And_Cleanup is
 
       pragma No_Strict_Aliasing (Node_Access);
 
+      Only_Clean_Up_HPs : constant Boolean := False; --  Doesn't work well.
+
       -------------------------------------------------------------------------
       --  Types.
       -------------------------------------------------------------------------

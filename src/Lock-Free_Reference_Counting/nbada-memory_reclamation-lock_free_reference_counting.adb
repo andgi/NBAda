@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --  Lock-Free Reference Counting - Lock-Free Reference Counting based on the
 --  algorithm by Herlihy et al.
---  Copyright (C) 2006 - 2011  Anders Gidenstam
+--  Copyright (C) 2006 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -337,6 +337,8 @@ package body NBAda.Memory_Reclamation.Lock_Free_Reference_Counting is
       ----------------------------------------------------------------------
       procedure Store   (Link : access Shared_Reference;
                          Node : in Private_Reference) is
+         package BRO renames Basic_Reference_Operations;
+         package ID  renames BRO.Implementation_Details;
          use type Reference_Count;
          Old : constant Node_Access :=
            Deref (Shared_Reference_Base (Link.all).Ref);
@@ -344,7 +346,8 @@ package body NBAda.Memory_Reclamation.Lock_Free_Reference_Counting is
          if Integrity_Checking then
             Validate (Node, "Attempting to store");
          end if;
-         Link.all := To_Shared_Reference (Node);
+         Link.all :=
+           ID.To_Shared_Reference (BRO.Private_Reference_Base (Node));
 
          if Deref (Node) /= null then
             declare
@@ -552,8 +555,13 @@ package body NBAda.Memory_Reclamation.Lock_Free_Reference_Counting is
       ----------------------------------------------------------------------
       function Get_Ref (Node : in Private_Reference)
                        return Reference_Impl is
+         package BRO renames Basic_Reference_Operations;
+         package ID  renames BRO.Implementation_Details;
       begin
-         return Shared_Reference_Base (To_Shared_Reference (Node)).Ref;
+         return
+           Shared_Reference_Base
+           (ID.To_Shared_Reference
+              (BRO.Private_Reference_Base (Node))).Ref;
       end Get_Ref;
 
       ----------------------------------------------------------------------
@@ -561,10 +569,11 @@ package body NBAda.Memory_Reclamation.Lock_Free_Reference_Counting is
                                          MM   : in Memory_Manager_Access)
                                         return Private_Reference is
          package BRO renames Basic_Reference_Operations;
+         package ID  renames BRO.Implementation_Details;
       begin
          return
            Private_Reference'(BRO.Private_Reference_Base
-                                (BRO.From_Shared_Reference
+                                (ID.From_Shared_Reference
                                    (Shared_Reference
                                       (Shared_Reference_Base'(Ref => Ref))))
                               with MM => MM);

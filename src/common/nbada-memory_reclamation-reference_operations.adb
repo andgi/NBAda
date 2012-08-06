@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --  NBAda - A library of non-blocking algorithms and data structures.
 --
---  Copyright (C) 2011  Anders Gidenstam
+--  Copyright (C) 2011 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -304,20 +304,24 @@ package body NBAda.Memory_Reclamation.Reference_Operations is
 
    end Reference_Mark_Operations;
 
+   ------------------------------------------------------------------------
+   package body Implementation_Details is
 
-   ----------------------------------------------------------------------
-   function To_Shared_Reference (R : in     Private_Reference_Base)
-                                return Shared_Reference is
-   begin
-      return Shared_Reference (Shared_Reference_Base'(Ref => R.Ref));
-   end To_Shared_Reference;
+      ---------------------------------------------------------------------
+      function To_Shared_Reference (R : in     Private_Reference_Base)
+                                   return Shared_Reference is
+      begin
+         return Shared_Reference (Shared_Reference_Base'(Ref => R.Ref));
+      end To_Shared_Reference;
 
-   ----------------------------------------------------------------------
-   function From_Shared_Reference (R : in     Shared_Reference)
-                                  return Private_Reference_Base'Class is
-   begin
-      return Secret_Concrete'(Ref => Shared_Reference_Base (R).Ref);
-   end From_Shared_Reference;
+      ---------------------------------------------------------------------
+      function From_Shared_Reference (R : in     Shared_Reference)
+                                     return Private_Reference_Base'Class is
+      begin
+         return Secret_Concrete'(Ref => Shared_Reference_Base (R).Ref);
+      end From_Shared_Reference;
+
+   end Implementation_Details;
 
    ----------------------------------------------------------------------
    function Null_Reference return Secret_Concrete is
