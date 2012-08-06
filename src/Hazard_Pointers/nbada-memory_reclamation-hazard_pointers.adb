@@ -413,12 +413,13 @@ package body NBAda.Memory_Reclamation.Hazard_Pointers is
                                         return Private_Reference is
          package BRO renames Basic_Reference_Operations;
          package ID  renames BRO.Implementation_Details;
+         Shared : constant Shared_Reference_Base :=
+           Shared_Reference_Base'(Ref => Ref);
+         Base   : constant BRO.Private_Reference_Base'Class :=
+           ID.From_Shared_Reference (Shared_Reference (Shared));
       begin
          return
-           Private_Reference'(BRO.Private_Reference_Base
-                                (ID.From_Shared_Reference
-                                   (Shared_Reference
-                                      (Shared_Reference_Base'(Ref => Ref))))
+           Private_Reference'(BRO.Private_Reference_Base (Base)
                               with
                               HP => HP,
                               MM => MM);

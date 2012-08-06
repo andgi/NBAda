@@ -400,9 +400,14 @@ package body NBAda.Memory_Reclamation.Epoch_Based_Memory_Reclamation is
             end if;
          end loop;
 
-         CAS (Target    => MM.Global_Epoch'Access,
-              Old_Value => (Current_Epoch_ID, True),
-              New_Value => (Current_Epoch_ID + 1, True));
+         declare
+            Current : constant Epoch := (Current_Epoch_ID, True);
+            Next    : constant Epoch := (Current_Epoch_ID + 1, True);
+         begin
+            CAS (Target    => MM.Global_Epoch'Access,
+                 Old_Value => Current,
+                 New_Value => Next);
+         end;
       end Update_Global_Epoch;
 
       -------------------------------------------------------------------------
@@ -429,12 +434,13 @@ package body NBAda.Memory_Reclamation.Epoch_Based_Memory_Reclamation is
                                         return Private_Reference is
          package BRO renames Basic_Reference_Operations;
          package ID  renames BRO.Implementation_Details;
+         Shared : constant Shared_Reference_Base :=
+           Shared_Reference_Base'(Ref => Ref);
+         Base   : constant BRO.Private_Reference_Base'Class :=
+           ID.From_Shared_Reference (Shared_Reference (Shared));
       begin
          return
-           Private_Reference'(BRO.Private_Reference_Base
-                                (ID.From_Shared_Reference
-                                   (Shared_Reference
-                                      (Shared_Reference_Base'(Ref => Ref))))
+           Private_Reference'(BRO.Private_Reference_Base (Base)
                               with MM => MM);
       end Create_Private_Reference;
 

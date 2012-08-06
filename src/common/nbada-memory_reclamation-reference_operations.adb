@@ -310,8 +310,10 @@ package body NBAda.Memory_Reclamation.Reference_Operations is
       ---------------------------------------------------------------------
       function To_Shared_Reference (R : in     Private_Reference_Base)
                                    return Shared_Reference is
+         Result : constant Shared_Reference_Base :=
+           Shared_Reference_Base'(Ref => R.Ref);
       begin
-         return Shared_Reference (Shared_Reference_Base'(Ref => R.Ref));
+         return Shared_Reference (Result);
       end To_Shared_Reference;
 
       ---------------------------------------------------------------------

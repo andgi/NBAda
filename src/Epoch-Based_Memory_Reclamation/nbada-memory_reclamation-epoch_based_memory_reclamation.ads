@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Epoch-based memory reclamation.
---  Copyright (C) 2011  Anders Gidenstam
+--  Copyright (C) 2011 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -162,6 +162,8 @@ package NBAda.Memory_Reclamation.Epoch_Based_Memory_Reclamation is
 
    private
 
+      pragma No_Strict_Aliasing (Node_Access);
+
       procedure Validate (Node  : in Private_Reference;
                           Where : in String);
 
@@ -179,9 +181,9 @@ package NBAda.Memory_Reclamation.Epoch_Based_Memory_Reclamation is
             ID     : Epoch_ID;
             Active : Boolean;
          end record;
-      pragma Pack (Epoch);
-      for Epoch'Size use Primitives.Standard_Unsigned'Size;
       pragma Atomic (Epoch);
+      pragma Pack (Epoch);
+      for Epoch'Object_Size use Primitives.Standard_Unsigned'Size;
 
       --  Persistent shared per-task data.
       type Task_Shared is
