@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --  Lock-free Queue - An implementation of  M. Hoffman, O. Shalev and
 --                    N. Shavit's lock-free queue algorithm.
---  Copyright (C) 2008 - 2011  Anders Gidenstam
+--  Copyright (C) 2008 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -47,8 +47,6 @@ package NBAda.Lock_Free_Queues_Memory_Reclamation_Adapter is
 
    package Memory_Reclamation is
       new NBAda.Memory_Reclamation.Lock_Free_Reference_Counting
-     (Process_Ids,
-      Integrity_Checking => True,
-      Collect_Statistics => True);
+     (Process_Ids);
 
 end NBAda.Lock_Free_Queues_Memory_Reclamation_Adapter;

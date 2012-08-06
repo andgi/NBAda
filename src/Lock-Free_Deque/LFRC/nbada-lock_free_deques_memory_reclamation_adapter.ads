@@ -2,7 +2,7 @@
 --  Lock-Free Deques - An Ada implementation of the lock-free deque algorithm
 --                     by H. Sundell and P. Tsigas.
 --
---  Copyright (C) 2007 - 2011  Anders Gidenstam
+--  Copyright (C) 2007 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -44,7 +44,6 @@ package NBAda.Lock_Free_Deques_Memory_Reclamation_Adapter is
 
    package Memory_Reclamation is
       new NBAda.Memory_Reclamation.Lock_Free_Reference_Counting
-     (Process_Ids,
-      Integrity_Checking => False);
+     (Process_Ids);
 
 end NBAda.Lock_Free_Deques_Memory_Reclamation_Adapter;

@@ -2,7 +2,7 @@
 --  Lock-Free Sets - An implementation of the lock-free set algorithm by
 --                   M. Michael.
 --
---  Copyright (C) 2007 - 2011  Anders Gidenstam
+--  Copyright (C) 2007 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -48,7 +48,6 @@ package NBAda.Lock_Free_Sets_Memory_Reclamation_Adapter is
    package Memory_Reclamation is
       new NBAda.Memory_Reclamation.Hazard_Pointers
      (Process_Ids                => Process_Ids,
-      Max_Number_Of_Dereferences => 4,
-      Integrity_Checking         => False);
+      Max_Number_Of_Dereferences => 4);
 
 end NBAda.Lock_Free_Sets_Memory_Reclamation_Adapter;

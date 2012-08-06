@@ -47,8 +47,6 @@ package NBAda.Lock_Free_Queues_Memory_Reclamation_Adapter is
 
    package Memory_Reclamation is
       new NBAda.Memory_Reclamation.Lock_Free_Reference_Counting
-     (Process_Ids,
-      Integrity_Checking   => True,
-      Collect_Statistics   => True);
+     (Process_Ids);
 
 end NBAda.Lock_Free_Queues_Memory_Reclamation_Adapter;

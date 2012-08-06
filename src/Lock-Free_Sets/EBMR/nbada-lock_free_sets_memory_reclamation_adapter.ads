@@ -2,7 +2,7 @@
 --  Lock-Free Sets - An implementation of the lock-free set algorithm by
 --                   M. Michael.
 --
---  Copyright (C) 2007 - 2011  Anders Gidenstam
+--  Copyright (C) 2007 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -49,7 +49,6 @@ package NBAda.Lock_Free_Sets_Memory_Reclamation_Adapter is
       new NBAda.Memory_Reclamation.Epoch_Based_Memory_Reclamation
      (Epoch_Update_Threshold     => 100,
       --  Suitable number for epoch-based reclamation.
-      Process_Ids                => Process_Ids,
-      Integrity_Checking         => False);
+      Process_Ids                => Process_Ids);
 
 end NBAda.Lock_Free_Sets_Memory_Reclamation_Adapter;

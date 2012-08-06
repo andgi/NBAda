@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --  Lock-free bag - An implementation of  the lock-free bag algorithm
 --  by H. Sundell, A. Gidenstam, M. Papatriantafilou and P. Tsigas.
---  Copyright (C) 2011  Anders Gidenstam
+--  Copyright (C) 2011 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -48,7 +48,6 @@ package NBAda.Lock_Free_Bags_Memory_Reclamation_Adapter is
    package Memory_Reclamation is new NBAda.Memory_Reclamation.Hazard_Pointers
      (Max_Number_Of_Dereferences => 6,
       Process_Ids                => Process_Ids,
-      Integrity_Checking         => False,
       Verbose_Debug              => False);
 
 end NBAda.Lock_Free_Bags_Memory_Reclamation_Adapter;

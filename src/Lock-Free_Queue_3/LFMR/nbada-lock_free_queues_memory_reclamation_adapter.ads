@@ -62,8 +62,6 @@ package NBAda.Lock_Free_Queues_Memory_Reclamation_Adapter is
 --      Scan_Threshold               =>
 --        2 * Natural (Process_Ids.Max_Number_Of_Processes * 10) + 1,
       --  Clean up and scan often.
-      Process_Ids                  => Process_Ids,
-      Integrity_Checking           => True,
-      Collect_Statistics           => True);
+      Process_Ids                  => Process_Ids);
 
 end NBAda.Lock_Free_Queues_Memory_Reclamation_Adapter;
