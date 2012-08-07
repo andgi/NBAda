@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Primitives - A binding to the synchronization primitives of the hardware.
---  Copyright (C) 2004 - 2011  Anders Gidenstam
+--  Copyright (C) 2004 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -71,11 +71,17 @@ package body NBAda.Primitives is
    --        To disable the pause instruction, change the string constant
    --        PAUSE to "#pause" instead of "pause".
 
-   CAS_Based_FAA : constant Boolean := True;
-   --  NOTE: The pure assembler FAA breaks on some IA32 implementations
-   --        when optimized for some reason.
-   --        This is a workaround.
+   Use_CAS_As_Memory_Barrier : constant Boolean := True;
+   --  NOTE: The IA32 cmpxchg instruction effectively behaves as a
+   --        memory barrier and is cheaper than the "mfence" instruction
+   --        on (at least) Core2 and i7 processors.
+   --        However, old string instructions and vector operations might
+   --        not be synchronized.
 
+   CAS_Based_FAA : constant Boolean := False; --  Use_CAS_As_Memory_Barrier;
+   --  NOTE: The lock xadd instruction doesn't have the same memory barrier
+   --        behaviour as cmpxchg so the latter needs to be used to avoid
+   --        mfence altogether.
 
    ----------------------------------------------------------------------------
    --  Home made assert construction. Provides some degree of compile time
@@ -197,7 +203,6 @@ package body NBAda.Primitives is
                                   Old_Value : in     Element;
                                   New_Value : in out Element) is
       use Ada.Characters.Latin_1;
-      type Element_Access is access all Element;
 
       A1  : Assertion (Assert => Element'Object_Size = 32);
       pragma Unreferenced (A1);
@@ -205,16 +210,12 @@ package body NBAda.Primitives is
       System.Machine_Code.Asm
         (Template =>
            "#BEGIN Compare_And_Swap_32"  & LF & HT &
-           "movl %2, %%eax"              & LF & HT &
-           "lock cmpxchg %3, (%1)"       & LF & HT &   -- Compare & swap
-           "movl %%eax, %0"              & LF & HT &
+           "lock cmpxchgl %3, %1"        & LF & HT &   -- Compare & swap
            "#END Compare_And_Swap_32",
-         Outputs  => Element'Asm_Output ("=g", New_Value), -- %0 = New_Value
-         Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
-                                                Element_Access (Target)),
-                      Element'Asm_Input ("g", Old_Value),  -- %2 = Old_Value
+         Outputs  => Element'Asm_Output ("=a", New_Value), -- %0 = New_Value
+         Inputs   => (Element'Asm_Input ("m", Target.all), -- %1 = Target
+                      Element'Asm_Input ("0", Old_Value),  -- %2 = Old_Value
                       Element'Asm_Input ("r", New_Value)), -- %3 = New_Value
-         Clobber  => "eax",
          Volatile => True);
    end Compare_And_Swap_32;
 
@@ -224,7 +225,6 @@ package body NBAda.Primitives is
                                          New_Value : in     Element)
                                         return Boolean is
       use Ada.Characters.Latin_1;
-      type Element_Access is access all Element;
 
       A1  : Assertion (Assert => Element'Object_Size = 32);
       pragma Unreferenced (A1);
@@ -233,16 +233,12 @@ package body NBAda.Primitives is
       System.Machine_Code.Asm
         (Template =>
            "#BEGIN Compare_And_Swap_32"  & LF & HT &
-           "movl %2, %%eax"              & LF & HT &
-           "lock cmpxchg %3, (%1)"       & LF & HT &   -- Compare & swap
-           "movl %%eax, %0"              & LF & HT &
+           "lock cmpxchgl %3, %1"        & LF & HT &   -- Compare & swap
            "#END Compare_And_Swap_32",
-         Outputs  => Element'Asm_Output ("=g", Tmp),       -- %0 = Tmp
-         Inputs   => (Element_Access'Asm_Input ("r",       -- %1 = Target
-                                                Element_Access (Target)),
-                      Element'Asm_Input ("g", Old_Value),  -- %2 = Old_Value
+         Outputs  => Element'Asm_Output ("=a", Tmp),       -- %0 = Tmp
+         Inputs   => (Element'Asm_Input ("m", Target.all), -- %1 = Target
+                      Element'Asm_Input ("0", Old_Value),  -- %2 = Old_Value
                       Element'Asm_Input ("r", New_Value)), -- %3 = New_Value
-         Clobber  => "eax",
          Volatile => True);
       return Tmp = Old_Value;
    end Boolean_Compare_And_Swap_32;
@@ -252,7 +248,6 @@ package body NBAda.Primitives is
                                        Old_Value : in     Element;
                                        New_Value : in     Element) is
       use Ada.Characters.Latin_1;
-      type Element_Access is access all Element;
 
       A1  : Assertion (Assert => Element'Object_Size = 32);
       pragma Unreferenced (A1);
@@ -260,14 +255,11 @@ package body NBAda.Primitives is
       System.Machine_Code.Asm
         (Template =>
            "#BEGIN Void_Compare_And_Swap_32" & LF & HT &
-           "movl %1, %%eax"                  & LF & HT &
-           "lock cmpxchg %2, (%0)"           & LF & HT &   -- Compare & swap
-          "#END Void_Compare_And_Swap_32",
-         Inputs   => (Element_Access'Asm_Input ("r",       -- %0 = Target
-                                                Element_Access (Target)),
-                      Element'Asm_Input ("g", Old_Value),  -- %1 = Old_Value
+           "lock cmpxchgl %2, %0"            & LF & HT &   -- Compare & swap
+           "#END Void_Compare_And_Swap_32",
+         Inputs   => (Element'Asm_Input ("m", Target.all), -- %0 = Target
+                      Element'Asm_Input ("a", Old_Value),  -- %1 = Old_Value
                       Element'Asm_Input ("r", New_Value)), -- %2 = New_Value
-         Clobber  => "eax",
          Volatile => True);
    end Void_Compare_And_Swap_32;
 
@@ -279,7 +271,6 @@ package body NBAda.Primitives is
    procedure Fetch_And_Add_32 (Target    : access Unsigned_32;
                                Increment : in     Unsigned_32) is
       use Ada.Characters.Latin_1;
-      type Unsigned_32_Access is access all Unsigned_32;
    begin
       if CAS_Based_FAA then
          loop
@@ -292,16 +283,15 @@ package body NBAda.Primitives is
             end;
          end loop;
       else
-         --  This code breaks when optimized.
          System.Machine_Code.Asm
            (Template =>
               "#BEGIN Fetch_And_Add_32"      & LF & HT &
               MFENCE                         & LF & HT &
-              "lock xaddl %1, (%0)"          & LF & HT &   -- Fetch & add
+              "lock xaddl %1, %0"            & LF & HT &   -- Fetch & add
               MFENCE                         & LF & HT &
               "#END Fetch_And_Add_32",
-            Inputs   => (Unsigned_32_Access'Asm_Input         -- %0 = Target
-                         ("r", Unsigned_32_Access (Target)),
+            Inputs   => (Unsigned_32'Asm_Input ("m",          -- %0 = Target
+                                                Target.all),
                          Unsigned_32'Asm_Input ("r",          -- %1 = Increment
                                                 Increment)),
             Volatile => True);
@@ -313,7 +303,6 @@ package body NBAda.Primitives is
                               Increment : in     Unsigned_32)
                              return Unsigned_32 is
       use Ada.Characters.Latin_1;
-      type Unsigned_32_Access is access all Unsigned_32;
 
       Tmp : Unsigned_32;
    begin
@@ -327,19 +316,17 @@ package body NBAda.Primitives is
             end;
          end loop;
       else
-         --  This code breaks when optimized.
          System.Machine_Code.Asm
            (Template =>
               "#BEGIN Fetch_And_Add_32"      & LF & HT &
               MFENCE                         & LF & HT &
-              "lock xaddl %2, (%1)"          & LF & HT &   -- Fetch & add
-              "movl %2, %0"                  & LF & HT &
+              "lock xaddl %2, %1"            & LF & HT &   -- Fetch & add
               MFENCE                         & LF & HT &
               "#END Fetch_And_Add_32",
             Outputs  => Unsigned_32'Asm_Output ("=r", Tmp),   -- %0 = Tmp
-            Inputs   => (Unsigned_32_Access'Asm_Input         -- %1 = Target
-                         ("r", Unsigned_32_Access (Target)),
-                         Unsigned_32'Asm_Input ("r",          -- %2 = Increment
+            Inputs   => (Unsigned_32'Asm_Input ("m",          -- %1 = Target
+                                                Target.all),
+                         Unsigned_32'Asm_Input ("0",          -- %2 = Increment
                                                 Increment)),
             Volatile => True);
       end if;
@@ -518,13 +505,22 @@ package body NBAda.Primitives is
    ----------------------------------------------------------------------------
    procedure Membar is
       use Ada.Characters.Latin_1;
+      Dummy : aliased Unsigned_32 := 0;
+      pragma Atomic (Dummy);
    begin
-      System.Machine_Code.Asm
-        (Template =>
-           "#BEGIN Membar" & LF & HT &
-           MFENCE          & LF & HT &
-           "#END Membar",
-        Volatile => True);
+      if Use_CAS_As_Memory_Barrier then
+         --  On IA32 cmpxchg acts as a memory barrier.
+         if CAS (Dummy'Access, 0, 1) then
+            null;
+         end if;
+      else
+         System.Machine_Code.Asm
+           (Template =>
+              "#BEGIN Membar" & LF & HT &
+              MFENCE          & LF & HT &
+              "#END Membar",
+            Volatile => True);
+      end if;
    end Membar;
 
 end NBAda.Primitives;
