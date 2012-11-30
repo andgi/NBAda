@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Compare and Swap test.
---  Copyright (C) 2004 - 2007  Anders Gidenstam
+--  Copyright (C) 2004 - 2012  Anders Gidenstam
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@
 --  Description     : Test of synchronization primitives package.
 --  Author          : Anders Gidenstam
 --  Created On      : Fri Jul  5 16:09:25 2002
---  $Id: cas_test.adb,v 1.10 2007/08/30 14:11:43 andersg Exp $
 -------------------------------------------------------------------------------
 
 pragma License (GPL);
@@ -522,6 +521,42 @@ begin
             Ada.Text_IO.Put_Line ("LA: " & My_Float'Image (LA));
             Ada.Text_IO.Put_Line ("LB: " & My_Float'Image (LB));
       end;
+   end;
+
+   ----------------------------------------------------------------------------
+   --  Instantiation tests.
+   declare
+      procedure SCAS is
+         new NBAda.Primitives.Standard_Compare_And_Swap
+        (NBAda.Primitives.Standard_Unsigned);
+      function SBCAS is
+         new NBAda.Primitives.Standard_Boolean_Compare_And_Swap
+        (NBAda.Primitives.Standard_Unsigned);
+      procedure SVCAS is
+         new NBAda.Primitives.Standard_Void_Compare_And_Swap
+        (NBAda.Primitives.Standard_Unsigned);
+
+      procedure CAS32 is
+         new NBAda.Primitives.Compare_And_Swap_32
+        (NBAda.Primitives.Unsigned_32);
+      function BCAS32 is
+         new NBAda.Primitives.Boolean_Compare_And_Swap_32
+        (NBAda.Primitives.Unsigned_32);
+      procedure VCAS32 is
+         new NBAda.Primitives.Void_Compare_And_Swap_32
+        (NBAda.Primitives.Unsigned_32);
+
+      procedure CAS64 is
+         new NBAda.Primitives.Compare_And_Swap_64
+        (NBAda.Primitives.Unsigned_64);
+      function BCAS64 is
+         new NBAda.Primitives.Boolean_Compare_And_Swap_64
+        (NBAda.Primitives.Unsigned_64);
+      procedure VCAS64 is
+         new NBAda.Primitives.Void_Compare_And_Swap_64
+        (NBAda.Primitives.Unsigned_64);
+   begin
+      null;
    end;
 
 end CAS_Test;

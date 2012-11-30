@@ -119,7 +119,6 @@ package NBAda.Primitives is
    --      New_Value := Tmp;
    --    end atomic;
    pragma Inline (Standard_Compare_And_Swap);
-   pragma Inline_Always (Standard_Compare_And_Swap);
 
    ----------------------------------------------------------------------------
    --  Standard Boolean Compare and Swap.
@@ -142,7 +141,6 @@ package NBAda.Primitives is
    --      end if;
    --    end atomic;
    pragma Inline (Standard_Boolean_Compare_And_Swap);
-   pragma Inline_Always (Standard_Boolean_Compare_And_Swap);
 
    ----------------------------------------------------------------------------
    --  Standard Void Compare and Swap.
@@ -161,7 +159,6 @@ package NBAda.Primitives is
    --      end if;
    --    end atomic;
    pragma Inline (Standard_Void_Compare_And_Swap);
-   pragma Inline_Always (Standard_Void_Compare_And_Swap);
 
 
    ----------------------------------------------------------------------------
