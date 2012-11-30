@@ -346,6 +346,7 @@ package body NBAda.Primitives is
    function Atomic_Read_64 (Target : access Element) return Element is
    begin
       raise Not_Implemented;
+      return Target.all;
    end Atomic_Read_64;
 
    ----------------------------------------------------------------------------
