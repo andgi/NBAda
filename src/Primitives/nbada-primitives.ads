@@ -246,7 +246,6 @@ package NBAda.Primitives is
    --      New_Value := Tmp;
    --    end atomic;
    pragma Inline (Compare_And_Swap_32);
-   pragma Inline_Always (Compare_And_Swap_32);
 
    ----------------------------------------------------------------------------
    --  Boolean Compare and Swap 32
@@ -269,7 +268,6 @@ package NBAda.Primitives is
    --      end if;
    --    end atomic;
    pragma Inline (Boolean_Compare_And_Swap_32);
-   pragma Inline_Always (Boolean_Compare_And_Swap_32);
 
    ----------------------------------------------------------------------------
    --  Void Compare and Swap 32.
@@ -288,7 +286,6 @@ package NBAda.Primitives is
    --      end if;
    --    end atomic;
    pragma Inline (Void_Compare_And_Swap_32);
-   pragma Inline_Always (Void_Compare_And_Swap_32);
 
 
    ----------------------------------------------------------------------------
@@ -377,7 +374,6 @@ package NBAda.Primitives is
    --      New_Value := Tmp;
    --    end atomic;
    pragma Inline (Compare_And_Swap_64);
-   pragma Inline_Always (Compare_And_Swap_64);
 
    ----------------------------------------------------------------------------
    --  Boolean Compare and Swap 64
@@ -400,7 +396,6 @@ package NBAda.Primitives is
    --      end if;
    --    end atomic;
    pragma Inline (Boolean_Compare_And_Swap_64);
-   pragma Inline_Always (Boolean_Compare_And_Swap_64);
 
    ----------------------------------------------------------------------------
    --  Void Compare and Swap 64
@@ -419,7 +414,6 @@ package NBAda.Primitives is
    --      end if;
    --    end atomic;
    pragma Inline (Void_Compare_And_Swap_64);
-   pragma Inline_Always (Void_Compare_And_Swap_64);
 
    ----------------------------------------------------------------------------
    --  Fetch and Add 64.

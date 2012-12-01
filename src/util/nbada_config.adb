@@ -23,7 +23,6 @@
 --  Description     : NBAda build config.
 --  Author          : Anders Gidenstam
 --  Created On      : Thu Aug 30 11:18:46 2007
---  $Id: nbada_config.adb,v 1.20 2008/06/26 09:20:30 andersg Exp $
 -------------------------------------------------------------------------------
 
 with Ada.Command_Line;
@@ -78,7 +77,13 @@ procedure NBAda_Config is
       LF_UBTREES_LFMR,
       LF_UBTREES_LFRC
       );
-   type Architecture is (IA32, X86_64, SPARCV8PLUS, SPARCV9, MIPSN32);
+   type Architecture is (IA32,
+                         X86_64,
+                         SPARCV8PLUS,
+                         SPARCV9,
+                         MIPSN32,
+                         GCC32,
+                         GCC64);
    type Target_Array is array (Target) of Boolean;
 
    ----------------------------------------------------------------------
@@ -98,7 +103,9 @@ procedure NBAda_Config is
                           "-cargs -Wa,-xarch=v8plus"),
       SPARCV9     => "+" ("-I" & Install_Base & "/Primitives/SPARCv9 " &
                           "-m64 --RTS=m64 -cargs -Wa,-xarch=v9"),
-      MIPSN32     => "+" ("-I" & Install_Base & "/Primitives/MIPSN32"));
+      MIPSN32     => "+" ("-I" & Install_Base & "/Primitives/MIPSN32"),
+      GCC32       => "+" ("-I" & Install_Base & "/Primitives/GCC32"),
+      GCC64       => "+" ("-I" & Install_Base & "/Primitives/GCC64"));
 
    --  Component include directories.
    Include : constant array (Target) of Unbounded_String :=

@@ -78,7 +78,7 @@ begin
       use type NBAda.Primitives.Standard_Unsigned;
       Test : aliased NBAda.Primitives.Standard_Unsigned := 0;
    begin
-      Ada.Text_IO.Put_Line ("Test 1: 10 x FAA(Test'Access, 2)." &
+      Ada.Text_IO.Put_Line ("Test 1: 10 x FAA(Test'Access, 2). " &
                             "Expected outcome: 0, 2, 4, .. , 18.");
       for I in 1 .. 10 loop
          Ada.Text_IO.Put_Line
