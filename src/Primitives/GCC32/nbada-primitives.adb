@@ -292,28 +292,9 @@ package body NBAda.Primitives is
    procedure Compare_And_Swap_64 (Target    : access Element;
                                   Old_Value : in     Element;
                                   New_Value : in out Element) is
-      function To_U64 is
-         new Ada.Unchecked_Conversion (Element, Unsigned_64);
-      function To_Element is
-         new Ada.Unchecked_Conversion (Unsigned_64, Element);
-      package Convert is
-         new System.Address_To_Access_Conversions (Element);
-
-      function CAS_64
-        (Target    : System.Address;
-         Old_Value : Unsigned_64;
-         New_Value : Unsigned_64) return Unsigned_64;
-      pragma Import (Intrinsic,
-                     CAS_64,
-                     "__sync_val_compare_and_swap_8");
-
       subtype A1 is Assertion (Assert => Element'Object_Size = 64);
    begin
-      New_Value :=
-        To_Element (CAS_64 (Convert.To_Address
-                              (Convert.Object_Pointer (Target)),
-                            To_U64 (Old_Value),
-                            To_U64 (New_Value)));
+      raise Not_Implemented;
    end Compare_And_Swap_64;
 
    ----------------------------------------------------------------------------
@@ -321,89 +302,34 @@ package body NBAda.Primitives is
                                          Old_Value : in     Element;
                                          New_Value : in     Element)
                                         return Boolean is
-      function To_U64 is
-         new Ada.Unchecked_Conversion (Element, Unsigned_64);
-      function To_Element is
-         new Ada.Unchecked_Conversion (Unsigned_64, Element);
-      package Convert is
-         new System.Address_To_Access_Conversions (Element);
-
-      function CAS_64
-        (Target    : System.Address;
-         Old_Value : Unsigned_64;
-         New_Value : Unsigned_64) return Boolean;
-      pragma Import (Intrinsic,
-                     CAS_64,
-                     "__sync_bool_compare_and_swap_8");
-
       subtype A1 is Assertion (Assert => Element'Object_Size = 64);
    begin
-      return CAS_64 (Convert.To_Address (Convert.Object_Pointer (Target)),
-                     To_U64 (Old_Value),
-                     To_U64 (New_Value));
+      raise Not_Implemented;
+      return False;
    end Boolean_Compare_And_Swap_64;
 
    ----------------------------------------------------------------------------
    procedure Void_Compare_And_Swap_64 (Target    : access Element;
                                        Old_Value : in     Element;
                                        New_Value : in     Element) is
-      function To_U64 is
-         new Ada.Unchecked_Conversion (Element, Unsigned_64);
-      function To_Element is
-         new Ada.Unchecked_Conversion (Unsigned_64, Element);
-      package Convert is
-         new System.Address_To_Access_Conversions (Element);
-
-      function CAS_64
-        (Target    : System.Address;
-         Old_Value : Unsigned_64;
-         New_Value : Unsigned_64) return Boolean;
-      pragma Import (Intrinsic,
-                     CAS_64,
-                     "__sync_bool_compare_and_swap_8");
-
-      subtype A1 is Assertion (Assert => Element'Object_Size = 64);
-      Tmp : Boolean;
    begin
-      Tmp := CAS_64 (Convert.To_Address (Convert.Object_Pointer (Target)),
-                     To_U64 (Old_Value),
-                     To_U64 (New_Value));
+      raise Not_Implemented;
    end Void_Compare_And_Swap_64;
 
    ----------------------------------------------------------------------------
    procedure Fetch_And_Add_64 (Target    : access Unsigned_64;
                                Increment : in     Unsigned_64) is
-      package Convert is
-         new System.Address_To_Access_Conversions (Unsigned_64);
-
-      function FAA_64
-        (Target    : System.Address;
-         Increment : Unsigned_64) return Unsigned_64;
-      pragma Import (Intrinsic,
-                     FAA_64,
-                     "__sync_fetch_and_add_8");
-      Tmp : Unsigned_64;
    begin
-      Tmp := FAA_64 (Convert.To_Address (Convert.Object_Pointer (Target)),
-                     Increment);
+      raise Not_Implemented;
    end Fetch_And_Add_64;
 
    ----------------------------------------------------------------------------
    function Fetch_And_Add_64 (Target    : access Unsigned_64;
                               Increment : in     Unsigned_64)
                              return Unsigned_64 is
-      package Convert is
-         new System.Address_To_Access_Conversions (Unsigned_64);
-
-      function FAA_64
-        (Target    : System.Address;
-         Increment : Unsigned_64) return Unsigned_64;
-      pragma Import (Intrinsic,
-                     FAA_64,
-                     "__sync_fetch_and_add_8");
    begin
-      return FAA_64 (Convert.To_Address (Convert.Object_Pointer (Target)),
-                     Increment);
+      raise Not_Implemented;
+      return 0;
    end Fetch_And_Add_64;
 
    ----------------------------------------------------------------------------
